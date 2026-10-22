@@ -4,11 +4,11 @@ Tags: security, php2shell, malware, scanner, webshell
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
-Checks whether your site is exposed to — or was broken into through — PHP2Shell (a critical PHP bug, October 2026) and wp2shell (a WordPress bug, July 2026). Read-only.
+Checks whether your site is exposed to — or was broken into through — PHP2Shell (a critical PHP bug, October 2026) and wp2shell (a WordPress bug, July 2026). Optional one-click fixes and a fleet dashboard.
 
 == Description ==
 
@@ -16,13 +16,13 @@ Checks whether your site is exposed to — or was broken into through — PHP2Sh
 
 **wp2shell** (CVE-2026-63030 / CVE-2026-60137) is a WordPress core bug from July 2026, fixed in WordPress 6.8.6, 6.9.5 and 7.0.2.
 
-This plugin tells you whether your site is exposed to either, and looks for signs that an attacker already got in. It only reads — it never changes or deletes anything.
+This plugin tells you whether your site is exposed to either, and looks for signs that an attacker already got in. Scans only read. If something is found, optional one-click fixes can quarantine files or remove admin rights — and every fix can be undone.
 
 It checks:
 
-* The PHP your website runs, including OS packages patched without a version change, and the temporary php.ini protections
+* The PHP your website runs, including Debian/Ubuntu package versions and build dates (patched without a version change), and the temporary php.ini protections
 * Whether the site ran an unpatched PHP during the attack window
-* PHP2Shell traces in the PHP error log, and suspicious bursts in the access log
+* PHP2Shell traces in the PHP error log; exploit tools, known attacker addresses and suspicious bursts in the access log; the /tmp/nfs second stage
 * Your WordPress version, and wp2shell exploit plugins, files and traffic
 * Webshell code anywhere in the site, PHP hidden in uploads, images and the site root, and PHP auto-loaded via .user.ini / .htaccess
 * New or promoted administrators, roles given admin powers, application passwords
@@ -34,9 +34,11 @@ Features:
 * Works on shared hosting with short time limits — scans run in slices with a progress bar
 * A ready-to-send message for your host when PHP needs updating
 * Weekly or daily automatic scans with email alerts for new, serious findings
+* One-click quarantine and admin removal, with undo
+* Fleet dashboard: one hub site shows the results of all your sites
 * Ignore false positives (signed, so attackers can't forge it)
 * Site Health integration
-* WP-CLI: `wp php2shell scan`, `status`, `ignore`
+* WP-CLI: `wp php2shell scan`, `status`, `ignore`, `fix`, `quarantine`, `fleet`
 * Multisite aware
 * Updates automatically from GitHub releases
 
@@ -51,7 +53,7 @@ On multisite, network-activate and use Network Admin → Settings → PHP2Shell 
 
 = Will it change or delete my files? =
 
-No. It only reads and reports. You decide what to remove.
+Scans never do. Only if you click a fix button does it move a file into quarantine (renamed so it can't run) or remove someone's admin rights — and you can undo either from the Quarantine tab.
 
 = It says "Vulnerable — PHP needs updating". Was I hacked? =
 
@@ -63,9 +65,15 @@ Some hosts fix PHP without changing its version number. If your host confirms bo
 
 = Does it send my data anywhere? =
 
-No. The only outside requests are core checksums from wordpress.org and update/self-check requests to GitHub.
+No. The only outside requests are core checksums from wordpress.org and update/self-check requests to GitHub. If you set up a fleet, member sites send a short summary to your own hub site.
 
 == Changelog ==
+
+= 1.2.0 =
+* One-click fixes with undo: quarantine files and plugins, remove admin rights.
+* Fleet dashboard for many sites.
+* Latest PHP2Shell intel: Ubuntu/Debian package and build-date checks, exploit-tool and attacker-address detection, /tmp/nfs, fewer false alarms on patched PHP.
+* Redesigned scanner page.
 
 = 1.1.0 =
 * PHP2Shell (CVE-2026-109618 / CVE-2026-109619) detection: PHP version and stopgaps, version history, error-log and access-log evidence, ready-made message for your host.

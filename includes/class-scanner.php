@@ -57,6 +57,8 @@ class WP2SS_Scanner {
 		'includes/class-cli.php',
 		'includes/class-cron.php',
 		'includes/class-env.php',
+		'includes/class-fixes.php',
+		'includes/class-fleet.php',
 		'includes/class-scanner.php',
 		'includes/class-settings.php',
 		'includes/class-site-health.php',
@@ -519,7 +521,7 @@ class WP2SS_Scanner {
 		while ( 'done' !== $this->s['phase'] && ! $this->out_of_time() ) {
 			switch ( $this->s['phase'] ) {
 				case 'quick':
-					$checks = array( 'check_php', 'check_version', 'check_plugins', 'check_mu_plugins', 'check_admins', 'check_admin_baseline', 'check_app_passwords', 'check_roles', 'check_rest_routes', 'check_root_files', 'check_own_folder' );
+					$checks = array( 'check_php', 'check_tmp', 'check_version', 'check_plugins', 'check_mu_plugins', 'check_admins', 'check_admin_baseline', 'check_app_passwords', 'check_roles', 'check_rest_routes', 'check_root_files', 'check_own_folder' );
 					foreach ( $checks as $check ) {
 						$this->guarded( array( $this, $check ), $check );
 					}
@@ -696,8 +698,9 @@ class WP2SS_Scanner {
 	/** 1. Is the web server's PHP patched against PHP2Shell? */
 	private function check_php() {
 		$e      = $this->s['env'];
-		$status = WP2SS_Env::php2shell_status( $e['version'], $this->sig );
+		list( $status ) = WP2SS_Env::php2shell_status_env( $e, $this->sig );
 		$v      = $e['version'];
+		$pkg    = isset( $e['pkg'] ) ? (string) $e['pkg'] : '';
 		$fixed  = isset( $this->sig['php_fixed'][ $e['branch'] ] ) ? $this->sig['php_fixed'][ $e['branch'] ] : '';
 		$distro = WP2SS_Env::maybe_backported( $e );
 		$modphp = 'apache2handler' === $e['sapi'];
@@ -710,7 +713,15 @@ class WP2SS_Scanner {
 		switch ( $status ) {
 			case 'fixed':
 			case 'newer':
-				$this->add( 'info', 'php', "PHP $v includes the PHP2Shell fix.$where", 'Nothing to do for PHP2Shell. If this server ran an older PHP after October 17, 2026, see the other findings.', '', 'php-status' );
+				$this->add( 'info', 'php', 'PHP ' . $v . ( $pkg ? " (package $pkg)" : '' ) . " includes the PHP2Shell fix.$where", 'Nothing to do for PHP2Shell. If this server ran an older PHP after October 17, 2026, see the other findings.', '', 'php-status' );
+				break;
+
+			case 'pkg-vulnerable':
+				$this->add( 'high', 'php', "PHP $v is vulnerable to PHP2Shell: its operating-system package ($pkg) is older than the one that fixes CVE-2026-109618 and CVE-2026-109619.$where", 'Ask your host to install the latest PHP security updates (on Ubuntu/Debian: apt upgrade) and restart PHP — the scanner page has a ready-to-send message.' . $risk . $rotate, '', 'php-status' );
+				break;
+
+			case 'build-after-fix':
+				$this->add( 'medium', 'php', sprintf( 'PHP %s is older than the PHP2Shell fix by number, but was built on %s — after the fix came out — so it probably carries a backport.%s', $v, gmdate( 'Y-m-d', (int) $e['build'] ), $where ), 'Ask your host to confirm CVE-2026-109618 and CVE-2026-109619 are fixed in this build, then click Ignore.' . $risk, '', 'php-status' );
 				break;
 
 			case 'vulnerable':
@@ -730,24 +741,63 @@ class WP2SS_Scanner {
 		}
 
 		// Temporary protections, worth knowing about while PHP isn't confirmed patched.
-		if ( in_array( $status, array( 'vulnerable', 'backport-only', 'no-fix' ), true ) ) {
+		if ( in_array( $status, array( 'vulnerable', 'pkg-vulnerable', 'backport-only', 'no-fix', 'build-after-fix' ), true ) ) {
 			$on  = array();
 			$off = array();
-			$this->truthy( $e['upload_progress'] ) ? ( $off[] = 'session.upload_progress.enabled is on (set it to 0)' ) : ( $on[] = 'session upload progress is off' );
-			'-1' === (string) $e['memory_limit'] ? ( $on[] = 'memory_limit is -1' ) : ( $off[] = 'memory_limit is ' . $e['memory_limit'] . ' (the stopgap is -1)' );
+			$this->truthy( $e['upload_progress'] ) ? ( $off[] = 'session.upload_progress.enabled is on (0 partly protects against CVE-2026-109619)' ) : ( $on[] = 'session upload progress is off (partial)' );
+			'-1' === (string) $e['memory_limit'] ? ( $on[] = 'memory_limit is -1 (partial; a runaway script can then use all memory)' ) : ( $off[] = 'memory_limit is ' . $e['memory_limit'] . ' (-1 partly protects against CVE-2026-109618)' );
 			if ( version_compare( $e['branch'], '8.5', '>=' ) ) {
 				$this->truthy( $e['fatal_bt'] ) ? ( $off[] = 'fatal_error_backtraces is on (set it to 0)' ) : ( $on[] = 'fatal_error_backtraces is off' );
 			}
-			$this->add( 'info', 'php', 'Temporary PHP2Shell protections: ' . ( $on ? 'in place — ' . implode( ', ', $on ) . '. ' : '' ) . ( $off ? 'missing — ' . implode( ', ', $off ) . '.' : '' ), 'These only reduce the risk until PHP is updated, and must be set by your host in php.ini (then PHP restarted).', '', 'php-mitigations' );
+			if ( ! empty( $e['post_max_size'] ) && wp_convert_hr_to_bytes( $e['post_max_size'] ) > 32 * MB_IN_BYTES ) {
+				$off[] = 'post_max_size is ' . $e['post_max_size'] . ' (PHP advises keeping it low)';
+			}
+			if ( isset( $e['max_nesting'] ) && '' !== (string) $e['max_nesting'] && (int) $e['max_nesting'] > 32 ) {
+				$off[] = 'max_input_nesting_level is ' . (int) $e['max_nesting'] . ' (PHP advises reducing it)';
+			}
+			$this->add( 'info', 'php', 'Temporary PHP2Shell protections: ' . ( $on ? 'in place — ' . implode( ', ', $on ) . '. ' : '' ) . ( $off ? 'missing — ' . implode( ', ', $off ) . '.' : '' ), 'None of these is a complete fix — only updating PHP is. Your host must set them in php.ini or the PHP-FPM pool (not .user.ini or ini_set), then fully restart PHP.', '', 'php-mitigations' );
 		}
 
 		// Did this site run an unpatched PHP during the attack window, even if it's fixed now?
 		if ( in_array( $status, array( 'fixed', 'newer' ), true ) && ! empty( $e['history'] ) ) {
 			foreach ( $e['history'] as $h ) {
-				$hs = WP2SS_Env::php2shell_status( $h['v'], $this->sig );
-				if ( 'fixed' !== $hs && 'newer' !== $hs && (int) $h['last'] >= $this->sig['php2shell_ts'] ) {
+				list( $hs ) = WP2SS_Env::php2shell_status_env(
+					array(
+						'version' => $h['v'],
+						'pkg'     => isset( $h['pkg'] ) ? $h['pkg'] : '',
+						'build'   => isset( $h['build'] ) ? $h['build'] : 0,
+					),
+					$this->sig
+				);
+				if ( ! in_array( $hs, array( 'fixed', 'newer', 'build-after-fix' ), true ) && (int) $h['last'] >= $this->sig['php2shell_ts'] ) {
 					$this->add( 'medium', 'php', sprintf( 'This site ran PHP %s (not patched for PHP2Shell) until %s, after attacks began on October 17, 2026.', $h['v'], gmdate( 'Y-m-d', (int) $h['last'] ) ), 'Check the other findings for signs of a break-in, and change passwords, API keys and the salts in wp-config.php, since PHP2Shell can leak memory.' . ( ! empty( $h['extra'] ) ? ' (That PHP was an OS package, so it may have been patched already.)' : '' ), '', 'php-history' );
 					break;
+				}
+			}
+		}
+	}
+
+	/** 1b. PHP2Shell's second-stage malware is dropped in /tmp as "nfs". */
+	private function check_tmp() {
+		$dirs = array_unique( array_filter( array( wp_normalize_path( untrailingslashit( (string) sys_get_temp_dir() ) ), '/tmp', '/var/tmp', '/dev/shm' ) ) );
+		foreach ( $dirs as $d ) {
+			$entries = @scandir( $d ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			if ( ! $entries ) {
+				continue; // Not readable here (open_basedir etc.): nothing to say.
+			}
+			foreach ( array_slice( $entries, 0, 5000 ) as $name ) {
+				$p = "$d/$name";
+				if ( 'nfs' !== strtolower( $name ) && 0 !== stripos( $name, 'nfs.' ) ) {
+					continue;
+				}
+				if ( ! @is_file( $p ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+					continue;
+				}
+				$hash = @filesize( $p ) < 50 * MB_IN_BYTES ? (string) @hash_file( 'sha256', $p ) : ''; // phpcs:ignore WordPress.PHP.NoSilencedErrors
+				if ( $hash && isset( $this->sig['php2shell_files'][ $hash ] ) ) {
+					$this->add( 'critical', 'file', "PHP2Shell malware found: $p", 'This is the program attackers install after exploiting PHP2Shell (' . $this->sig['php2shell_files'][ $hash ] . '). Tell your host immediately: the whole server is compromised, not just this site.', $p, '', '' );
+				} else {
+					$this->add( 'high', 'file', "Suspicious file named \"nfs\" in $d", 'PHP2Shell attacks download a program called nfs into the temporary folder. Ask your host to check it.', $p );
 				}
 			}
 		}
@@ -1164,6 +1214,9 @@ class WP2SS_Scanner {
 				if ( is_link( $path ) && ! $this->may_follow_link( $path, $dir ) ) {
 					continue;
 				}
+				if ( 0 === strpos( $name, 'wp2ss-quarantine-' ) && wp_normalize_path( $path ) === WP2SS_Fixes::qdir() ) {
+					continue; // Our own quarantine: everything in it has already been dealt with.
+				}
 				if ( preg_match( '/^wp2shell_[0-9a-f]{4,}$/i', $name ) && 0 !== strpos( $rel, 'wp-content/plugins/' ) ) {
 					$this->add( 'critical', 'file', 'wp2shell staging folder: ' . self::clean_text( $rel ), 'Left over from the exploit’s plugin upload.', $path );
 				}
@@ -1501,6 +1554,8 @@ class WP2SS_Scanner {
 				$L['c'] = 'access' === $kind
 					? array( 'batch_ok' => 0, 'ua' => 0, 'ip' => 0, 'upload' => 0, 'users' => 0, 'post_fail' => array(), 'sample' => array() )
 					: array( 'hits' => array(), 'oom_any' => 0, 'sample' => array() );
+				$L['c']['p2s'] = 0;
+				$L['c']['p2s_ip'] = 0;
 			}
 
 			if ( ! @is_file( $path ) || ! @is_readable( $path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
@@ -1548,12 +1603,25 @@ class WP2SS_Scanner {
 		$ips     = array_flip( $this->sig['ips'] );
 		$fail    = array_flip( $this->sig['post_fail_status'] );
 		$err_sig = $this->sig['php_error_log'];
+		$p2s     = $this->sig['php2shell_log'];
+		$p2s_ips = array_flip( $this->sig['php2shell_ips'] );
 
 		while ( true ) {
 			$line = $gz ? gzgets( $fh, 16384 ) : fgets( $fh, 16384 );
 			if ( false === $line ) {
 				$eof = true;
 				break;
+			}
+
+			// PHP2Shell exploit tools, canary and payload — in any log.
+			if ( preg_match( $p2s, $line ) ) {
+				$t = $this->line_time( $line );
+				if ( $t >= $cut || 0 === $t ) {
+					$c['p2s']++;
+					if ( count( $c['sample'] ) < 3 ) {
+						$c['sample'][] = self::clean_text( trim( substr( $line, 0, 240 ) ) );
+					}
+				}
 			}
 
 			if ( 'access' === $kind ) {
@@ -1571,6 +1639,9 @@ class WP2SS_Scanner {
 				if ( isset( $ips[ $ip ] ) ) {
 					$c['ip']++;
 					$hit = true;
+				}
+				if ( isset( $p2s_ips[ $ip ] ) && $this->line_time( $line ) >= $cut ) {
+					$c['p2s_ip']++;
 				}
 				if ( false !== strpos( $dec, 'action=upload-plugin' ) ) {
 					$c['upload']++;
@@ -1663,17 +1734,36 @@ class WP2SS_Scanner {
 			$this->add( 'medium', 'log', 'Bursts of POST requests that crashed PHP (HTTP 500/502) since October 17, 2026, from: ' . implode( ', ', $burst ) . '.', 'PHP2Shell attacks send repeated large POSTs that make PHP run out of memory. This is a lead, not proof — check what those addresses were doing.', $path, 'post-fail' );
 		}
 
-		if ( ! $c['batch_ok'] && ! $c['ua'] && ! $c['ip'] && ! $burst ) {
+		$this->report_p2s( $c, $path, $sample );
+		if ( $c['p2s_ip'] ) {
+			$this->add( 'medium', 'log', "{$c['p2s_ip']} requests since October 17, 2026 from addresses seen attempting PHP2Shell.", 'These are anonymising services also used by ordinary people, so check what the requests did rather than assuming the worst.', $path, 'p2s-ip' );
+		}
+
+		if ( ! $c['batch_ok'] && ! $c['ua'] && ! $c['ip'] && ! $burst && ! $c['p2s'] && ! $c['p2s_ip'] ) {
 			$this->add( 'info', 'log', "No attack traces found in $name.", 'Logs rotate — older activity may be in archived logs (.gz files work too).', $path, 'clean' );
+		}
+	}
+
+	private function report_p2s( $c, $path, $sample ) {
+		if ( ! empty( $c['p2s'] ) ) {
+			$this->add( 'high', 'log', "{$c['p2s']} log lines show PHP2Shell exploit tools or their payload (scanner user agents, the JACKALPOC test, or the /tmp/nfs download).", 'Someone ran a PHP2Shell exploit against this server. If PHP wasn’t patched at the time, treat the server as compromised: tell your host, update PHP, and change every password and key.' . $sample, $path, 'p2s-tools' );
 		}
 	}
 
 	private function report_error_log( $path ) {
 		$c      = $this->s['logs']['c'];
 		$sample = $c['sample'] ? ' Example: ' . implode( ' | ', $c['sample'] ) : '';
+		list( $php_status ) = WP2SS_Env::php2shell_status_env( $this->s['env'], $this->sig );
+		$patched = in_array( $php_status, array( 'fixed', 'newer' ), true );
+		$this->report_p2s( $c, $path, $sample );
 		foreach ( $this->sig['php_error_log'] as $s ) {
 			$n = isset( $c['hits'][ $s[0] ] ) ? $c['hits'][ $s[0] ] : 0;
 			if ( ! $n ) {
+				continue;
+			}
+			// The patched PHP logs this one itself (php-src #24493): only meaningful alongside other signs.
+			if ( 'session_decode' === $s[0] && $patched && empty( $c['hits']['oom_unknown'] ) ) {
+				$this->add( 'info', 'log', sprintf( '%d "Failed to decode session object" errors since October 17, 2026.', $n ), 'On patched PHP this is a known, harmless side-effect of the fix (php-src issue #24493).', $path, 'err-session-patched' );
 				continue;
 			}
 			$sev = ( 'high' === $s[1] || $n >= $this->sig['php_error_burst'] ) ? 'high' : $s[1];

@@ -43,13 +43,37 @@ return array(
 	// Branches for which the PHP team published source-only backports.
 	'php_backport_only' => array( '7.4', '8.0', '8.1' ),
 
+	// Distribution packages that keep the old PHP version number but carry the fix:
+	// [ package version prefix, first fixed revision ]. Ubuntu USN-8948-1/-2.
+	'php_fixed_pkg'     => array(
+		array( '8.1.2-1ubuntu2.', 28 ),
+		array( '8.3.6-0ubuntu0.24.04.', 13 ),
+		array( '8.5.4-0ubuntu1.', 5 ),
+		array( '8.5.9-0ubuntu2.', 1 ),
+	),
+
+	// The fix was published 2026-10-21; a PHP built on or after this date may carry a backport.
+	'php_fix_date'      => 1792540800,
+
 	// PHP error-log lines that point at PHP2Shell attempts: [ key, severity, regex, description ].
 	'php_error_log'     => array(
 		// A request-startup out-of-memory fatal names no script ("in Unknown on line 0");
 		// ordinary out-of-memory errors in WordPress name a file.
 		array( 'oom_unknown', 'medium', '/Allowed memory size of \d+ bytes exhausted.*\bin (<b>)?Unknown(<\/b>)? on line (<b>)?0\b/i', 'out-of-memory errors raised before any script ran ("in Unknown on line 0")' ),
+		// Also logged by the *patched* 8.4.27 / 8.5.12 (php-src #24493), so it only counts on unpatched PHP.
 		array( 'session_decode', 'medium', '/Failed to decode session object/i', '"Failed to decode session object" errors' ),
 		array( 'segfault', 'high', '/exited on signal 11|\bSIGSEGV\b|segfault at [0-9a-f]+ .*php|zend_mm_heap corrupted/i', 'PHP worker crashes (segmentation faults / heap corruption)' ),
+	),
+
+	// Exploit tools and payloads reported for PHP2Shell (ELLIO; Amazon): user agents, canary, download URL.
+	'php2shell_log'     => '/php2shell-(scan|verify|109618)|JACKALPOC|92\.118\.112\.100|\/tmp\/nfs\b/i',
+
+	// Addresses Amazon saw attempting PHP2Shell (anonymisation services: investigate, don't just block).
+	'php2shell_ips'     => array( '103.216.220.92', '31.223.184.166', '37.19.200.5', '134.209.159.64', '103.114.163.188', '95.217.98.37' ),
+
+	// Second-stage malware dropped in /tmp as "nfs" (ELLIO).
+	'php2shell_files'   => array(
+		'0c5486f06620e26e316f4b33f318b0d646d5e1133789331aa2fed012360d1486' => 'PHP2Shell second-stage ELF (ELLIO)',
 	),
 
 	// Thresholds (count since php2shell_ts) at which an error-log pattern escalates to high.

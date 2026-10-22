@@ -211,4 +211,225 @@ class WP2SS_CLI {
 		}
 		WP_CLI::line( sprintf( '%s — %s, scanned %s (%s)', $r['site'], WP2SS_Admin::verdict_label( $verdict, $r['findings'] ), $r['scanned'], $r['source'] ) );
 	}
+
+	/**
+	 * Apply the one-click fix for a finding (quarantine a file or plugin, or remove admin rights).
+	 *
+	 * Every fix can be undone with `wp php2shell quarantine restore <id>`.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [<id>...]
+	 * : Finding ID(s), from the `id` column of `wp php2shell scan`.
+	 *
+	 * [--all-critical]
+	 * : Fix every critical and high finding that has a file fix (like the dashboard's "Quarantine them" button).
+	 *
+	 * [--yes]
+	 * : Don't ask for confirmation.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp php2shell fix 3f9a1c2b7d10
+	 *     wp php2shell fix --all-critical --yes
+	 */
+	public function fix( $args, $assoc ) {
+		$report = WP2SS_Scanner::last_report();
+		if ( ! $report ) {
+			WP_CLI::error( 'Run a scan first: wp php2shell scan' );
+		}
+		$ids = $args;
+		if ( ! empty( $assoc['all-critical'] ) ) {
+			$ignored = WP2SS_Scanner::ignored();
+			foreach ( $report['findings'] as $f ) {
+				$fix = WP2SS_Fixes::fix_for( $f );
+				if ( $fix && 'demote' !== $fix['action'] && WP2SS_Scanner::sev_rank( $f['severity'] ) >= 4 && ! WP2SS_Scanner::is_ignored( $f, $ignored ) && ! WP2SS_Fixes::record_for_finding( $f['id'] ) ) {
+					$ids[ $fix['target'] ] = $f['id'];
+				}
+			}
+			$ids = array_values( array_unique( $ids ) );
+		}
+		if ( ! $ids ) {
+			WP_CLI::success( 'Nothing to fix.' );
+			return;
+		}
+		WP_CLI::confirm( sprintf( 'Apply %d fix(es)? Each can be undone with `wp php2shell quarantine restore`.', count( $ids ) ), $assoc );
+		$failed = 0;
+		foreach ( $ids as $id ) {
+			$r = WP2SS_Fixes::apply( $id, 0 );
+			if ( is_wp_error( $r ) ) {
+				$failed++;
+				WP_CLI::warning( "$id: " . $r->get_error_message() );
+			} else {
+				WP_CLI::log( sprintf( '%s: %s (undo id %s)', $id, 'demote' === $r['action'] ? 'admin rights removed from ' . $r['login'] : 'quarantined ' . $r['original'], $r['id'] ) );
+			}
+		}
+		$failed ? WP_CLI::error( "$failed fix(es) failed." ) : WP_CLI::success( 'Done.' );
+	}
+
+	/**
+	 * List, restore or delete quarantined items and other fixes.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <action>
+	 * : list, restore or delete.
+	 * ---
+	 * options:
+	 *   - list
+	 *   - restore
+	 *   - delete
+	 * ---
+	 *
+	 * [<id>]
+	 * : The undo id shown by `list` (for restore and delete).
+	 *
+	 * [--yes]
+	 * : Don't ask before deleting.
+	 *
+	 * [--format=<format>]
+	 * : For list: table, json or csv.
+	 * ---
+	 * default: table
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp php2shell quarantine list
+	 *     wp php2shell quarantine restore k3j9x0p2q7ab
+	 *     wp php2shell quarantine delete k3j9x0p2q7ab --yes
+	 */
+	public function quarantine( $args, $assoc ) {
+		$action = $args[0];
+		if ( 'list' === $action ) {
+			$rows = array();
+			foreach ( WP2SS_Fixes::records() as $r ) {
+				$rows[] = array(
+					'id'     => $r['id'],
+					'action' => $r['action'],
+					'target' => 'demote' === $r['action'] ? 'user ' . $r['login'] : $r['original'],
+					'when'   => gmdate( 'Y-m-d H:i', (int) $r['at'] ),
+				);
+			}
+			if ( ! $rows ) {
+				WP_CLI::log( 'Nothing quarantined.' );
+				return;
+			}
+			WP_CLI\Utils\format_items( WP_CLI\Utils\get_flag_value( $assoc, 'format', 'table' ), $rows, array( 'id', 'action', 'target', 'when' ) );
+			return;
+		}
+		if ( empty( $args[1] ) ) {
+			WP_CLI::error( 'Give the id from `wp php2shell quarantine list`.' );
+		}
+		if ( 'delete' === $action ) {
+			WP_CLI::confirm( 'Delete it for good? This can’t be undone.', $assoc );
+		}
+		$r = 'restore' === $action ? WP2SS_Fixes::undo( $args[1] ) : WP2SS_Fixes::purge( $args[1] );
+		is_wp_error( $r ) ? WP_CLI::error( $r->get_error_message() ) : WP_CLI::success( 'restore' === $action ? 'Restored.' : 'Deleted.' );
+	}
+
+	/**
+	 * Fleet: report this site to a hub, or manage a hub.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <action>
+	 * : join, leave, send, status, hub or list.
+	 * ---
+	 * options:
+	 *   - join
+	 *   - leave
+	 *   - send
+	 *   - status
+	 *   - hub
+	 *   - list
+	 * ---
+	 *
+	 * [<hub-url>]
+	 * : For join: the hub site's address.
+	 *
+	 * [<key>]
+	 * : For join: the fleet key shown on the hub.
+	 *
+	 * [--format=<format>]
+	 * : For list: table, json or csv.
+	 * ---
+	 * default: table
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # On the hub site
+	 *     wp php2shell fleet hub
+	 *     wp php2shell fleet list
+	 *
+	 *     # On every other site
+	 *     wp php2shell fleet join https://hub.example.com 3kd9…
+	 *     wp @all php2shell fleet join https://hub.example.com 3kd9…
+	 */
+	public function fleet( $args, $assoc ) {
+		$action = $args[0];
+		switch ( $action ) {
+			case 'join':
+				if ( count( $args ) < 3 ) {
+					WP_CLI::error( 'Usage: wp php2shell fleet join <hub-url> <key>' );
+				}
+				$r = WP2SS_Fleet::save( 'member', $args[1], $args[2] );
+				if ( is_wp_error( $r ) ) {
+					WP_CLI::error( $r->get_error_message() );
+				}
+				if ( WP2SS_Scanner::last_report() ) {
+					$sent = WP2SS_Fleet::send();
+					is_wp_error( $sent ) ? WP_CLI::warning( 'Joined, but the first report failed: ' . $sent->get_error_message() ) : WP_CLI::success( 'Joined the fleet and sent the latest result.' );
+				} else {
+					WP_CLI::success( 'Joined the fleet. Results will be sent after the next scan.' );
+				}
+				break;
+
+			case 'leave':
+				WP2SS_Fleet::save( 'off' );
+				WP_CLI::success( 'This site no longer reports to a hub.' );
+				break;
+
+			case 'send':
+				$r = WP2SS_Fleet::send();
+				is_wp_error( $r ) ? WP_CLI::error( $r->get_error_message() ) : WP_CLI::success( 'Sent.' );
+				break;
+
+			case 'hub':
+				$s = WP2SS_Fleet::save( 'hub' );
+				WP_CLI::success( 'This site is now the fleet hub.' );
+				WP_CLI::log( 'Run this on each of your other sites:' );
+				WP_CLI::log( sprintf( '  wp php2shell fleet join %s %s', network_home_url(), $s['key'] ) );
+				break;
+
+			case 'list':
+				$rows = array();
+				foreach ( WP2SS_Fleet::sites() as $site ) {
+					$rows[] = array(
+						'site'     => $site['site'],
+						'verdict'  => $site['verdict'],
+						'php'      => $site['php'],
+						'wp'       => $site['wp'],
+						'critical' => $site['counts']['critical'],
+						'high'     => $site['counts']['high'],
+						'reported' => human_time_diff( (int) $site['received'] ) . ' ago' . ( WP2SS_Fleet::is_stale( $site ) ? ' (overdue)' : '' ),
+					);
+				}
+				if ( ! $rows ) {
+					WP_CLI::log( 'No sites have reported yet.' );
+					return;
+				}
+				WP_CLI\Utils\format_items( WP_CLI\Utils\get_flag_value( $assoc, 'format', 'table' ), $rows, array_keys( $rows[0] ) );
+				break;
+
+			default: // status
+				$s = WP2SS_Fleet::settings();
+				WP_CLI::log( 'Mode: ' . $s['mode'] . ( 'member' === $s['mode'] ? ' → ' . $s['hub'] : '' ) );
+				$st = get_site_option( WP2SS_Fleet::STATUS );
+				if ( is_array( $st ) ) {
+					WP_CLI::log( sprintf( 'Last report: %s, %s ago%s', $st['ok'] ? 'delivered' : 'FAILED', human_time_diff( (int) $st['at'] ), $st['ok'] ? '' : ' — ' . $st['detail'] ) );
+				}
+		}
+	}
 }

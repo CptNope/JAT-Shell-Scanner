@@ -42,11 +42,12 @@ msg() { echo "[.findings[] | select(.message | test(\"$1\"; \"i\"))] | length > 
 sev() { echo "[.findings[] | select(.severity == \"$1\" and (.message | test(\"$2\"; \"i\")))] | length > 0"; }
 
 # Pretend the website runs this PHP (what the dashboard would record).
-set_php() { # set_php <version> [extra] [os] [memory_limit] [history-json]
+set_php() { # set_php <version> [extra] [os] [memory_limit] [history-json] [package] [build-timestamp]
 	$WP eval "update_site_option( 'wp2ss_env', array(
 		'version' => '$1', 'extra' => '${2:-}', 'branch' => implode( '.', array_slice( explode( '.', '$1' ), 0, 2 ) ),
 		'sapi' => 'fpm-fcgi', 'os' => '${3:-linux}', 'server' => 'nginx', 'upload_progress' => '1',
-		'memory_limit' => '${4:-256M}', 'fatal_bt' => '0', 'error_log' => '', 'time' => time(),
+		'memory_limit' => '${4:-256M}', 'fatal_bt' => '0', 'error_log' => '', 'post_max_size' => '8M', 'max_nesting' => '64',
+		'pkg' => '${6:-}', 'build' => (int) '${7:-0}', 'time' => time(),
 		'history' => json_decode( '${5:-[]}', true ) ) );" >/dev/null 2>&1
 }
 
@@ -304,6 +305,16 @@ set_php 8.4.27 "" linux 256M "[{\"v\":\"8.4.20\",\"extra\":\"\",\"sapi\":\"fpm-f
 R=$(scan)
 has "$R" "$(sev medium 'ran PHP 8.4.20 .not patched for PHP2Shell. until')" "recently-unpatched PHP history prompts credential rotation"
 
+set_php 8.3.6 "" ubuntu 256M "[]" 8.3.6-0ubuntu0.24.04.12
+R=$(scan)
+has "$R" "$(sev high 'PHP 8.3.6 is vulnerable to PHP2Shell: its operating-system package .8.3.6-0ubuntu0.24.04.12')" "Ubuntu package one build before the fix is vulnerable"
+set_php 8.3.6 "" ubuntu 256M "[]" 8.3.6-0ubuntu0.24.04.13
+R=$(scan)
+has "$R" "$(sev info 'package 8.3.6-0ubuntu0.24.04.13. includes the PHP2Shell fix')" "Ubuntu's fixed package is recognised (same PHP version number)"
+set_php 8.1.34 "" linux 256M "[]" "" 1792627200
+R=$(scan)
+has "$R" "$(sev medium 'was built on 2026-10-22')" "a PHP built after the fix was released is 'probably patched'"
+
 section "13. PHP2Shell: log evidence"
 set_php 8.3.36
 ERR=$(mktemp)
@@ -325,6 +336,26 @@ has   "$R" "$(sev high 'out-of-memory errors since October 17, 2026 even though 
 gzip -c "$ERR" > "$ERR.gz"
 R=$(scan --error-log="$ERR.gz")
 has   "$R" "$(msg 'out-of-memory errors raised before any script ran')" "compressed (.gz) error log works"
+# Exploit tools / payload / Amazon-observed addresses; session-decode noise on patched PHP.
+P2S=$(mktemp)
+echo '5.5.5.5 - - [21/Oct/2026:10:00:00 +0000] "POST /index.php HTTP/1.1" 500 0 "-" "php2shell-scan/109618"' >> "$P2S"
+echo '103.216.220.92 - - [21/Oct/2026:11:00:00 +0000] "POST / HTTP/1.1" 200 10 "-" "Mozilla/5.0"' >> "$P2S"
+R=$(scan --log="$P2S")
+has "$R" "$(sev high 'PHP2Shell exploit tools or their payload')" "PHP2Shell scanner user agent in the access log"
+has "$R" "$(sev medium 'addresses seen attempting PHP2Shell')" "Amazon-observed PHP2Shell addresses"
+SES=$(mktemp)
+echo "[22-Oct-2026 09:00:00 UTC] PHP Warning:  Unknown: Failed to decode session object. Session has been destroyed in Unknown on line 0" > "$SES"
+R=$(scan --error-log="$SES")
+has "$R" "$(sev info 'Failed to decode session object')" "session-decode noise on patched PHP stays informational (php-src #24493)"
+TMPD=$($WP eval 'echo untrailingslashit( sys_get_temp_dir() );' 2>/dev/null)
+printf 'not really malware\n' > "$TMPD/nfs"
+R=$(scan)
+has "$R" "$(sev high 'Suspicious file named .nfs.')" "a file called nfs in the temp folder"
+H=$(sha256sum "$TMPD/nfs" | cut -d' ' -f1)
+printf "<?php add_filter( 'wp2ss_signatures', function ( \$s ) { \$s['php2shell_files']['%s'] = 'test sample'; return \$s; } );\n" "$H" > "$C/mu-plugins/wp2ss-test-hash.php"
+R=$(scan)
+has "$R" "$(sev critical 'PHP2Shell malware found')" "known PHP2Shell second-stage hash in the temp folder"
+rm -f "$TMPD/nfs" "$C/mu-plugins/wp2ss-test-hash.php" "$P2S" "$SES"
 rm -f "$ERR" "$ERR.gz" "$ACC"
 set_php 8.3.36
 
@@ -339,7 +370,63 @@ has "$R" "$(sev critical 'scanner plugin has been modified: includes/class-setti
 cp "$OUTSIDE.bak" "$SELF/includes/class-settings.php" 2>/dev/null || cp /tmp/wp2ss-settings.bak "$SELF/includes/class-settings.php"
 rm -f "$SELF/manifest.json" "$OUTSIDE.bak" /tmp/wp2ss-settings.bak
 
-section "15. Cleanup → clean again"
+section "15. One-click fixes (and undo)"
+mkdir -p "$C/uploads/2026/09"
+printf "<?php eval(\$_POST['f']);\n" > "$C/uploads/2026/09/fixme.php"
+$WP user create rogue2 r2@evil.test --role=administrator --quiet >/dev/null 2>&1
+$WP eval 'global $wpdb; $wpdb->update($wpdb->users, array("user_registered"=>gmdate("Y-m-d H:i:s", time()+7200)), array("user_login"=>"rogue2"));'
+R=$(scan)
+FID=$(echo "$R" | jq -r '[.findings[] | select(.type=="code" and (.message|test("fixme.php")))][0].id')
+UID2=$(echo "$R" | jq -r '[.findings[] | select(.type=="user" and (.message|test("rogue2")))][0].id')
+$WP php2shell fix "$FID" "$UID2" --yes >/dev/null 2>&1
+[ ! -e "$C/uploads/2026/09/fixme.php" ] && ok "quarantine moved the webshell away" || bad "webshell still in place"
+[ "$($WP user get rogue2 --field=roles 2>/dev/null)" = "subscriber" ] && ok "rogue admin turned into a subscriber" || bad "rogue admin still admin"
+QD=$($WP eval 'echo WP2SS_Fixes::qdir();' 2>/dev/null)
+ls "$QD" 2>/dev/null | grep -q 'fixme.php.quarantined' && ok "quarantined copy kept, renamed so it can't run" || bad "quarantined copy missing"
+R=$(scan)
+hasnt "$R" "$(msg 'fixme.php')" "the quarantine folder isn't scanned"
+for RID in $($WP php2shell quarantine list --format=json 2>/dev/null | jq -r '.[].id'); do $WP php2shell quarantine restore "$RID" >/dev/null 2>&1; done
+[ -e "$C/uploads/2026/09/fixme.php" ] && ok "restore puts the file back" || bad "restore failed"
+[ "$($WP user get rogue2 --field=roles 2>/dev/null)" = "administrator" ] && ok "undo gives admin rights back" || bad "undo of demote failed"
+OUT=$($WP eval '
+	echo WP2SS_Fixes::safe_target( ABSPATH . "wp-config.php" ) ? "y" : "n";
+	echo WP2SS_Fixes::safe_target( ABSPATH . "wp-includes" ) ? "y" : "n";
+	echo WP2SS_Fixes::safe_target( WP_CONTENT_DIR . "/uploads" ) ? "y" : "n";
+	echo WP2SS_Fixes::safe_target( untrailingslashit( WP2SS_DIR ) ) ? "y" : "n";
+	echo WP2SS_Fixes::safe_target( "/etc/passwd" ) ? "y" : "n";
+	update_site_option( "wp2ss_fixes", array( "x" => array( "id" => "x", "action" => "quarantine", "original" => "/tmp/evil", "quarantined" => "/etc/passwd", "state" => "done", "sig" => "forged" ) ) );
+	echo count( WP2SS_Fixes::records() );
+' 2>/dev/null)
+[ "$OUT" = "nnnnn0" ] && ok "fixes refuse wp-config, core folders, uploads root, the scanner itself, files outside the site; forged records ignored" || bad "safety rules failed ($OUT)"
+$WP eval 'delete_site_option( "wp2ss_fixes" );' >/dev/null
+rm -rf "$C/uploads/2026/09"; $WP user delete rogue2 --yes --quiet
+
+section "16. Fleet hub (signed reports)"
+$WP php2shell fleet hub >/dev/null 2>&1
+OUT=$($WP eval '
+	$key  = WP2SS_Fleet::settings()["key"];
+	$send = function ( $body, $ts, $sig ) {
+		$r = new WP_REST_Request( "POST", "/wp2ss/v1/fleet/report" );
+		$r->set_header( "X-WP2SS-Time", (string) $ts );
+		$r->set_header( "X-WP2SS-Signature", $sig );
+		$r->set_body( $body );
+		return rest_do_request( $r )->get_status();
+	};
+	$body = wp_json_encode( array( "site" => "https://member.example", "verdict" => "SUSPICIOUS", "php" => "8.3.10", "wp" => "7.1.2", "counts" => array( "high" => 2 ), "serious" => array( array( "severity" => "high", "type" => "user", "message" => "<script>alert(1)</script>Admin x" ) ) ) );
+	$t = time();
+	echo $send( $body, $t, hash_hmac( "sha256", "$t.$body", $key ) ), " ";
+	echo $send( $body, $t, hash_hmac( "sha256", "$t.$body", "wrong-key-wrong-key-wrong-key-00" ) ), " ";
+	$old = $t - 3600;
+	echo $send( $body, $old, hash_hmac( "sha256", "$old.$body", $key ) ), " ";
+	$sites = WP2SS_Fleet::sites();
+	$m = null; foreach ( $sites as $s ) { if ( "https://member.example" === $s["site"] ) { $m = $s; } }
+	echo $m ? $m["verdict"] : "missing", " ", false === strpos( wp_json_encode( $m ), "<script>" ) ? "clean" : "unsafe";
+' 2>&1)
+[ "$OUT" = "200 401 401 SUSPICIOUS clean" ] && ok "hub accepts signed reports, rejects bad keys and stale timestamps, strips markup" || bad "fleet hub checks failed ($OUT)"
+has "$($WP php2shell fleet list --format=json 2>/dev/null | jq '{verdict:"x", findings:[]} + {list: .}')" '.list | map(.site) | index("https://member.example") != null' "fleet list shows the member"
+$WP php2shell fleet leave >/dev/null 2>&1; $WP eval 'delete_site_option( "wp2ss_fleet_sites" ); delete_site_option( "wp2ss_fleet" );' >/dev/null
+
+section "17. Cleanup → clean again"
 rm -rf "$C/plugins/wp2shell_6a5566a6" "$C/plugins/cmsmap" "$C/upgrade/wp2shell_79b06a80" \
 	"$C/cache/x.php" "$C/uploads/2026/07/img.php" "$C/uploads/.htaccess" "$C/themes/.hidden.php" \
 	"$C/temp-write-test-123" "$C/uploads/wp2shell_6a5566a6.zip"

@@ -13,7 +13,7 @@
 
 ### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
 
-Free · read-only (never changes or deletes anything) · no account · nothing sent anywhere
+Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
 </div>
 
@@ -81,13 +81,20 @@ sequenceDiagram
     P-->>A: Error (often HTTP 500), but leftover<br/>internal state is not cleaned up properly
     A->>P: Second request, handled by the same PHP worker
     Note over P: PHP reuses the stale, freed memory
-    alt Memory leak (CVE-2026-109618)
+    alt Memory leak
         P-->>A: Response contains other visitors' data<br/>passwords, cookies, API keys
-    else Code execution (CVE-2026-109618 / 109619)
+    else Code execution
         A->>P: Attacker's code runs inside PHP
         P->>W: Webshell written, admin created, files changed
     end
 ```
+
+| CVE | What goes wrong inside PHP |
+|---|---|
+| **CVE-2026-109618** | Memory corruption when PHP runs out of memory part-way through reading a request |
+| **CVE-2026-109619** | State left over from one request (including upload-progress tracking) is reused by the next |
+
+Either one can be chained into a memory leak or into running code — so don't read the diagram as "leak = one CVE, code = the other".
 
 Because the bug sits **underneath** WordPress, no WordPress setting, security plugin or maintenance mode can stop it. Only a patched PHP (or temporary php.ini settings your host can apply) does.
 
@@ -116,7 +123,8 @@ sequenceDiagram
 | A hidden REST backdoor | A plugin that registers `/wp-json/morning/v1/…` and runs any command sent to it |
 | New or promoted admin accounts | Administrators you don't recognise |
 | Stolen secrets (PHP2Shell) | Nothing visible — which is why you should change passwords and keys if you were exposed |
-| Traces in server logs (PHP2Shell) | "Allowed memory size … exhausted … in Unknown on line 0", "Failed to decode session object", PHP worker crashes, bursts of failed POSTs |
+| Traces in server logs (PHP2Shell) | "Allowed memory size … exhausted … in Unknown on line 0", PHP worker crashes, bursts of failed POSTs, the public scanner tools (`php2shell-scan`, `php2shell-verify`, `JACKALPOC`) in the access log |
+| A second-stage program (PHP2Shell) | A Linux program called `nfs` dropped in `/tmp` |
 
 ## 2. Is my site affected?
 
@@ -133,6 +141,15 @@ You need to check **two** things: your **PHP** version (for PHP2Shell) and your 
 
 > [!NOTE]
 > **"My version number looks old, but my host says it's patched."** That can be true. Linux distributions (Ubuntu, Debian, AlmaLinux, Rocky, CloudLinux, Red Hat…) often fix PHP **without changing its version number**. The scanner detects this situation and says *"ask your host to confirm"* instead of *"vulnerable"*. If they confirm, click **Ignore** on that finding.
+>
+> On **Ubuntu and Debian** the scanner can usually settle this itself: it reads the installed package version (for example `8.3.6-0ubuntu0.24.04.13`) and knows which package builds carry the fix. On other systems it also looks at **when PHP was built** — a PHP compiled after October 21, 2026 is reported as *probably patched*.
+
+| Distribution | PHP | First fixed package |
+|---|---|---|
+| Ubuntu 22.04 | 8.1 | `8.1.2-1ubuntu2.28` |
+| Ubuntu 24.04 | 8.3 | `8.3.6-0ubuntu0.24.04.13` |
+| Ubuntu 25.10 | 8.5 | `8.5.4-0ubuntu1.5` |
+| Ubuntu 26.04 | 8.5 | `8.5.9-0ubuntu2.1` |
 
 ### WordPress (wp2shell)
 
@@ -179,6 +196,17 @@ flowchart LR
 5. Go to **Tools → PHP2Shell Scanner** (or click **Scan** under the plugin on the Plugins screen).
 6. Click **Scan now**. A progress bar shows how it's going. Most sites finish in under a minute; very large ones take a few minutes.
 7. Read your result — see [Understanding your results](#4-understanding-your-results).
+
+**What the scanner page looks like**
+
+| Part | What it shows |
+|---|---|
+| **Result at the top** | One plain sentence ("Your site looks clean", "Your host needs to update PHP"…) and three panels: **PHP2Shell**, **wp2shell** and **Signs of a break-in**, each green, amber or red |
+| **What to do next** | Your personal to-do list in order — back up, message your host, update WordPress, quarantine flagged files, check admins, change secrets, scan again — only the steps that apply to you |
+| **Findings** tab | Everything found, grouped by area, with **Needs action / Everything / Ignored** filters and the fix buttons |
+| **Quarantine** tab | What you've quarantined or demoted, with **Restore** and **Delete** |
+| **Fleet** tab | The [multi-site dashboard](#the-fleet-dashboard-easiest) |
+| **Settings** tab | Schedule, email alerts, log paths |
 
 From then on it **scans automatically once a week** and **emails you** only if something serious and new turns up.
 
@@ -268,13 +296,20 @@ These reduce the risk; they don't remove it. PHP must be restarted after changin
 | Check | What it looks for | Severity |
 |---|---|---|
 | **PHP version** | The version your **website** runs — not just the command line's — against the fixed releases | Critical / High / Medium → *Vulnerable* or *Needs review* |
-| **OS packages** | Ubuntu/Debian/RHEL-family builds that may carry the fix without a new version number | Medium ("ask your host") |
+| **OS packages** | The installed Ubuntu/Debian package version against the first fixed build; other distributions that may carry the fix without a new version number | High (known-unfixed package) · Info (fixed package) · Medium ("ask your host") |
+| **Build date** | PHP compiled after the fix was published (October 21, 2026) | Medium ("probably patched — confirm") |
 | **Riskiest setup** | Apache `mod_php`, which researchers rate highest-risk | Noted in the finding |
-| **Temporary protections** | `session.upload_progress.enabled`, `memory_limit`, `fatal_error_backtraces` | Info |
+| **Temporary protections** | `session.upload_progress.enabled`, `memory_limit`, `fatal_error_backtraces`, `post_max_size`, `max_input_nesting_level`. They make attacks **harder, not impossible** — only a patched PHP fixes it | Info |
 | **PHP history** | Whether this site ran an unpatched PHP **after October 17, 2026**, even if it's patched now | Medium — change your passwords and keys |
 | **PHP error log** | `Allowed memory size … exhausted … in Unknown on line 0` (out-of-memory before any script ran — the tell-tale sign), `Failed to decode session object`, worker crashes (`SIGSEGV`, heap corruption) since October 17 | Medium; **High** for bursts or crashes |
 | | Out-of-memory errors even though `memory_limit = -1` (they should be impossible) | High |
 | **Access log** | Bursts of POST requests answered with HTTP 500/502 from one address since October 17 | Medium (a lead, not proof) |
+| | The public exploit and scanner tools (`php2shell-scan`, `php2shell-verify`, `JACKALPOC`) or their payload server | High |
+| | Addresses publicly reported attacking PHP2Shell | Medium |
+| **Temp folder** | A file called `nfs` in `/tmp` (the reported second stage); critical if it matches a known malware hash | High / Critical |
+
+> [!NOTE]
+> Patched PHP 8.4.27 and 8.5.12 log **"Failed to decode session object"** more often than before ([php-src #24493](https://github.com/php/php-src/issues/24493)). On a patched PHP the scanner treats that message as information only, not as a sign of attack.
 
 ### wp2shell
 
@@ -395,6 +430,36 @@ flowchart TD
 | **5. Look for other ways back in** | `wp-content/mu-plugins/`, every `.htaccess` and `.user.ini`, scheduled tasks (a plugin such as WP Crontrol lists them), your hosting panel's cron jobs, FTP/SFTP and SSH accounts. |
 | **6. Scan again** | Click **Scan again** until the result is clean. |
 
+### One-click fixes
+
+For the most common clean-up jobs you don't need a file manager. Next to a finding you'll see a button when there's a safe fix:
+
+| Button | When it appears | What it does | Undo |
+|---|---|---|---|
+| **Quarantine file** | A flagged file (webshell, PHP in uploads, a modified file) rated Medium or worse | Moves it into a private, locked quarantine folder in `wp-content` and renames it to `….quarantined` so it can never run | **Restore** puts it back exactly where it was |
+| **Quarantine plugin** | A malicious or suspicious plugin folder | Moves the whole folder into quarantine (WordPress deactivates it) | **Restore** |
+| **Remove admin rights** | An unknown or newly promoted administrator (never you) | Makes them a Subscriber on every site, revokes Super Admin, logs them out everywhere | **Undo** gives the role back |
+| **Quarantine them all** | Several critical/high file findings | Applies every file fix in one go (asks first) | Each one can be restored |
+
+```mermaid
+flowchart LR
+    F["Finding"] --> Q{"Safe to fix<br/>automatically?"}
+    Q -- "No: core folder, wp-config,<br/>whole theme, this scanner" --> M["Shown with manual<br/>instructions only"]
+    Q -- Yes --> A["You click the button"]
+    A --> R["Moved to quarantine<br/>or admin demoted"]
+    R --> L["Signed record kept<br/>on the Quarantine tab"]
+    L --> U["Restore / Undo"]
+    L --> D["Delete for good"]
+```
+
+Safety rules:
+
+- **Scans never change anything** — only a button you click (or `wp php2shell fix`) does.
+- It refuses to touch WordPress core folders, `wp-config.php`, the root of `wp-content`, `plugins`, `themes`, `uploads` or `mu-plugins`, a whole theme, or this scanner itself. Modified core files are left to **Dashboard → Updates → Re-install**.
+- It respects `DISALLOW_FILE_MODS` — if your site forbids file changes, the buttons don't appear.
+- Each fix record is signed with your site's secret keys, so an attacker can't plant a fake "restore" that moves a file somewhere else.
+- Quarantined files are deleted when you uninstall the plugin, or individually from the **Quarantine** tab.
+
 > [!TIP]
 > Not comfortable doing this yourself? Your host's support team or a WordPress security service can clean the site — many for a fixed fee. Give them the **Download report (JSON)** file; it lists everything found.
 
@@ -448,7 +513,7 @@ It can tell whether your PHP version is vulnerable, which temporary protections 
 
 <details><summary><b>Will it change, quarantine or delete anything?</b></summary>
 
-No. It only reads. You decide what to remove — that way it can never break your site by mistake.
+Scans never do. Changes happen only when you click a fix button (or run `wp php2shell fix`): a file is moved into quarantine and renamed so it can't run, or an admin is made a Subscriber. Every fix can be undone from the **Quarantine** tab. See [One-click fixes](#one-click-fixes).
 </details>
 
 <details><summary><b>Will it slow my site down?</b></summary>
@@ -497,6 +562,14 @@ Everything the dashboard does is available from the command line. The command is
 | `wp php2shell scan` | Run a full scan now and print the findings |
 | `wp php2shell status` | Show the last result without scanning again |
 | `wp php2shell ignore <id>…` | Mark finding(s) as ignored (`--undo` to restore) |
+| `wp php2shell fix <id>…` | Apply the one-click fix for finding(s); `--all-critical` fixes every critical/high file finding; `--yes` skips the question |
+| `wp php2shell quarantine list` | List quarantined items and other fixes (`--format=json`) |
+| `wp php2shell quarantine restore <id>` | Undo a fix: restore a file/plugin, or give admin rights back |
+| `wp php2shell quarantine delete <id>` | Delete a quarantined item for good |
+| `wp php2shell fleet hub` | Make this site the fleet hub and print its key |
+| `wp php2shell fleet join <hub-url> <key>` | Report this site's results to a hub after every scan |
+| `wp php2shell fleet send` / `status` / `leave` | Report now / show fleet status / stop reporting |
+| `wp php2shell fleet list` | On the hub: every site's latest result (`--format=csv` or `json`) |
 
 **`wp php2shell scan` options**
 
@@ -531,6 +604,10 @@ wp php2shell scan --format=summary                         # VULNERABLE  https:/
 wp php2shell scan --format=json | jq -r '.findings[] | select(.severity=="critical") | .message'
 wp php2shell status --format=table
 wp php2shell ignore 3f9a1c2b7d10
+wp php2shell fix 3f9a1c2b7d10                              # quarantine one flagged file
+wp php2shell fix --all-critical --yes                      # quarantine everything critical/high
+wp php2shell quarantine list
+wp php2shell quarantine restore k3j9x0p2q7ab
 ```
 
 **Install with WP-CLI**
@@ -541,6 +618,46 @@ wp plugin install https://github.com/CptNope/PHP2Shell-WP-scanner/releases/lates
 ```
 
 ## 14. Scanning many sites
+
+### The fleet dashboard (easiest)
+
+Pick one of your sites as the **hub**. Every other site sends its result there after each scan, and the hub's **Fleet** tab shows all of them on one screen — worst first, with stale sites (no report in 15 days) marked.
+
+```mermaid
+flowchart LR
+    subgraph Members["Your other sites"]
+        M1["site-a.com<br/>weekly scan"]
+        M2["site-b.com<br/>weekly scan"]
+        M3["site-c.com<br/>weekly scan"]
+    end
+    M1 -- "signed HTTPS POST<br/>verdict + counts" --> H
+    M2 --> H
+    M3 --> H
+    H["Hub site<br/>Tools → PHP2Shell Scanner → Fleet"] --> T["One table, worst first<br/>CSV export"]
+```
+
+1. On the hub: **Fleet → This site is the hub → Save**. Copy the **fleet key**.
+2. On each other site: **Fleet → Report to a hub**, paste the hub address and key, **Save**, then **Send now**. Or from the command line on all of them at once:
+
+```bash
+wp php2shell fleet hub                                    # on the hub — prints the key
+wp @all php2shell fleet join https://hub.example.com KEY  # on every other site
+wp @all php2shell scan --format=summary                   # each scan reports in
+wp php2shell fleet list --format=csv > fleet.csv          # on the hub
+```
+
+What a member sends (and nothing else):
+
+| Sent | Not sent |
+|---|---|
+| Site address and name, link to its scanner page | File contents, logs, database data |
+| Verdict, WordPress and PHP version, PHP type | Usernames' e-mail addresses (stripped) |
+| Number of findings per severity | Low/info findings |
+| The text of up to 25 critical/high findings | Anything at all if fleet mode is off (the default) |
+
+How it's protected: each report is signed with the shared fleet key (HMAC-SHA256) and stamped with the time; the hub rejects bad signatures, reports more than 10 minutes old, and anything older than what it already has. Everything received is cleaned before it's stored or shown. If a key leaks, **Rotate key** on the hub and re-join the members. Use HTTPS for the hub — the screen warns you if you don't.
+
+### With WP-CLI only
 
 ```mermaid
 flowchart LR
@@ -735,7 +852,7 @@ sequenceDiagram
 
 ## 18. Privacy and stored data
 
-**Nothing about your site is sent anywhere.** The only outside requests are:
+**Nothing about your site is sent to us or any third party.** The only outside requests are:
 
 | Request | When | Why |
 |---|---|---|
@@ -743,6 +860,7 @@ sequenceDiagram
 | `api.github.com` — latest release | At most twice a day | To offer plugin updates |
 | `github.com` — the release's `manifest.json` | At most weekly (cached) | To check this plugin's own files weren't tampered with |
 | `github.com` — release zip | Only when you install an update | The update itself |
+| **Your own hub site** — fleet report | After each scan, only if you set up fleet mode | See [the fleet dashboard](#the-fleet-dashboard-easiest) for exactly what's sent |
 
 `WP2SS_DISABLE_UPDATER` turns off all three GitHub requests.
 
@@ -756,6 +874,11 @@ sequenceDiagram
 | `wp2ss_ignored` | Options | Findings you ignored (signed) |
 | `wp2ss_env` | Options | The website's PHP version, server type, relevant php.ini settings and a short version history |
 | `wp2ss_admins` | Options | Administrator user IDs at the last scan (signed) |
+| `wp2ss_fixes` | Options | One-click fixes you applied, for undo (signed) |
+| `wp2ss_quarantine_dir` | Options | Name of the random, locked quarantine folder in `wp-content` (the folder and its files are deleted too) |
+| `wp2ss_fleet` | Options | Fleet mode, hub address and key |
+| `wp2ss_fleet_sites` | Options (hub only) | Latest report from each member site (up to 1,000) |
+| `wp2ss_fleet_status` | Options (members) | When the last report was sent, and any error |
 | `wp2ss_lock` | Options (main site) | Short-lived lock while a slice runs |
 | `wp2ss_release`, `wp2ss_core_*`, `wp2ss_manifest_*` | Transients | Cached update info, checksums and fingerprints |
 | `wp2ss_dismissed` | User meta | Which report's notice you dismissed |
@@ -770,6 +893,8 @@ On multisite these live in network-wide options.
 | `wp2ss_signatures` | Filter | Add or change indicators (fixed PHP versions, code patterns, hashes, IPs, log patterns…). Receives the array from `includes/signatures.php`. |
 | `wp2ss_step_budget` | Filter | Seconds of work per slice (float). Lower it on very strict hosts. |
 | `wp2ss_scan_complete` | Action | Fires with `( $report, $previous_report )` when a scan finishes |
+| `wp2ss_fix_applied` | Action | Fires with the fix record after a one-click fix (quarantine or admin removal) |
+| `wp2ss_fix_undone` | Action | Fires with the fix record after a restore or undo |
 | `WP2SS_DISABLE_UPDATER` | Constant | `define( 'WP2SS_DISABLE_UPDATER', true );` in `wp-config.php` stops all requests to GitHub |
 
 **Add your own indicators**
@@ -781,6 +906,8 @@ add_filter( 'wp2ss_signatures', function ( $sig ) {
     $sig['sha1']['0123456789abcdef0123456789abcdef01234567'] = 'Sample from our incident';
     // If PHP ships another fix, tell the scanner about it:
     $sig['php_fixed']['8.4'] = '8.4.28';
+    // …or about a newly fixed distribution package: [ prefix, first fixed build ]
+    $sig['php_fixed_pkg'][] = array( '8.2.29-1~deb12u', 2 );
     return $sig;
 } );
 ```
@@ -867,7 +994,9 @@ Workflow actions are pinned to exact commits. Detection rules live in [`includes
 
 - **PHP2Shell happens below WordPress.** The plugin can judge your PHP version and settings and look for traces and leftovers, but it can't watch PHP's memory or processes, and it can't stop the attack. Only updating PHP does.
 - **Memory leaks leave no trace on disk.** If you ran a vulnerable PHP after October 17, 2026, change your secrets even if the scan is clean.
-- **OS packages** can be patched without a version change; the scanner can't always tell. Your host can.
+- **OS packages** can be patched without a version change. The scanner reads Debian/Ubuntu package versions and PHP's build date, but on other systems it can't always tell. Your host can.
+- **One-click fixes are a first aid kit, not a full clean-up.** Quarantining what was found doesn't remove what wasn't; still change your secrets and scan again.
+- **The fleet hub trusts its members' reports.** A fully compromised member could send a fake "clean" report; a site that stops reporting shows as stale.
 - **Known indicators only.** Attackers can rename files and rewrite code, so "no signs" means no *known* indicators — not a guarantee.
 - **An attacker with full control of the server** could tamper with any tool running on it, including this one. The self-check against GitHub makes that harder, not impossible. For certainty, have your host check from outside.
 - It looks for these two attacks specifically. It isn't a general antivirus — keep your usual security plugin or host scanner.

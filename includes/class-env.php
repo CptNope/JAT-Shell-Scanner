@@ -49,8 +49,58 @@ class WP2SS_Env {
 			'memory_limit'    => $g( 'memory_limit' ),
 			'fatal_bt'        => $g( 'fatal_error_backtraces' ),
 			'error_log'       => $g( 'error_log' ),
+			'post_max_size'   => $g( 'post_max_size' ),
+			'max_nesting'     => $g( 'max_input_nesting_level' ),
+			'pkg'             => self::package_version( PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ),
+			'build'           => self::build_date(),
 			'time'            => time(),
 		);
+	}
+
+	/**
+	 * Version of the Debian/Ubuntu PHP package, from the package database
+	 * (world-readable on most servers). Distributions often fix PHP without
+	 * changing PHP's own version number; the package version says exactly.
+	 */
+	private static function package_version( $branch ) {
+		$f = '/var/lib/dpkg/status';
+		if ( 'Linux' !== PHP_OS || ! @is_readable( $f ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			return '';
+		}
+		$fh = @fopen( $f, 'rb' ); // phpcs:ignore
+		if ( ! $fh ) {
+			return '';
+		}
+		$want = array( "php$branch-common", "php$branch-fpm", "libapache2-mod-php$branch", "php$branch-cli", "php$branch-cgi" );
+		$pkg  = '';
+		$out  = '';
+		while ( false !== ( $line = fgets( $fh, 4096 ) ) ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition
+			if ( 0 === strpos( $line, 'Package: ' ) ) {
+				$pkg = trim( substr( $line, 9 ) );
+			} elseif ( $pkg && 0 === strpos( $line, 'Version: ' ) && in_array( $pkg, $want, true ) ) {
+				$out = trim( substr( $line, 9 ) );
+				if ( "php$branch-common" === $pkg ) {
+					break; // The shared package is the best single answer.
+				}
+			}
+		}
+		fclose( $fh );
+		return substr( $out, 0, 60 );
+	}
+
+	/** When this PHP binary was built (from phpinfo), as a timestamp; 0 if unknown. */
+	private static function build_date() {
+		if ( ! function_exists( 'phpinfo' ) || false !== stripos( (string) ini_get( 'disable_functions' ), 'phpinfo' ) ) {
+			return 0;
+		}
+		ob_start();
+		phpinfo( INFO_GENERAL );
+		$s = (string) ob_get_clean();
+		if ( preg_match( '/Build Date\s*(?:=>|<\/td><td[^>]*>)\s*([A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}(?:\s+\d{2}:\d{2}:\d{2})?)/', $s, $m ) ) {
+			$t = strtotime( preg_replace( '/\s+/', ' ', $m[1] ) . ' UTC' );
+			return $t ? (int) $t : 0;
+		}
+		return 0;
 	}
 
 	/** Linux distribution ID from /etc/os-release, if PHP may read it. */
@@ -75,16 +125,17 @@ class WP2SS_Env {
 		$live = self::live();
 		if ( is_array( $old ) && isset( $old['version'] ) && $old['version'] === $live['version']
 			&& $old['sapi'] === $live['sapi'] && $old['upload_progress'] === $live['upload_progress']
+			&& isset( $old['pkg'] ) && $old['pkg'] === $live['pkg']
 			&& $old['memory_limit'] === $live['memory_limit'] && time() - (int) $old['time'] < HOUR_IN_SECONDS ) {
 			return;
 		}
 
 		$history = ( is_array( $old ) && ! empty( $old['history'] ) ) ? $old['history'] : array();
 		$last    = $history ? $history[ count( $history ) - 1 ] : null;
-		if ( $last && $last['v'] === $live['version'] && $last['sapi'] === $live['sapi'] ) {
+		if ( $last && $last['v'] === $live['version'] && $last['sapi'] === $live['sapi'] && ( isset( $last['pkg'] ) ? $last['pkg'] : '' ) === $live['pkg'] ) {
 			$history[ count( $history ) - 1 ]['last'] = time();
 		} else {
-			$history[] = array( 'v' => $live['version'], 'extra' => $live['extra'], 'sapi' => $live['sapi'], 'first' => time(), 'last' => time() );
+			$history[] = array( 'v' => $live['version'], 'extra' => $live['extra'], 'pkg' => $live['pkg'], 'build' => $live['build'], 'sapi' => $live['sapi'], 'first' => time(), 'last' => time() );
 			$history   = array_slice( $history, -10 );
 		}
 		$live['history'] = $history;
@@ -120,6 +171,29 @@ class WP2SS_Env {
 			return true;
 		}
 		return in_array( strtolower( (string) $e['os'] ), array( 'ubuntu', 'debian', 'rhel', 'almalinux', 'rocky', 'centos', 'cloudlinux', 'ol', 'amzn', 'sles', 'opensuse-leap', 'fedora' ), true );
+	}
+
+	/**
+	 * PHP2Shell status for a whole environment: uses the package version and
+	 * build date where the bare version number can't tell.
+	 *
+	 * @return array [ status, how ] — how: 'version' | 'package' | 'build'.
+	 */
+	public static function php2shell_status_env( $e, $sig ) {
+		$status = self::php2shell_status( $e['version'], $sig );
+		if ( in_array( $status, array( 'fixed', 'newer' ), true ) ) {
+			return array( $status, 'version' );
+		}
+		$pkg = isset( $e['pkg'] ) ? (string) $e['pkg'] : '';
+		foreach ( $sig['php_fixed_pkg'] as $p ) {
+			if ( $pkg && 0 === strpos( $pkg, $p[0] ) && preg_match( '/^\d+/', substr( $pkg, strlen( $p[0] ) ), $m ) ) {
+				return array( (int) $m[0] >= (int) $p[1] ? 'fixed' : 'pkg-vulnerable', 'package' );
+			}
+		}
+		if ( ! empty( $e['build'] ) && (int) $e['build'] >= (int) $sig['php_fix_date'] && 'no-fix' !== $status ) {
+			return array( 'build-after-fix', 'build' );
+		}
+		return array( $status, 'version' );
 	}
 
 	/**

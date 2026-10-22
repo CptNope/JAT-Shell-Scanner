@@ -11,7 +11,20 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 global $wpdb;
 
-foreach ( array( 'wp2ss_job', 'wp2ss_report', 'wp2ss_ignored', 'wp2ss_settings', 'wp2ss_env', 'wp2ss_admins' ) as $wp2ss_opt ) {
+// The quarantine folder holds files that were flagged as malicious: remove it with the plugin.
+$wp2ss_qname = get_site_option( 'wp2ss_quarantine_dir' );
+if ( $wp2ss_qname && preg_match( '/^wp2ss-quarantine-[a-z0-9]{16}$/', $wp2ss_qname ) ) {
+	$wp2ss_qdir = WP_CONTENT_DIR . '/' . $wp2ss_qname;
+	if ( is_dir( $wp2ss_qdir ) ) {
+		$wp2ss_it = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $wp2ss_qdir, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::CHILD_FIRST );
+		foreach ( $wp2ss_it as $wp2ss_f ) {
+			$wp2ss_f->isDir() && ! $wp2ss_f->isLink() ? @rmdir( $wp2ss_f->getPathname() ) : @unlink( $wp2ss_f->getPathname() ); // phpcs:ignore
+		}
+		@rmdir( $wp2ss_qdir ); // phpcs:ignore
+	}
+}
+
+foreach ( array( 'wp2ss_job', 'wp2ss_report', 'wp2ss_ignored', 'wp2ss_settings', 'wp2ss_env', 'wp2ss_admins', 'wp2ss_fixes', 'wp2ss_quarantine_dir', 'wp2ss_fleet', 'wp2ss_fleet_sites', 'wp2ss_fleet_status' ) as $wp2ss_opt ) {
 	delete_site_option( $wp2ss_opt );
 }
 delete_site_transient( 'wp2ss_release' );

@@ -1,4 +1,4 @@
-/* wp2shell Scanner admin. No dependencies. */
+/* PHP2Shell & wp2shell Scanner admin. No dependencies. */
 ( function () {
 	'use strict';
 
@@ -14,22 +14,21 @@
 		Object.keys( data || {} ).forEach( function ( k ) {
 			body.append( k, data[ k ] );
 		} );
-		return fetch( cfg.ajax, { method: 'POST', credentials: 'same-origin', body: body } )
-			.then( function ( r ) {
-				return r.text().then( function ( t ) {
-					var json;
-					try {
-						json = JSON.parse( t );
-					} catch ( e ) {
-						// Fatal errors and host timeouts come back as HTML.
-						throw new Error( r.status ? 'HTTP ' + r.status : 'Network error' );
-					}
-					if ( ! json.success ) {
-						throw new Error( ( json.data && json.data.message ) || 'Request failed' );
-					}
-					return json.data;
-				} );
+		return fetch( cfg.ajax, { method: 'POST', credentials: 'same-origin', body: body } ).then( function ( r ) {
+			return r.text().then( function ( t ) {
+				var json;
+				try {
+					json = JSON.parse( t );
+				} catch ( e ) {
+					// Fatal errors and host timeouts come back as HTML.
+					throw new Error( r.status ? 'HTTP ' + r.status : 'Network error' );
+				}
+				if ( ! json.success ) {
+					throw new Error( ( json.data && json.data.message ) || 'Request failed' );
+				}
+				return json.data;
 			} );
+		} );
 	}
 
 	/* ---------------- Scan with progress ---------------- */
@@ -38,15 +37,18 @@
 	var box = document.getElementById( 'wp2ss-progress' );
 
 	if ( btn && box ) {
-		var bar = box.querySelector( '.wp2ss-bar span' );
+		var bar = box.querySelector( '.wp2ss-bar' );
+		var fill = bar.querySelector( 'span' );
 		var text = box.querySelector( '.wp2ss-progress-text' );
 		var cancel = document.getElementById( 'wp2ss-cancel' );
 		var stopped = false;
 		var failures = 0;
 
 		var show = function ( pct, msg ) {
+			pct = Math.max( 2, Math.min( 100, pct ) );
 			box.hidden = false;
-			bar.style.width = Math.max( 2, Math.min( 100, pct ) ) + '%';
+			fill.style.width = pct + '%';
+			bar.setAttribute( 'aria-valuenow', String( Math.round( pct ) ) );
 			text.textContent = msg;
 		};
 
@@ -91,12 +93,13 @@
 				} );
 		};
 
-		var begin = function ( force ) {
+		btn.addEventListener( 'click', function ( e ) {
+			e.preventDefault();
 			stopped = false;
 			failures = 0;
 			btn.disabled = true;
 			show( 1, cfg.i18n.starting );
-			post( 'wp2ss_start', force ? { force: 1 } : {} )
+			post( 'wp2ss_start', { force: 1 } )
 				.then( function ( d ) {
 					if ( d.done ) {
 						window.location.reload();
@@ -105,15 +108,10 @@
 					show( d.progress, label( d ) );
 					loop();
 				} )
-				.catch( function ( e ) {
-					text.textContent = cfg.i18n.error + ' ' + e.message;
+				.catch( function ( err ) {
+					text.textContent = cfg.i18n.error + ' ' + err.message;
 					btn.disabled = false;
 				} );
-		};
-
-		btn.addEventListener( 'click', function ( e ) {
-			e.preventDefault();
-			begin( false );
 		} );
 
 		if ( cancel ) {
@@ -134,41 +132,92 @@
 		}
 	}
 
-	/* ---------------- Ignore / restore ---------------- */
+	/* ---------------- Findings filter ---------------- */
 
-	document.addEventListener( 'click', function ( e ) {
-		var t = e.target.closest ? e.target.closest( '.wp2ss-toggle' ) : null;
-		if ( ! t ) {
-			return;
-		}
-		e.preventDefault();
-		t.disabled = true;
-		post( 'wp2ss_ignore', { id: t.getAttribute( 'data-id' ), ignore: t.getAttribute( 'data-ignore' ) === '1' ? 1 : '' } )
+	var filterBar = document.querySelector( '.wp2ss-filter' );
+	var list = document.querySelector( '.wp2ss-findings' );
+	if ( filterBar && list ) {
+		var emptyAction = document.querySelector( '.wp2ss-empty-action' );
+		var apply = function ( f ) {
+			list.setAttribute( 'data-filter', f );
+			filterBar.querySelectorAll( '[data-filter]' ).forEach( function ( b ) {
+				b.setAttribute( 'aria-pressed', b.getAttribute( 'data-filter' ) === f ? 'true' : 'false' );
+			} );
+			// Hide groups with nothing to show under this filter.
+			list.querySelectorAll( '.wp2ss-group' ).forEach( function ( g ) {
+				var any = Array.prototype.some.call( g.querySelectorAll( '.wp2ss-f' ), function ( li ) {
+					var s = li.getAttribute( 'data-state' );
+					return f === 'all' ? s !== 'ignored' : s === f;
+				} );
+				g.hidden = ! any;
+			} );
+			if ( emptyAction ) {
+				emptyAction.hidden = f !== 'action' || !! list.querySelector( '.wp2ss-f[data-state="action"]' );
+			}
+		};
+		filterBar.addEventListener( 'click', function ( e ) {
+			var b = e.target.closest( '[data-filter]' );
+			if ( b ) {
+				apply( b.getAttribute( 'data-filter' ) );
+			}
+		} );
+		apply( filterBar.getAttribute( 'data-default' ) || 'all' );
+	}
+
+	/* ---------------- Buttons: fix, undo, delete, ignore, copy ---------------- */
+
+	var act = function ( el, action, data ) {
+		el.disabled = true;
+		var old = el.textContent;
+		el.textContent = cfg.i18n.working;
+		post( action, data )
 			.then( function () {
 				window.location.reload();
 			} )
 			.catch( function ( err ) {
-				t.disabled = false;
+				el.disabled = false;
+				el.textContent = old;
 				window.alert( err.message );
 			} );
-	} );
+	};
 
-	/* ---------------- Copy the message for the host ---------------- */
-
-	var copy = document.getElementById( 'wp2ss-copy' );
-	var msg = document.getElementById( 'wp2ss-host-msg' );
-	if ( copy && msg ) {
-		copy.addEventListener( 'click', function () {
+	document.addEventListener( 'click', function ( e ) {
+		var t = e.target.closest ? e.target.closest( 'button, a' ) : null;
+		if ( ! t ) {
+			return;
+		}
+		if ( t.classList.contains( 'wp2ss-fix' ) ) {
+			e.preventDefault();
+			if ( window.confirm( t.getAttribute( 'data-confirm' ) ) ) {
+				act( t, 'wp2ss_fix', { id: t.getAttribute( 'data-id' ) } );
+			}
+		} else if ( t.classList.contains( 'wp2ss-undo' ) ) {
+			e.preventDefault();
+			act( t, 'wp2ss_undo', { record: t.getAttribute( 'data-record' ) } );
+		} else if ( t.classList.contains( 'wp2ss-purge' ) ) {
+			e.preventDefault();
+			if ( window.confirm( cfg.i18n.purge ) ) {
+				act( t, 'wp2ss_purge', { record: t.getAttribute( 'data-record' ) } );
+			}
+		} else if ( t.classList.contains( 'wp2ss-toggle' ) ) {
+			e.preventDefault();
+			act( t, 'wp2ss_ignore', { id: t.getAttribute( 'data-id' ), ignore: t.getAttribute( 'data-ignore' ) === '1' ? 1 : '' } );
+		} else if ( t.classList.contains( 'wp2ss-copy' ) ) {
+			e.preventDefault();
+			var src = document.getElementById( t.getAttribute( 'data-target' ) );
+			if ( ! src ) {
+				return;
+			}
 			var done = function () {
-				var old = copy.textContent;
-				copy.textContent = cfg.i18n.copied;
+				var old = t.textContent;
+				t.textContent = cfg.i18n.copied;
 				setTimeout( function () {
-					copy.textContent = old;
+					t.textContent = old;
 				}, 2000 );
 			};
-			msg.select();
+			src.select();
 			if ( navigator.clipboard && window.isSecureContext ) {
-				navigator.clipboard.writeText( msg.value ).then( done, function () {
+				navigator.clipboard.writeText( src.value ).then( done, function () {
 					document.execCommand( 'copy' );
 					done();
 				} );
@@ -176,18 +225,34 @@
 				document.execCommand( 'copy' );
 				done();
 			}
-		} );
-	}
-
-	/* ---------------- Dismissible admin notice ---------------- */
-
-	document.addEventListener( 'click', function ( e ) {
-		if ( ! e.target.classList || ! e.target.classList.contains( 'notice-dismiss' ) ) {
-			return;
-		}
-		var n = e.target.closest( '.wp2ss-notice' );
-		if ( n ) {
-			post( 'wp2ss_dismiss', { report: n.getAttribute( 'data-report' ) } ).catch( function () {} );
+		} else if ( t.classList.contains( 'notice-dismiss' ) ) {
+			var n = t.closest( '.wp2ss-notice' );
+			if ( n ) {
+				post( 'wp2ss_dismiss', { report: n.getAttribute( 'data-report' ) } ).catch( function () {} );
+			}
 		}
 	} );
+
+	/* ---------------- Forms that need a confirmation ---------------- */
+
+	document.querySelectorAll( 'form[data-confirm]' ).forEach( function ( f ) {
+		f.addEventListener( 'submit', function ( e ) {
+			if ( ! window.confirm( f.getAttribute( 'data-confirm' ) ) ) {
+				e.preventDefault();
+			}
+		} );
+	} );
+
+	/* ---------------- Fleet: show hub/key fields only for "Report to a hub" ---------------- */
+
+	var fleetForm = document.querySelector( '.wp2ss-fleet-form' );
+	if ( fleetForm ) {
+		var fields = fleetForm.querySelector( '.wp2ss-member-fields' );
+		var sync = function () {
+			var checked = fleetForm.querySelector( 'input[name="mode"]:checked' );
+			fields.hidden = ! checked || checked.value !== 'member';
+		};
+		fleetForm.addEventListener( 'change', sync );
+		sync();
+	}
 } )();

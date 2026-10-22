@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.2.0] — 2026-10-22
+
+### One-click fixes (optional, undoable)
+- **Quarantine file / Quarantine plugin** buttons move flagged files and plugin folders into a private, locked quarantine folder where they can't run. **Remove admin rights** turns an unknown administrator into a Subscriber, revokes Super Admin and logs them out.
+- **Quarantine them all** for every critical/high file finding at once.
+- New **Quarantine** tab with **Restore**, **Undo** and **Delete**. Fix records are signed, so they can't be forged to move files elsewhere.
+- Refuses core folders, `wp-config.php`, the main `wp-content` folders, whole themes and the scanner itself; respects `DISALLOW_FILE_MODS`. Scans themselves still never change anything.
+- WP-CLI: `wp php2shell fix`, `wp php2shell quarantine list|restore|delete`.
+
+### Fleet dashboard
+- Make one site the **hub**; others report their verdict, versions, counts and serious findings to it after every scan (HMAC-signed, timestamped, sanitised; off by default).
+- Hub **Fleet** tab: every site worst-first, stale sites marked, CSV export, key rotation.
+- WP-CLI: `wp php2shell fleet hub|join|leave|send|status|list`.
+
+### Latest PHP2Shell intel
+- Reads the installed **Debian/Ubuntu PHP package version** and knows the first fixed Ubuntu builds (22.04, 24.04, 25.10, 26.04), so "same version number, patched package" is settled automatically.
+- PHP built after October 21, 2026 is reported as "probably patched".
+- Access-log detection of the public exploit and scanner tools (`php2shell-scan`, `php2shell-verify`, `JACKALPOC`), their payload server, and addresses reported attacking PHP2Shell.
+- Looks for the reported `/tmp/nfs` second stage, with a known malware hash.
+- "Failed to decode session object" is informational on patched 8.4.27/8.5.12, which log it more often (php-src #24493).
+- Temporary php.ini protections are now described as partial, with `post_max_size` and `max_input_nesting_level` added; the host message includes the package version.
+- Docs: no longer tie memory leaks to one CVE — 109618 is out-of-memory corruption, 109619 is stale request state; either can lead to a leak or code execution.
+
+### Redesigned scanner page
+- A one-sentence verdict with three panels (PHP2Shell, wp2shell, signs of a break-in) and a personal "What to do next" list.
+- Findings grouped by area with Needs action / Everything / Ignored filters; tabs for Findings, Quarantine, Fleet and Settings.
+- Accessible: keyboard focus, reduced motion, works on phones.
+
 ## [1.1.0] — 2026-10-22
 
 Now covers **PHP2Shell** (CVE-2026-109618 / CVE-2026-109619), the critical PHP engine vulnerabilities disclosed on October 21, 2026, alongside wp2shell. Renamed to **PHP2Shell & wp2shell Scanner** (the plugin folder, update channel and `wp wp2shell` command are unchanged).
