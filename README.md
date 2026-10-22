@@ -13,6 +13,8 @@
 
 ### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
 
+**Current version: 1.3.2** (October 22, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
+
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
 <img src="docs/images/demo.gif" alt="A scan of a demo site finding a webshell, then quarantining it with one click" width="800">
@@ -23,6 +25,17 @@ Free · scans only read · optional one-click fixes you can undo · self-hosted 
 > **PHP2Shell is a bug in PHP itself, not in WordPress.** Updating WordPress or your plugins does **not** fix it — the PHP on your server has to be updated, which on most hosting plans means **your host**. This plugin tells you whether you're affected and gives you a ready-made message to send them.
 
 ---
+
+## What's new
+
+| Version | Highlights |
+|---|---|
+| **1.3.2** | Recognises the **Installatron Worker** (`it-api.php`, used by IONOS and other hosts for one-click installs) by its signature check, and hidden **data files** that can only answer "404 Not Found" (a plugin's stored key or settings) — no more false "backdoor" alarms for either |
+| **1.3.1** | No false alarms for WordPress's own leftover `temp-write-test-…` files (dated from their names) or for WordPress 7.0 files left behind after updating (checked against official fingerprints) |
+| **1.3.0** | Security fixes from an independent review (per-site fleet identities, safer quarantine), **fleet alerts** by email/Slack/Discord, **Scan again** for member sites, new PHP2Shell intel, screenshots and demo |
+| **1.2.0** | **One-click fixes** with undo, the **fleet dashboard**, redesigned scanner page |
+
+Update from **Dashboard → Updates** (the scanner updates itself from GitHub), or upload the new zip over the old one: **Plugins → Add New Plugin → Upload Plugin → Replace current with uploaded**.
 
 ## Contents
 
@@ -338,7 +351,8 @@ These reduce the risk; they don't remove it — security firms have shown attack
 |---|---|---|
 | **WordPress version** | 6.8 – 6.8.5, 6.9 – 6.9.4, 7.0 – 7.0.1 | Critical / High → *Vulnerable* |
 | **Exploit plugins** | `wp2shell_<hex>`, fake **CMSmap**, fake **WP Static Cache Helper**, `gg-` REST shells | Critical / High |
-| **Exploit leftovers** | `wp2shell_*.zip`, `temp-write-test-*`, `wp2shell_<hex>` staging folders | Critical / High |
+| **Exploit leftovers** | `wp2shell_*.zip`, `wp2shell_<hex>` staging folders, `temp-write-test-*` probes | Critical / High |
+| | `temp-write-test-…` files WordPress itself made (the date is in the name): before July 17, 2026 → harmless leftover; after → worth a look | Low / Medium |
 | **REST backdoor** | The `morning/v1` namespace | Critical |
 | **Known files** | SHA-1 hashes of published webshells | Critical |
 | **Access log** | Successful (200/207) batch-API requests (even URL-encoded), exploit-tool user agents, attacker IPs, plugin uploads, admin enumeration | Critical → Medium |
@@ -524,6 +538,10 @@ sequenceDiagram
 | "Couldn't get core checksums" | Server can't reach wordpress.org | Harmless; other checks still ran |
 | "Log file not readable" | Wrong path, or PHP isn't allowed to read it (`open_basedir`, permissions) | See [Finding your logs](#15-finding-your-logs), or leave the setting empty |
 | Lots of **Low** findings about plugin/theme updates | Things were updated after July 17 | Expected. Glance at the names; **Ignore** them. |
+| `it-api.php` in the site root | Your host's one-click installer (Installatron, used by IONOS and others) | Shown as information since 1.3.2. Safe to leave; it deletes itself after a while |
+| A hidden `.ht….appconfig.php` (or similar) file | A plugin storing a key or settings in a file that can only answer "404" | Low since 1.3.2. Check its date against when you installed plugins; quarantining it is harmless |
+| `wp-includes/collaboration/…` files flagged | Left over from WordPress 7.0 (later versions removed them) | Low since 1.3.1 if they match the official files; safe to delete |
+| `temp-write-test-…` files in `wp-content` | WordPress's own write check, not cleaned up | Low since 1.3.1 when they predate the attacks; safe to delete |
 | An admin you know is flagged | Created (or promoted) after July 17 / since the last scan | If it's yours, click **Ignore** |
 | "A role has administrator powers" | A plugin (e.g. a membership or shop plugin) changed a role | If you trust that plugin, click **Ignore** |
 | Weekly scans don't seem to run | Quiet site, or WP-Cron disabled with no server cron | Visit the site now and then, or ask your host for a real cron |
