@@ -108,7 +108,7 @@ Everything runs on your server. The only outside connections are the ones WordPr
 tests/integration.sh /path/to/throwaway/wordpress
 ```
 
-CI lints PHP 7.4–8.4 and runs the integration tests on vulnerable and current WordPress versions. To release: bump the version in `wp2shell-scanner.php` (header and `WP2SS_VERSION`) and `readme.txt`, add a `CHANGELOG.md` entry, then push a `vX.Y.Z` tag — the Release workflow builds and publishes the zip.
+CI lints PHP 7.4–8.4 and runs the integration tests on vulnerable and current WordPress versions. To release: bump the version in `wp2shell-scanner.php` (header and `WP2SS_VERSION`) and `readme.txt`, add a `CHANGELOG.md` entry, and push to `main`. Once CI passes, the Release workflow tags `vX.Y.Z` and publishes the zip — every site running the plugin then sees the update.
 
 Detection rules live in [`includes/signatures.php`](includes/signatures.php). New indicators are very welcome — open an issue or PR with a source.
 
