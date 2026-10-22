@@ -514,7 +514,7 @@ class WP2SS_Scanner {
 		if ( function_exists( 'set_time_limit' ) && false === strpos( (string) ini_get( 'disable_functions' ), 'set_time_limit' ) ) {
 			@set_time_limit( (int) max( 60, $budget * 3 ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
-		$this->deadline = microtime( true ) + max( 0.01, (float) $budget );
+		$this->deadline = microtime( true ) + max( 0.0005, (float) $budget );
 
 		while ( 'done' !== $this->s['phase'] && ! $this->out_of_time() ) {
 			switch ( $this->s['phase'] ) {

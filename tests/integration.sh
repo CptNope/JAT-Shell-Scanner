@@ -132,17 +132,21 @@ has "$R" "$(msg 'plugin-upload')"               "log: plugin upload"
 has "$R" "$(msg 'user-enumeration')"            "log: user enumeration"
 
 section "4. Resumable scanning (tiny time slices)"
+# Enough files that even a fast machine needs many slices.
+mkdir -p "$C/uploads/slices"
+for d in $(seq 1 40); do mkdir -p "$C/uploads/slices/$d"; for f in $(seq 1 75); do : > "$C/uploads/slices/$d/f$f.txt"; done; done
 FULL=$(echo "$R" | jq '[.findings[] | select(.type!="log")] | length')
 SLICED=$($WP eval '
 	WP2SS_Scanner::start( array( "core" => false, "log" => "" ), "test", true );
 	$steps = 0;
-	do { $r = WP2SS_Scanner::step( 0.002 ); $steps++; } while ( is_array( $r ) && empty( $r["verdict"] ) && $steps < 200000 );
+	do { $r = WP2SS_Scanner::step( 0.0005 ); $steps++; } while ( is_array( $r ) && empty( $r["verdict"] ) && $steps < 200000 );
 	echo $steps, " ", count( array_filter( $r["findings"], function ( $f ) { return "log" !== $f["type"] && "scan" !== $f["type"]; } ) );
 ' 2>/dev/null)
 FULLNS=$(echo "$R" | jq '[.findings[] | select(.type!="log" and .type!="scan")] | length')
 STEPS=${SLICED%% *}; COUNT=${SLICED##* }
 [ "${STEPS:-0}" -gt 5 ] && ok "scan resumed across $STEPS slices" || bad "scan did not split into slices ($SLICED)"
 [ "$COUNT" = "$FULLNS" ] && ok "sliced scan found the same $COUNT findings" || bad "sliced scan found $COUNT, full scan $FULLNS"
+rm -rf "$C/uploads/slices"
 
 section "5. Ignore list & exit codes"
 $WP php2shell scan --skip-core --format=summary >/dev/null 2>&1; CODE=$?
