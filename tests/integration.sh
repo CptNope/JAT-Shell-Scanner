@@ -16,8 +16,15 @@ C="$SITE/wp-content"
 FAIL=0
 PASS=0
 
+SECTION=""
+section() { SECTION="$1"; echo "== $1 =="; }
 ok()   { PASS=$((PASS+1)); echo "  ✓ $1"; }
-bad()  { FAIL=$((FAIL+1)); echo "  ✗ $1"; }
+bad()  {
+	FAIL=$((FAIL+1)); echo "  ✗ $1"
+	# On GitHub Actions, also raise an annotation (visible without signing in).
+	[ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=Integration test failed::$SECTION — $1"
+	return 0
+}
 
 # A scan's JSON. Every assertion first checks the scan really produced a report,
 # so a crashed scan can't make "hasn't found X" assertions pass by accident.
@@ -45,7 +52,7 @@ set_php() { # set_php <version> [extra] [os] [memory_limit] [history-json]
 
 set_php 8.3.36   # A patched PHP for the baseline tests.
 
-echo "== 1. Clean site =="
+section "1. Clean site"
 R=$(scan)
 has   "$R" '.verdict' "scan returns a verdict"
 if echo "$R" | jq -e '[.findings[] | select(.type=="version" and .severity!="info")] | length > 0' >/dev/null; then
@@ -60,7 +67,7 @@ hasnt "$R" '[.findings[] | select(.message | test("Scanner"; "i"))] | length > 0
 hasnt "$R" "$(msg 'Theme \"index.php\"')" "a loose themes/index.php isn't mistaken for a theme"
 has   "$R" "$(sev info 'PHP 8.3.36 includes the PHP2Shell fix')" "patched PHP is reported as fixed"
 
-echo "== 2. False-positive bait =="
+section "2. False-positive bait"
 mkdir -p "$C/uploads/2026/08" "$C/cache/wp-rocket/example.com" "$C/plugins/performance-lab" "$C/upgrade-temp-backup/plugins/akismet"
 printf '<?php\n// Silence is golden.\n' > "$C/uploads/index.php"
 printf '<?php /* nothing here */ ?>\n' > "$C/uploads/2026/08/index.php"
@@ -80,7 +87,7 @@ hasnt "$R" "$(msg 'htaccess')" "Wordfence's protective uploads .htaccess is not 
 hasnt "$R" "$(msg 'before every page')" "Wordfence's auto_prepend_file is not flagged"
 rm -rf "$C/plugins/performance-lab" "$C/upgrade-temp-backup" "$C/object-cache.php" "$C/uploads/.htaccess" "$SITE/.user.ini"
 
-echo "== 3. wp2shell indicators =="
+section "3. wp2shell indicators"
 mkdir -p "$C/plugins/wp2shell_6a5566a6" "$C/plugins/gg-helper" "$C/upgrade/wp2shell_79b06a80" "$C/plugins/cmsmap" "$C/uploads/2026/07"
 printf '<?php\n/* Plugin Name: wp2shell_6a5566a6 */\n' > "$C/plugins/wp2shell_6a5566a6/wp2shell_6a5566a6.php"
 printf '<?php\n/* Plugin Name: CMSmap */\n' > "$C/plugins/cmsmap/cmsmap.php"
@@ -124,7 +131,7 @@ has "$R" "$(msg 'attacker IPs')"                "log: attacker IP"
 has "$R" "$(msg 'plugin-upload')"               "log: plugin upload"
 has "$R" "$(msg 'user-enumeration')"            "log: user enumeration"
 
-echo "== 4. Resumable scanning (tiny time slices) =="
+section "4. Resumable scanning (tiny time slices)"
 FULL=$(echo "$R" | jq '[.findings[] | select(.type!="log")] | length')
 SLICED=$($WP eval '
 	WP2SS_Scanner::start( array( "core" => false, "log" => "" ), "test", true );
@@ -137,7 +144,7 @@ STEPS=${SLICED%% *}; COUNT=${SLICED##* }
 [ "${STEPS:-0}" -gt 5 ] && ok "scan resumed across $STEPS slices" || bad "scan did not split into slices ($SLICED)"
 [ "$COUNT" = "$FULLNS" ] && ok "sliced scan found the same $COUNT findings" || bad "sliced scan found $COUNT, full scan $FULLNS"
 
-echo "== 5. Ignore list & exit codes =="
+section "5. Ignore list & exit codes"
 $WP php2shell scan --skip-core --format=summary >/dev/null 2>&1; CODE=$?
 [ "$CODE" = "2" ] && ok "exit code 2 when compromised" || bad "exit code was $CODE, expected 2"
 $WP wp2shell status --format=json >/dev/null 2>&1 && ok "old 'wp wp2shell' command still works" || bad "'wp wp2shell' alias missing"
@@ -157,7 +164,7 @@ has "$R2" "[.findings[] | select(.id==\"$FID\")] | length > 0" "forged ignore en
 $WP eval "delete_site_option( 'wp2ss_ignored' );" >/dev/null
 has "$($WP php2shell status --format=json 2>/dev/null)" '.verdict' "status command works"
 
-echo "== 6. Evasion & blind spots =="
+section "6. Evasion & blind spots"
 SELF=$($WP eval 'echo untrailingslashit( WP2SS_DIR );' 2>/dev/null)
 OUTSIDE=$(mktemp -d)
 printf "<?php @eval(\$_REQUEST['z']);\n" > "$SELF/includes/class-helper.php"
@@ -189,7 +196,7 @@ has "$R" "$(msg 'Image file contains PHP code')"   "PHP hidden inside an uploade
 rm -f "$SELF/includes/class-helper.php" "$C/plugins/linked-plugin" "$C/plugins/linked-plugin-loop" "$C/uploads/2026/07/photo.png"
 rm -rf "$OUTSIDE" "$C/plugins/padded" "$C/uploads/$BAD"
 
-echo "== 7. Host files, site root & stable IDs =="
+section "7. Host files, site root & stable IDs"
 mkdir -p "$C/mu-plugins"
 printf '<?php // host\n' > "$C/mu-plugins/kinsta-mu-plugins.php"
 printf '<?php // ?\n' > "$C/mu-plugins/zz-unknown.php"
@@ -213,7 +220,7 @@ hasnt "$R" "$(msg 'zz-unknown')" "ignored finding stays ignored when only its da
 $WP php2shell ignore "$ID" --undo >/dev/null
 rm -f "$C/mu-plugins/kinsta-mu-plugins.php" "$C/mu-plugins/zz-unknown.php" "$C/zz-dropped.php" "$SITE/.cache.php" "$SITE/.user.ini" "$C/uploads/guarded.php"
 
-echo "== 8. Users & roles =="
+section "8. Users & roles"
 $WP user create olduser old@test.local --role=subscriber --quiet >/dev/null 2>&1
 $WP eval 'global $wpdb; $wpdb->update($wpdb->users, array("user_registered"=>"2020-01-01 00:00:00"), array("user_login"=>"olduser"));'
 scan >/dev/null                                    # saves the admin baseline
@@ -228,7 +235,7 @@ has "$R" "$(sev high 'saved list of administrators was changed')" "tampered admi
 $WP eval '$r = get_role( "editor" ); $r->remove_cap( "install_plugins" );' >/dev/null
 $WP user delete olduser --yes --quiet
 
-echo "== 9. Locking, pauses & cancellation =="
+section "9. Locking, pauses & cancellation"
 OUT=$($WP eval '
 	global $wpdb;
 	WP2SS_Scanner::start( array( "core" => false ), "test", true );
@@ -252,7 +259,7 @@ OUT=$($WP eval '
 ' 2>&1)
 [ "$OUT" = "gone" ] && ok "a cancelled scan stays cancelled" || bad "cancelled scan came back ($OUT)"
 
-echo "== 10. Error isolation =="
+section "10. Error isolation"
 cat > "$C/mu-plugins/wp2ss-test-break.php" <<'EOF'
 <?php
 add_action( 'rest_api_init', function () { throw new RuntimeException( 'simulated crash' ); } );
@@ -262,7 +269,7 @@ has "$R" '.verdict' "scan still completes when a check crashes"
 has "$R" "$(msg 'stopped early')" "the crash is reported as a finding"
 rm -f "$C/mu-plugins/wp2ss-test-break.php"
 
-echo "== 11. WordPress version edge cases =="
+section "11. WordPress version edge cases"
 cat > "$C/mu-plugins/wp2ss-test-version.php" <<'EOF'
 <?php $GLOBALS['wp_version'] = '7.0';
 EOF
@@ -270,7 +277,7 @@ R=$(scan)
 has "$R" "$(sev critical 'WordPress 7.0 is vulnerable')" "WordPress \"7.0\" (no .0 suffix) is detected as vulnerable"
 rm -f "$C/mu-plugins/wp2ss-test-version.php"
 
-echo "== 12. PHP2Shell: PHP versions =="
+section "12. PHP2Shell: PHP versions"
 set_php 8.3.10
 R=$(scan)
 has "$R" "$(sev high 'PHP 8.3.10 is vulnerable to PHP2Shell')" "8.3.10 (plain upstream build) is vulnerable"
@@ -293,7 +300,7 @@ set_php 8.4.27 "" linux 256M "[{\"v\":\"8.4.20\",\"extra\":\"\",\"sapi\":\"fpm-f
 R=$(scan)
 has "$R" "$(sev medium 'ran PHP 8.4.20 .not patched for PHP2Shell. until')" "recently-unpatched PHP history prompts credential rotation"
 
-echo "== 13. PHP2Shell: log evidence =="
+section "13. PHP2Shell: log evidence"
 set_php 8.3.36
 ERR=$(mktemp)
 for i in 1 2 3 4 5 6; do echo "[21-Oct-2026 08:0$i:00 UTC] PHP Fatal error:  Allowed memory size of 134217728 bytes exhausted (tried to allocate 65536 bytes) in Unknown on line 0" >> "$ERR"; done
@@ -317,7 +324,7 @@ has   "$R" "$(msg 'out-of-memory errors raised before any script ran')" "compres
 rm -f "$ERR" "$ERR.gz" "$ACC"
 set_php 8.3.36
 
-echo "== 14. Own-file integrity (release manifest) =="
+section "14. Own-file integrity (release manifest)"
 php "$(dirname "$0")/../.github/scripts/make-manifest.php" "$SELF" 9.9.9 2>/dev/null
 R=$(scan)
 hasnt "$R" "$(msg 'scanner plugin has been modified')" "untouched plugin files pass the manifest check"
@@ -328,7 +335,7 @@ has "$R" "$(sev critical 'scanner plugin has been modified: includes/class-setti
 cp "$OUTSIDE.bak" "$SELF/includes/class-settings.php" 2>/dev/null || cp /tmp/wp2ss-settings.bak "$SELF/includes/class-settings.php"
 rm -f "$SELF/manifest.json" "$OUTSIDE.bak" /tmp/wp2ss-settings.bak
 
-echo "== 15. Cleanup → clean again =="
+section "15. Cleanup → clean again"
 rm -rf "$C/plugins/wp2shell_6a5566a6" "$C/plugins/cmsmap" "$C/upgrade/wp2shell_79b06a80" \
 	"$C/cache/x.php" "$C/uploads/2026/07/img.php" "$C/uploads/.htaccess" "$C/themes/.hidden.php" \
 	"$C/temp-write-test-123" "$C/uploads/wp2shell_6a5566a6.zip"
