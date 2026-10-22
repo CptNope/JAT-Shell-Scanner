@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+# Third-party actions are pinned to exact commits (tags can be moved).
+# checkout v4 = 11d5960…, setup-php v2 = eb7c497…, setup-node v4 = 49933ea…
+
 jobs:
   lint:
     name: PHP ${{ matrix.php }} syntax
@@ -16,10 +19,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+        php: ['7.0', '7.1', '7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: ${{ matrix.php }}
           coverage: none
@@ -30,8 +33,8 @@ jobs:
     name: README diagrams parse
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
       - run: npm install --no-save --no-audit --no-fund mermaid@11 jsdom
@@ -42,8 +45,8 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: '8.3'
           coverage: none
@@ -64,13 +67,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { wp: 'latest', php: '7.4' }
-          - { wp: 'latest', php: '8.4' }
-          - { wp: '7.0.1',  php: '8.3' }   # vulnerable to wp2shell
-          - { wp: '6.9.4',  php: '8.2' }   # vulnerable to wp2shell
+          - { wp: 'latest', php: '8.4', mysql: '8.0', wpcli: 'wp-cli' }
+          - { wp: 'latest', php: '7.4', mysql: '8.0', wpcli: 'wp-cli' }
+          - { wp: '7.0',    php: '8.3', mysql: '8.0', wpcli: 'wp-cli' }       # "7.0" with no .0 suffix — vulnerable to wp2shell
+          - { wp: '7.0.1',  php: '8.3', mysql: '8.0', wpcli: 'wp-cli' }       # vulnerable to wp2shell
+          - { wp: '6.9.4',  php: '8.2', mysql: '8.0', wpcli: 'wp-cli' }       # vulnerable to wp2shell
+          - { wp: '6.4',    php: '7.0', mysql: '5.7', wpcli: 'wp-cli:2.10.0' } # oldest supported PHP
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:${{ matrix.mysql }}
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: wp
@@ -79,13 +84,13 @@ jobs:
           --health-cmd="mysqladmin ping -proot"
           --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: ${{ matrix.php }}
           extensions: mysqli, zip
-          tools: wp-cli
+          tools: ${{ matrix.wpcli }}
           coverage: none
 
       - name: Build plugin zip (same as a release)
@@ -109,5 +114,6 @@ jobs:
         if: always()
         run: |
           touch site/wp-content/debug.log
-          if grep -i 'wp2shell-scanner' site/wp-content/debug.log; then exit 1; fi
+          # Anything from the plugin, or any deprecated-function notice (those name WordPress's file, not ours).
+          if grep -v 'simulated crash' site/wp-content/debug.log | grep -iE 'wp2shell-scanner|is <strong>deprecated|deprecated since version'; then exit 1; fi
           echo "clean"

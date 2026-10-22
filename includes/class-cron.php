@@ -3,8 +3,12 @@
  * Scheduled scans and email alerts.
  *
  * WP-Cron runs inside normal web requests, which have short time limits on
- * many hosts. So a scheduled scan does one slice of work, then queues the next
- * slice a few seconds later, until it's finished.
+ * many hosts. So a scheduled scan works for as long as the request safely can,
+ * then queues the next slice, until it's finished. On a quiet site the next
+ * slice may only run at the next visit (or the next system-cron tick); the job
+ * simply waits — it's only abandoned after a full day with no progress.
+ *
+ * On multisite, only the main site schedules scans (one scan covers the network).
  *
  * @package WP2Shell_Scanner
  */
@@ -28,6 +32,11 @@ class WP2SS_Cron {
 		add_action( 'admin_init', array( __CLASS__, 'ensure' ) );
 	}
 
+	/** Scans are scheduled on one site only. */
+	private static function in_charge() {
+		return ! is_multisite() || is_main_site();
+	}
+
 	public static function schedules( $s ) {
 		if ( ! isset( $s['weekly'] ) ) {
 			$s['weekly'] = array( 'interval' => WEEK_IN_SECONDS, 'display' => __( 'Once Weekly', 'wp2shell-scanner' ) );
@@ -36,6 +45,9 @@ class WP2SS_Cron {
 	}
 
 	public static function ensure() {
+		if ( ! self::in_charge() ) {
+			return;
+		}
 		$s = WP2SS_Settings::get();
 		if ( 'off' !== $s['schedule'] && ! wp_next_scheduled( self::HOOK ) ) {
 			self::reschedule( $s['schedule'] );
@@ -48,6 +60,12 @@ class WP2SS_Cron {
 	}
 
 	public static function reschedule( $schedule ) {
+		if ( is_multisite() && ! is_main_site() ) {
+			switch_to_blog( get_main_site_id() );
+			self::reschedule( $schedule );
+			restore_current_blog();
+			return;
+		}
 		wp_clear_scheduled_hook( self::HOOK );
 		if ( 'off' !== $schedule ) {
 			// First run within the hour, spread out so many sites on one server don't all fire at once.
@@ -56,46 +74,61 @@ class WP2SS_Cron {
 	}
 
 	public static function unschedule() {
-		wp_clear_scheduled_hook( self::HOOK );
-		wp_clear_scheduled_hook( self::STEP_HOOK );
+		$clear = function () {
+			wp_clear_scheduled_hook( WP2SS_Cron::HOOK );
+			wp_clear_scheduled_hook( WP2SS_Cron::STEP_HOOK );
+		};
+		$clear();
+		if ( is_multisite() && ! is_main_site() ) {
+			switch_to_blog( get_main_site_id() );
+			$clear();
+			restore_current_blog();
+		}
 	}
 
 	public static function run() {
-		if ( WP2SS_Scanner::current() ) {
-			self::step(); // A scan is already in progress: help it along instead of starting over.
+		if ( ! self::in_charge() ) {
 			return;
 		}
-		WP2SS_Scanner::start( WP2SS_Settings::scan_args(), 'cron' );
-		self::step();
+		if ( ! WP2SS_Scanner::current() ) {
+			WP2SS_Scanner::start( WP2SS_Settings::scan_args(), 'cron' );
+		}
+		self::step(); // If a scan is already in progress, help it along instead of starting over.
 	}
 
-	/** Time to spend per cron request: generous when there's no limit (real server cron, CLI). */
+	/** Seconds this cron request may spend: generous with no limit (real server cron, CLI). */
 	public static function budget() {
 		$max = (int) ini_get( 'max_execution_time' );
 		if ( 0 === $max || 'cli' === PHP_SAPI ) {
 			return 120;
 		}
-		return max( 5, min( 20, $max / 2 ) );
+		return max( 5, min( 25, $max * 0.6 ) );
 	}
 
 	public static function step() {
-		$r = WP2SS_Scanner::step( self::budget() );
+		if ( ! self::in_charge() ) {
+			return;
+		}
+		// Use the whole budget of this request, slice after slice.
+		$until = microtime( true ) + self::budget();
+		do {
+			$left = $until - microtime( true );
+			$r    = WP2SS_Scanner::step( max( 1, $left ) );
+		} while ( is_array( $r ) && empty( $r['verdict'] ) && empty( $r['busy'] ) && microtime( true ) < $until - 1 );
+
 		if ( is_array( $r ) && empty( $r['verdict'] ) && ! wp_next_scheduled( self::STEP_HOOK ) ) {
 			// Busy means another request is mid-slice; check back a little later.
 			wp_schedule_single_event( time() + ( empty( $r['busy'] ) ? 5 : 30 ), self::STEP_HOOK );
-			if ( function_exists( 'spawn_cron' ) && ! ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) ) {
-				spawn_cron();
-			}
 		}
 	}
 
-	/** Email when a scheduled scan has findings that weren't in the last report. */
+	/** Email when a scheduled scan finds serious problems that weren't in the last report. */
 	public static function maybe_alert( $report, $previous ) {
 		$s = WP2SS_Settings::get();
 		if ( 'cron' !== $report['source'] || ! $s['email'] ) {
 			return;
 		}
-		$ignored = (array) get_site_option( 'wp2ss_ignored', array() );
+		$ignored = WP2SS_Scanner::ignored();
 		$verdict = WP2SS_Scanner::verdict( $report['findings'], $ignored );
 		if ( ! in_array( $verdict, array( 'COMPROMISED', 'SUSPICIOUS', 'VULNERABLE' ), true ) ) {
 			return;
@@ -104,7 +137,7 @@ class WP2SS_Cron {
 		$old = $previous ? wp_list_pluck( $previous['findings'], 'id' ) : array();
 		$new = array();
 		foreach ( $report['findings'] as $f ) {
-			if ( WP2SS_Scanner::sev_rank( $f['severity'] ) >= 4 && ! isset( $ignored[ $f['id'] ] ) && ! in_array( $f['id'], $old, true ) ) {
+			if ( WP2SS_Scanner::sev_rank( $f['severity'] ) >= 4 && ! WP2SS_Scanner::is_ignored( $f, $ignored ) && ! in_array( $f['id'], $old, true ) ) {
 				$new[] = $f;
 			}
 		}
@@ -113,25 +146,31 @@ class WP2SS_Cron {
 		}
 
 		$site    = wp_specialchars_decode( get_site_option( 'site_name', get_bloginfo( 'name' ) ), ENT_QUOTES );
-		$subject = sprintf( /* translators: 1: verdict, 2: site name */ __( '[%2$s] wp2shell Scanner: %1$s', 'wp2shell-scanner' ), WP2SS_Admin::verdict_label( $verdict ), $site );
+		$subject = sprintf( /* translators: 1: verdict, 2: site name */ __( '[%2$s] PHP2Shell Scanner: %1$s', 'wp2shell-scanner' ), WP2SS_Admin::verdict_label( $verdict, $report['findings'] ), $site );
 
 		$lines   = array();
 		$lines[] = sprintf( /* translators: %s: site URL */ __( 'A scheduled scan of %s found new problems:', 'wp2shell-scanner' ), $report['site'] );
 		$lines[] = '';
 		foreach ( array_slice( $new, 0, 20 ) as $f ) {
-			$lines[] = '• [' . strtoupper( $f['severity'] ) . '] ' . $f['message'];
+			$lines[] = '- [' . strtoupper( $f['severity'] ) . '] ' . wp_strip_all_tags( $f['message'] );
 			if ( $f['advice'] ) {
-				$lines[] = '  ' . $f['advice'];
+				$lines[] = '  ' . wp_strip_all_tags( $f['advice'] );
 			}
 		}
 		if ( count( $new ) > 20 ) {
-			$lines[] = sprintf( /* translators: %d: count */ __( '…and %d more.', 'wp2shell-scanner' ), count( $new ) - 20 );
+			$lines[] = sprintf( /* translators: %d: count */ __( '...and %d more.', 'wp2shell-scanner' ), count( $new ) - 20 );
 		}
 		$lines[] = '';
 		$lines[] = __( 'See the full report:', 'wp2shell-scanner' ) . ' ' . WP2SS_Admin::url();
 		$lines[] = '';
 		$lines[] = __( 'You get this email because automatic scans and alerts are on. Change that on the scanner page.', 'wp2shell-scanner' );
 
+		// Force plain text: file names and user names in findings come from the attacker.
+		$plain = function () {
+			return 'text/plain';
+		};
+		add_filter( 'wp_mail_content_type', $plain, 999 );
 		wp_mail( WP2SS_Settings::alert_email(), $subject, implode( "\n", $lines ) );
+		remove_filter( 'wp_mail_content_type', $plain, 999 );
 	}
 }

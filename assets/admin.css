@@ -94,3 +94,13 @@
 .wp2ss-cleanup li { margin-bottom: 6px; }
 
 .wp2ss-update { margin-top: 10px; }
+
+/* Message for the host */
+.wp2ss-host { margin-top: 24px; max-width: 1160px; border-left: 4px solid #d63638; }
+.wp2ss-host textarea { font-family: inherit; background: #f6f7f7; margin: 8px 0; }
+.wp2ss-host .description { margin-left: 8px; }
+
+.wp2ss-stale { color: #996800; font-weight: 600; }
+.wp2ss-env { margin: 16px 0 0; color: #646970; font-size: 12px; }
+.wp2ss-advanced { margin: 12px 0; }
+.wp2ss-advanced summary { cursor: pointer; font-weight: 600; margin-bottom: 4px; }

@@ -1,47 +1,51 @@
-=== wp2shell Scanner ===
+=== PHP2Shell & wp2shell Scanner ===
 Contributors: cptnope
-Tags: security, malware, scanner, webshell, wp2shell
+Tags: security, php2shell, malware, scanner, webshell
 Requires at least: 6.0
-Tested up to: 7.0
-Requires PHP: 7.4
-Stable tag: 1.0.0
+Tested up to: 7.1
+Requires PHP: 7.0
+Stable tag: 1.1.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
-Checks your site for signs of the wp2shell attack on WordPress core (CVE-2026-63030 / CVE-2026-60137). Read-only.
+Checks whether your site is exposed to — or was broken into through — PHP2Shell (a critical PHP bug, October 2026) and wp2shell (a WordPress bug, July 2026). Read-only.
 
 == Description ==
 
-wp2shell is a vulnerability chain in WordPress core, made public on July 17, 2026, that lets anyone take over an unpatched site without logging in. This plugin checks whether your site is vulnerable and whether it shows signs of having been attacked.
+**PHP2Shell** (CVE-2026-109618 / CVE-2026-109619) is a pair of critical bugs in PHP itself, made public on October 21, 2026 and attacked since October 17. It lets anyone run code on an unpatched server without logging in, and can leak passwords and keys from memory. It's fixed by updating PHP — usually your host's job — to 8.2.35, 8.3.36, 8.4.27, 8.5.12 or later.
 
-The scan only reads. It never changes or deletes anything.
+**wp2shell** (CVE-2026-63030 / CVE-2026-60137) is a WordPress core bug from July 2026, fixed in WordPress 6.8.6, 6.9.5 and 7.0.2.
+
+This plugin tells you whether your site is exposed to either, and looks for signs that an attacker already got in. It only reads — it never changes or deletes anything.
 
 It checks:
 
-* Your WordPress version (6.9.0–6.9.4 and 7.0.0–7.0.1 fully vulnerable; 6.8.0–6.8.5 partly)
-* Plugins dropped by the attack, and plugins hidden from the Plugins screen
-* PHP files in uploads, cache and upgrade folders, hidden PHP files and .htaccess tricks
-* Known webshell code patterns and file hashes
-* Administrators and application passwords created since July 17, 2026
+* The PHP your website runs, including OS packages patched without a version change, and the temporary php.ini protections
+* Whether the site ran an unpatched PHP during the attack window
+* PHP2Shell traces in the PHP error log, and suspicious bursts in the access log
+* Your WordPress version, and wp2shell exploit plugins, files and traffic
+* Webshell code anywhere in the site, PHP hidden in uploads, images and the site root, and PHP auto-loaded via .user.ini / .htaccess
+* New or promoted administrators, roles given admin powers, application passwords
 * WordPress core files against official checksums
-* Your web server access log, if PHP can read it
+* Its own files, against the official release
 
 Features:
 
 * Works on shared hosting with short time limits — scans run in slices with a progress bar
+* A ready-to-send message for your host when PHP needs updating
 * Weekly or daily automatic scans with email alerts for new, serious findings
-* Ignore false positives
+* Ignore false positives (signed, so attackers can't forge it)
 * Site Health integration
-* WP-CLI: `wp wp2shell scan`, `status`, `ignore`
+* WP-CLI: `wp php2shell scan`, `status`, `ignore`
 * Multisite aware
 * Updates automatically from GitHub releases
 
 == Installation ==
 
 1. Upload the zip under Plugins → Add New Plugin → Upload Plugin, and activate.
-2. Go to Tools → wp2shell Scanner and click Scan now.
+2. Go to Tools → PHP2Shell Scanner and click Scan now.
 
-On multisite, network-activate and use Network Admin → Settings → wp2shell Scanner.
+On multisite, network-activate and use Network Admin → Settings → PHP2Shell Scanner.
 
 == Frequently Asked Questions ==
 
@@ -49,19 +53,23 @@ On multisite, network-activate and use Network Admin → Settings → wp2shell S
 
 No. It only reads and reports. You decide what to remove.
 
-= It says "Vulnerable". Was I hacked? =
+= It says "Vulnerable — PHP needs updating". Was I hacked? =
 
-Not necessarily. "Vulnerable" means there's no evidence of an attack, but your WordPress version can be attacked this way. Update WordPress, then scan again.
+Not necessarily. It means no signs of a break-in were found, but your server's PHP can be attacked. Send your host the ready-made message on the scanner page.
 
-= Something it flagged is mine. =
+= My host says PHP is patched, but the scanner disagrees. =
 
-Click Ignore next to it. It won't affect the result or send alerts again.
+Some hosts fix PHP without changing its version number. If your host confirms both CVEs are fixed, click Ignore on that finding.
 
 = Does it send my data anywhere? =
 
-No. The only outside requests are core checksums from wordpress.org and a twice-daily update check to GitHub.
+No. The only outside requests are core checksums from wordpress.org and update/self-check requests to GitHub.
 
 == Changelog ==
+
+= 1.1.0 =
+* PHP2Shell (CVE-2026-109618 / CVE-2026-109619) detection: PHP version and stopgaps, version history, error-log and access-log evidence, ready-made message for your host.
+* Many new checks, fewer false alarms, and a much more robust scan engine. See CHANGELOG.md.
 
 = 1.0.0 =
 * First public release.

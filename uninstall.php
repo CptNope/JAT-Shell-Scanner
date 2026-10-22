@@ -9,22 +9,31 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-foreach ( array( 'wp2ss_job', 'wp2ss_report', 'wp2ss_ignored', 'wp2ss_settings' ) as $opt ) {
-	delete_site_option( $opt );
+global $wpdb;
+
+foreach ( array( 'wp2ss_job', 'wp2ss_report', 'wp2ss_ignored', 'wp2ss_settings', 'wp2ss_env', 'wp2ss_admins' ) as $wp2ss_opt ) {
+	delete_site_option( $wp2ss_opt );
 }
 delete_site_transient( 'wp2ss_release' );
 delete_metadata( 'user', 0, 'wp2ss_dismissed', '', true );
+
+// Scheduled events (on multisite they live on the main site).
+if ( is_multisite() ) {
+	switch_to_blog( get_main_site_id() );
+}
 wp_clear_scheduled_hook( 'wp2ss_scheduled_scan' );
 wp_clear_scheduled_hook( 'wp2ss_scan_step' );
+if ( is_multisite() ) {
+	restore_current_blog();
+}
 
-// The step lock and cached core checksums.
-global $wpdb;
+// The step lock, cached core checksums and release manifests.
 $wp2ss_table = is_multisite() ? $wpdb->get_blog_prefix( get_main_site_id() ) . 'options' : $wpdb->options;
 $wpdb->query( $wpdb->prepare( "DELETE FROM `$wp2ss_table` WHERE option_name = %s", 'wp2ss_lock' ) ); // phpcs:ignore
-foreach ( array( $wpdb->options, $wpdb->sitemeta ) as $wp2ss_t ) {
-	if ( ! $wp2ss_t || ( $wp2ss_t === $wpdb->sitemeta && ! is_multisite() ) ) {
-		continue;
+foreach ( array( 'wp2ss_core_', 'wp2ss_manifest_' ) as $wp2ss_prefix ) {
+	$wp2ss_like = '%' . $wpdb->esc_like( $wp2ss_prefix ) . '%';
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wp2ss_like ) ); // phpcs:ignore
+	if ( is_multisite() ) {
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE %s", $wp2ss_like ) ); // phpcs:ignore
 	}
-	$wp2ss_col = $wp2ss_t === $wpdb->sitemeta ? 'meta_key' : 'option_name';
-	$wpdb->query( $wpdb->prepare( "DELETE FROM `$wp2ss_t` WHERE $wp2ss_col LIKE %s", '%' . $wpdb->esc_like( 'wp2ss_core_' ) . '%' ) ); // phpcs:ignore
 }

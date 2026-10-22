@@ -18,8 +18,9 @@ class WP2SS_Settings {
 			'schedule' => 'weekly',
 			'email'    => true,
 			'email_to' => '',
-			'core'     => true,
-			'log'      => '',
+			'core'      => true,
+			'log'       => '',
+			'error_log' => '',
 		);
 	}
 
@@ -35,7 +36,8 @@ class WP2SS_Settings {
 		$s['email']    = (bool) $new['email'];
 		$s['email_to'] = is_email( $new['email_to'] ) ? $new['email_to'] : '';
 		$s['core']     = (bool) $new['core'];
-		$s['log']      = trim( (string) $new['log'] );
+		$s['log']       = trim( (string) $new['log'] );
+		$s['error_log'] = isset( $new['error_log'] ) ? trim( (string) $new['error_log'] ) : '';
 
 		update_site_option( self::OPTION, $s );
 		WP2SS_Cron::reschedule( $s['schedule'] );
@@ -46,8 +48,9 @@ class WP2SS_Settings {
 	public static function scan_args() {
 		$s = self::get();
 		return array(
-			'core' => $s['core'],
-			'log'  => $s['log'],
+			'core'      => $s['core'],
+			'log'       => $s['log'],
+			'error_log' => $s['error_log'],
 		);
 	}
 

@@ -79,6 +79,8 @@ class WP2SS_Updater {
 		if ( ! is_object( $transient ) ) {
 			return $transient;
 		}
+		// Never let an unrelated plugin with the same folder name (e.g. on wordpress.org) replace this one.
+		unset( $transient->response[ WP2SS_BASENAME ], $transient->no_update[ WP2SS_BASENAME ] );
 		$r = self::release();
 		if ( ! $r ) {
 			return $transient;
@@ -106,7 +108,7 @@ class WP2SS_Updater {
 		}
 		$r = self::release();
 		return (object) array(
-			'name'          => 'wp2shell Scanner',
+			'name'          => 'PHP2Shell & wp2shell Scanner',
 			'slug'          => 'wp2shell-scanner',
 			'version'       => $r ? $r['version'] : WP2SS_VERSION,
 			'author'        => 'Jeremy Anderson',
@@ -116,7 +118,7 @@ class WP2SS_Updater {
 			'requires_php'  => '7.4',
 			'last_updated'  => $r ? $r['published'] : '',
 			'sections'      => array(
-				'description' => esc_html__( 'Read-only scan for signs of wp2shell (CVE-2026-63030 / CVE-2026-60137) exploitation.', 'wp2shell-scanner' ),
+				'description' => esc_html__( 'Checks whether a site is exposed to, or was broken into through, PHP2Shell (CVE-2026-109618 / CVE-2026-109619) and wp2shell (CVE-2026-63030 / CVE-2026-60137). Read-only.', 'wp2shell-scanner' ),
 				'changelog'   => $r ? '<pre>' . esc_html( $r['notes'] ) . '</pre>' : '',
 			),
 		);

@@ -67,6 +67,7 @@
 					failures = 0;
 					if ( d.busy ) {
 						// Another tab or a scheduled scan is mid-slice: wait our turn.
+						text.textContent = cfg.i18n.waiting;
 						setTimeout( loop, 1500 );
 						return;
 					}
@@ -151,6 +152,32 @@
 				window.alert( err.message );
 			} );
 	} );
+
+	/* ---------------- Copy the message for the host ---------------- */
+
+	var copy = document.getElementById( 'wp2ss-copy' );
+	var msg = document.getElementById( 'wp2ss-host-msg' );
+	if ( copy && msg ) {
+		copy.addEventListener( 'click', function () {
+			var done = function () {
+				var old = copy.textContent;
+				copy.textContent = cfg.i18n.copied;
+				setTimeout( function () {
+					copy.textContent = old;
+				}, 2000 );
+			};
+			msg.select();
+			if ( navigator.clipboard && window.isSecureContext ) {
+				navigator.clipboard.writeText( msg.value ).then( done, function () {
+					document.execCommand( 'copy' );
+					done();
+				} );
+			} else {
+				document.execCommand( 'copy' );
+				done();
+			}
+		} );
+	}
 
 	/* ---------------- Dismissible admin notice ---------------- */
 

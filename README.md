@@ -1,13 +1,13 @@
 <div align="center">
 
-# 🛡️ wp2shell Scanner
+# 🛡️ PHP2Shell & wp2shell Scanner
 
-**Find out in two minutes whether your WordPress site was hit by wp2shell — the July 2026 attack that lets anyone take over an unpatched WordPress site without logging in.**
+**Find out in two minutes whether your WordPress site is exposed to — or has already been broken into through — the October 2026 PHP2Shell attack on PHP, and the July 2026 wp2shell attack on WordPress.**
 
 [![CI](https://github.com/CptNope/PHP2Shell-WP-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/CptNope/PHP2Shell-WP-scanner/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/CptNope/PHP2Shell-WP-scanner)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/CptNope/PHP2Shell-WP-scanner/total)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases)
-![PHP 7.4–8.4](https://img.shields.io/badge/PHP-7.4%E2%80%938.4-777bb4)
+![PHP 7.0–8.5](https://img.shields.io/badge/PHP-7.0%E2%80%938.5-777bb4)
 ![WordPress 6.0+](https://img.shields.io/badge/WordPress-6.0%2B-21759b)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -17,93 +17,146 @@ Free · read-only (never changes or deletes anything) · no account · nothing s
 
 </div>
 
+> [!IMPORTANT]
+> **PHP2Shell is a bug in PHP itself, not in WordPress.** Updating WordPress or your plugins does **not** fix it — the PHP on your server has to be updated, which on most hosting plans means **your host**. This plugin tells you whether you're affected and gives you a ready-made message to send them.
+
 ---
 
 ## Contents
 
 **For site owners**
-1. [What is wp2shell?](#1-what-is-wp2shell)
+1. [What are PHP2Shell and wp2shell?](#1-what-are-php2shell-and-wp2shell)
 2. [Is my site affected?](#2-is-my-site-affected)
 3. [Install and scan (step by step)](#3-install-and-scan-step-by-step)
 4. [Understanding your results](#4-understanding-your-results)
-5. [What it checks](#5-what-it-checks)
-6. [Settings, automatic scans and email alerts](#6-settings-automatic-scans-and-email-alerts)
-7. [Ignoring things that are yours](#7-ignoring-things-that-are-yours)
-8. [If your site is compromised](#8-if-your-site-is-compromised)
-9. [Updating the plugin](#9-updating-the-plugin)
-10. [Troubleshooting](#10-troubleshooting)
-11. [FAQ](#11-faq)
+5. [Getting your host to update PHP](#5-getting-your-host-to-update-php)
+6. [What it checks](#6-what-it-checks)
+7. [Settings, automatic scans and email alerts](#7-settings-automatic-scans-and-email-alerts)
+8. [Ignoring things that are yours](#8-ignoring-things-that-are-yours)
+9. [If your site is compromised](#9-if-your-site-is-compromised)
+10. [Updating the plugin](#10-updating-the-plugin)
+11. [Troubleshooting](#11-troubleshooting)
+12. [FAQ](#12-faq)
 
 **For agencies, hosts and developers**
 
-12. [WP-CLI reference](#12-wp-cli-reference)
-13. [Scanning many sites](#13-scanning-many-sites)
-14. [Finding your access log](#14-finding-your-access-log)
-15. [Hosting compatibility](#15-hosting-compatibility)
-16. [How it works inside](#16-how-it-works-inside)
-17. [Privacy and stored data](#17-privacy-and-stored-data)
-18. [Hooks, filters and constants](#18-hooks-filters-and-constants)
-19. [Report format (JSON)](#19-report-format-json)
-20. [Development, tests and releases](#20-development-tests-and-releases)
-21. [Limits](#21-limits) · [Security](#22-security) · [Sources](#23-sources) · [License](#24-license)
+13. [WP-CLI reference](#13-wp-cli-reference)
+14. [Scanning many sites](#14-scanning-many-sites)
+15. [Finding your logs](#15-finding-your-logs)
+16. [Hosting compatibility](#16-hosting-compatibility)
+17. [How it works inside](#17-how-it-works-inside)
+18. [Privacy and stored data](#18-privacy-and-stored-data)
+19. [Hooks, filters and constants](#19-hooks-filters-and-constants)
+20. [Report format (JSON)](#20-report-format-json)
+21. [Development, tests and releases](#21-development-tests-and-releases)
+22. [Limits](#22-limits) · [Security](#23-security) · [Sources](#24-sources) · [License](#25-license)
 
 ---
 
-## 1. What is wp2shell?
+## 1. What are PHP2Shell and wp2shell?
 
-**wp2shell** is the name for two bugs in WordPress itself (not in a plugin or theme) that, chained together, let an attacker run their own code on a site **without logging in**. It was made public on **July 17, 2026** as **CVE-2026-63030** and **CVE-2026-60137**. Public exploit tools appeared within hours, and mass scanning of the internet started straight away.
+Two separate, critical attacks hit WordPress sites in 2026. Both let a stranger run their own code on your server **without logging in**, and both end the same way — with a backdoor ("webshell") on your site. This plugin checks for both.
 
-Here's what an attack looks like, end to end:
+| | 🔴 **PHP2Shell** | 🟠 **wp2shell** |
+|---|---|---|
+| **What's broken** | **PHP itself** — the language WordPress runs on | WordPress core |
+| **CVE numbers** | CVE-2026-109618, CVE-2026-109619 | CVE-2026-63030, CVE-2026-60137 |
+| **Made public** | October 21, 2026 | July 17, 2026 |
+| **Attacks seen since** | October 17, 2026 — *before* it was announced | Within hours of July 17, 2026 |
+| **Severity** | CVSS 9.2 (critical) | Critical |
+| **Who is affected** | Practically every PHP website — WordPress, Drupal, Magento, anything — on unpatched PHP | WordPress 6.8 – 7.0.1 |
+| **Extra danger** | Can also **leak memory**: passwords, keys and tokens that passed through PHP | Creates admin accounts and uploads plugins |
+| **Fixed by** | **Updating PHP** — usually your host's job | **Updating WordPress** — usually automatic |
+
+### How PHP2Shell works
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor A as Attacker
-    participant W as Your WordPress site
-    participant D as Database
-    A->>W: Crafted request to the batch API (/wp-json/batch/v1)
-    Note over W: Bug 1 (CVE-2026-63030) - nested batch requests get<br/>routed to the wrong handler, skipping login checks
-    W->>D: Query built from attacker input
-    Note over D: Bug 2 (CVE-2026-60137) - SQL injection in WP_Query
-    D-->>A: Attacker can read and forge data
-    A->>W: Creates or hijacks an administrator account
-    A->>W: Uploads a "plugin" that is really a webshell
-    A->>W: Runs commands on the server through the webshell
-    Note over A,W: Site fully compromised - often cleaned up to hide the trail
+    participant P as PHP on your server
+    participant W as WordPress
+    A->>P: Huge multipart form request (any page)
+    Note over P: PHP runs out of memory while still<br/>reading the request - before WordPress even starts
+    P-->>A: Error (often HTTP 500), but leftover<br/>internal state is not cleaned up properly
+    A->>P: Second request, handled by the same PHP worker
+    Note over P: PHP reuses the stale, freed memory
+    alt Memory leak (CVE-2026-109618)
+        P-->>A: Response contains other visitors' data<br/>passwords, cookies, API keys
+    else Code execution (CVE-2026-109618 / 109619)
+        A->>P: Attacker's code runs inside PHP
+        P->>W: Webshell written, admin created, files changed
+    end
 ```
 
-What attackers have been seen doing afterwards:
+Because the bug sits **underneath** WordPress, no WordPress setting, security plugin or maintenance mode can stop it. Only a patched PHP (or temporary php.ini settings your host can apply) does.
 
-| Seen in the wild | What it looks like on your site |
+### How wp2shell works
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Attacker
+    participant W as WordPress
+    participant D as Database
+    A->>W: Crafted request to the batch API (/wp-json/batch/v1)
+    Note over W: CVE-2026-63030 - nested requests skip login checks
+    W->>D: Query built from attacker input
+    Note over D: CVE-2026-60137 - SQL injection in WP_Query
+    A->>W: Creates or hijacks an administrator
+    A->>W: Uploads a "plugin" that is really a webshell
+```
+
+### What attackers leave behind
+
+| Seen after these attacks | What it looks like on your site |
 |---|---|
-| Uploading a webshell as a plugin | A plugin folder like `wp2shell_6a5566a6`, or plugins called **CMSmap**, **WP Static Cache Helper**, or starting with `gg-` |
-| Writing a webshell straight to disk | A small PHP file in `wp-content/cache/` or `uploads/` |
-| A REST-API backdoor | A plugin that registers `/wp-json/morning/v1/…` and runs any command sent to it |
-| Creating admin accounts | Administrators you don't recognise, created after July 17, 2026 |
-| Harvesting users and passwords | Requests for `users?context=edit`, attempts to read `wp-config.php` |
+| A webshell disguised as a plugin | A plugin folder like `wp2shell_6a5566a6`, or plugins called **CMSmap**, **WP Static Cache Helper**, or starting with `gg-` |
+| A webshell dropped straight onto disk | A small PHP file in `wp-content/cache/`, `uploads/`, `wp-content/` itself or the site root |
+| A hidden REST backdoor | A plugin that registers `/wp-json/morning/v1/…` and runs any command sent to it |
+| New or promoted admin accounts | Administrators you don't recognise |
+| Stolen secrets (PHP2Shell) | Nothing visible — which is why you should change passwords and keys if you were exposed |
+| Traces in server logs (PHP2Shell) | "Allowed memory size … exhausted … in Unknown on line 0", "Failed to decode session object", PHP worker crashes, bursts of failed POSTs |
 
 ## 2. Is my site affected?
 
-Check your version under **Dashboard → Updates** (or the bottom-right of any admin page):
+You need to check **two** things: your **PHP** version (for PHP2Shell) and your **WordPress** version (for wp2shell). The scanner checks both for you, and shows your PHP version on its page. You can also find it under **Tools → Site Health → Info → Server**.
 
-| WordPress version | Risk | Fixed in |
+### PHP (PHP2Shell)
+
+| Your PHP version | Status | What to do |
 |---|---|---|
-| 6.8.0 – 6.8.5 | 🟠 SQL injection only (no full takeover) | **6.8.6** |
-| 6.9.0 – 6.9.4 | 🔴 **Full takeover without login** | **6.9.5** |
-| 7.0.0 – 7.0.1 | 🔴 **Full takeover without login** | **7.0.2** |
-| Older than 6.8, or 6.8.6 / 6.9.5 / 7.0.2 and newer | 🟢 Not affected by wp2shell | — |
+| **8.5.12+**, **8.4.27+**, **8.3.36+**, **8.2.35+** | 🟢 Fixed | Nothing for PHP2Shell |
+| 8.5.0 – 8.5.11 · 8.4.0 – 8.4.26 · 8.3.0 – 8.3.35 · 8.2.0 – 8.2.34 | 🔴 Vulnerable — unless your host patched it without changing the number (see below) | Ask your host to update or confirm |
+| 7.4, 8.0, 8.1 | 🔴 No official fix — the PHP team only published source-code patches | Ask your host whether they applied them; plan a move to 8.2+ |
+| 7.3 and older (5.4 – 7.3) | 🚨 **Will never be fixed** | Move to PHP 8.2+ as soon as possible |
+
+> [!NOTE]
+> **"My version number looks old, but my host says it's patched."** That can be true. Linux distributions (Ubuntu, Debian, AlmaLinux, Rocky, CloudLinux, Red Hat…) often fix PHP **without changing its version number**. The scanner detects this situation and says *"ask your host to confirm"* instead of *"vulnerable"*. If they confirm, click **Ignore** on that finding.
+
+### WordPress (wp2shell)
+
+| Your WordPress version | Status | Fixed in |
+|---|---|---|
+| 6.8 – 6.8.5 | 🟠 SQL injection only | **6.8.6** |
+| 6.9 – 6.9.4 | 🔴 Full takeover without login | **6.9.5** |
+| 7.0 – 7.0.1 | 🔴 Full takeover without login | **7.0.2** |
+| Older than 6.8, or 6.8.6 / 6.9.5 / 7.0.2 and newer | 🟢 Not affected | — |
 
 > [!IMPORTANT]
-> **Updating stops new attacks, but doesn't remove an attacker who already got in.** WordPress forced automatic security updates for this bug, so many sites patched themselves — but if your site was online on an affected version, even briefly after July 17, 2026, scan it.
+> **Patching closes the door — it doesn't remove someone already inside.** If your site ran a vulnerable PHP after **October 17, 2026**, or a vulnerable WordPress after **July 17, 2026**, run a scan to look for signs of a break-in.
 
 ```mermaid
 flowchart TD
-    A["Which WordPress version<br/>are you on?"] --> B{"6.9.0–6.9.4<br/>or 7.0.0–7.0.1?"}
-    B -- Yes --> C["🔴 Update WordPress NOW<br/>then scan"]
-    B -- No --> D{"Did it run one of those<br/>versions after July 17, 2026?"}
-    D -- Yes / not sure --> E["🟠 Scan it"]
-    D -- No --> F["🟢 Low risk<br/>a scan still doesn't hurt"]
-    C --> E
+    A["Run the scanner"] --> B{"Is PHP patched<br/>for PHP2Shell?"}
+    B -->|"No / not sure"| C["🔴 Send your host the<br/>ready-made message"]
+    B -- Yes --> D{"Is WordPress patched<br/>for wp2shell?"}
+    C --> D
+    D -- No --> E["🟠 Update WordPress"]
+    D -- Yes --> F{"Any signs of<br/>a break-in?"}
+    E --> F
+    F -- Yes --> G["🚨 Follow the clean-up steps"]
+    F -- No --> H["🟢 Keep weekly scans on"]
 ```
 
 ## 3. Install and scan (step by step)
@@ -114,7 +167,7 @@ No technical skills needed. It takes about two minutes.
 flowchart LR
     A["⬇️ Download<br/>the zip"] --> B["Plugins → Add New Plugin<br/>→ Upload Plugin"]
     B --> C["Install Now<br/>→ Activate"]
-    C --> D["Tools →<br/>wp2shell Scanner"]
+    C --> D["Tools →<br/>PHP2Shell Scanner"]
     D --> E["Click<br/>Scan now"]
     E --> F["Read your result"]
 ```
@@ -123,114 +176,158 @@ flowchart LR
 2. Log in to WordPress as an administrator and go to **Plugins → Add New Plugin**.
 3. Click **Upload Plugin** (top of the page), then **Choose File**, pick the zip, and click **Install Now**.
 4. When it says *"Plugin installed successfully"*, click **Activate Plugin**.
-5. Go to **Tools → wp2shell Scanner** (or click **Scan** under the plugin on the Plugins screen).
-6. Click **Scan now**. A progress bar shows how it's going. Most sites finish in under a minute; very large ones take a few minutes. You can leave the page open and do something else.
+5. Go to **Tools → PHP2Shell Scanner** (or click **Scan** under the plugin on the Plugins screen).
+6. Click **Scan now**. A progress bar shows how it's going. Most sites finish in under a minute; very large ones take a few minutes.
 7. Read your result — see [Understanding your results](#4-understanding-your-results).
 
-That's it. From then on it **scans automatically once a week** and **emails you** only if something serious and new turns up.
+From then on it **scans automatically once a week** and **emails you** only if something serious and new turns up.
 
 > [!TIP]
-> **Multisite?** Go to **Network Admin → Plugins**, upload, and choose **Network Activate**. The scanner lives under **Network Admin → Settings → wp2shell Scanner** and covers the whole network.
+> **Multisite?** Go to **Network Admin → Plugins**, upload, and choose **Network Activate**. The scanner lives under **Network Admin → Settings → PHP2Shell Scanner** and covers the whole network.
 
 > [!WARNING]
-> Use the download link above — **not** GitHub's green **Code → Download ZIP** button. That one is the raw source code; it still works, but the release zip is smaller and cleaner.
+> Use the download link above — **not** GitHub's green **Code → Download ZIP** button. That one is the raw source code; it works, but the release zip is the one that can check its own files for tampering.
 
-**No "Upload Plugin" button?** Some hosts and plans don't allow plugin uploads (for example WordPress.com's lower plans, or sites with `DISALLOW_FILE_MODS` set). Ask your host to install it, or to run the scan for you with [WP-CLI](#12-wp-cli-reference).
+**No "Upload Plugin" button?** Some hosts and plans don't allow plugin uploads (for example WordPress.com's lower plans, or sites with `DISALLOW_FILE_MODS`). Ask your host to install it, or to run the scan for you with [WP-CLI](#13-wp-cli-reference).
 
 ## 4. Understanding your results
 
-Every scan ends with one of five results:
+Every scan ends with one of these results:
 
 | Result | What it means | What to do |
 |---|---|---|
-| 🟢 **No signs of wp2shell** | No known indicators found. | Nothing. Keep WordPress updated. |
-| 🟡 **Needs review** | A few things worth a glance, none alarming on its own — e.g. a must-use plugin you may not recognise. | Look through the list. **Ignore** anything you know is yours. |
-| 🟠 **Vulnerable — update WordPress** | No evidence of an attack, **but** your WordPress version can be attacked this way. | Click **Go to WordPress updates**, update, then scan again. |
-| 🔴 **Suspicious** | Something needs a closer look today — e.g. a new administrator you may not know, or PHP code where it shouldn't be. | Check each **High** finding. Follow the advice next to it. |
-| 🚨 **Compromised** | Strong evidence of an attack — e.g. a known webshell. | Follow [If your site is compromised](#8-if-your-site-is-compromised). |
+| 🟢 **No signs of PHP2Shell or wp2shell** | PHP and WordPress are patched and no traces of an attack were found. | Nothing. Keep weekly scans on. |
+| 🟡 **Needs review** | A few things to confirm, none alarming on their own — e.g. *"PHP looks old but may be an OS package — ask your host"*. | Read them; **Ignore** what you've confirmed. |
+| 🟠 **Vulnerable — PHP needs updating** | No signs of a break-in, but your server's PHP can be attacked through PHP2Shell. | Send your host the [ready-made message](#5-getting-your-host-to-update-php). |
+| 🟠 **Vulnerable — update WordPress** | No signs of a break-in, but your WordPress can be attacked through wp2shell. | Click **Go to WordPress updates**. |
+| 🔴 **Suspicious** | Something needs a closer look today — e.g. an unknown admin, PHP in your uploads folder, PHP2Shell traces in the error log. | Check every **High** finding. |
+| 🚨 **Compromised** | Strong evidence of an attack — e.g. a known webshell. | Follow [If your site is compromised](#9-if-your-site-is-compromised). |
 
 How the result is decided:
 
 ```mermaid
 flowchart TD
     S["Scan finishes"] --> X["Leave out anything<br/>you marked Ignore"]
-    X --> C{"Any Critical finding?"}
+    X --> C{"Any Critical sign<br/>of an attack?"}
     C -- Yes --> R1["🚨 Compromised"]
-    C -- No --> H{"Any High finding?"}
+    C -- No --> H{"Any High sign<br/>of an attack?"}
     H -- Yes --> R2["🔴 Suspicious"]
-    H -- No --> V{"Is WordPress itself<br/>a vulnerable version?"}
+    H -- No --> V{"Is PHP or WordPress<br/>a vulnerable version?"}
     V -- Yes --> R3["🟠 Vulnerable"]
-    V -- No --> M{"Any Medium finding?"}
+    V -- No --> M{"Anything Medium?"}
     M -- Yes --> R4["🟡 Needs review"]
-    M -- No --> R5["🟢 No signs of wp2shell"]
+    M -- No --> R5["🟢 No signs"]
 ```
+
+An old PHP or WordPress version on its own is never reported as *Compromised* — being vulnerable isn't the same as being hacked.
 
 Each finding has a **severity**:
 
 | Severity | Meaning | Examples |
 |---|---|---|
-| **Critical** | Almost certainly malicious. | A known webshell file; a `wp2shell_…` plugin; successful exploit requests in your log |
-| **High** | Very likely bad — check today. | PHP in `uploads/`; an unknown admin; a modified WordPress core file |
-| **Medium** | Possibly bad, often innocent. | A must-use plugin changed recently; a folder of PHP with no plugin header |
-| **Low** | Usually normal, listed so you can confirm. | Plugins or themes updated since July 17; the admin created when the site was set up |
-| **Info** | Just information. | "WordPress 7.0.3 is not affected"; "couldn't reach wordpress.org" |
+| **Critical** | Almost certainly malicious (or PHP that will never be fixed) | A known webshell; a `wp2shell_…` plugin; a modified file of this scanner; PHP 7.3 |
+| **High** | Very likely bad — check today | Unpatched PHP; recent PHP in `uploads/`; an unknown admin; a burst of PHP2Shell errors in the log |
+| **Medium** | Possibly bad, often innocent | Old-looking PHP from an OS package; a must-use plugin changed recently; a role with admin powers |
+| **Low** | Usually normal, listed so you can confirm | Plugins or themes updated since July 17; `wp-config.php` edited |
+| **Info** | Just information | "PHP 8.4.27 includes the PHP2Shell fix"; which temporary protections are on |
 
-Each finding also says **what to do** and, where it applies, **where** (a file path, or a link to the user account).
+## 5. Getting your host to update PHP
 
-## 5. What it checks
+Most site owners can't update PHP themselves. When PHP needs attention, the scanner shows a box called **"Your host needs to update PHP"** with a ready-made support message that already includes your site address, PHP version and the CVE numbers. Click **Copy message** and paste it into a support ticket or live chat.
 
-| # | Area | What it looks for | Severity |
-|---|---|---|---|
-| 1 | **WordPress version** | Versions in the affected ranges ([table above](#2-is-my-site-affected)) | Critical / High → *Vulnerable* |
-| 2 | **Plugins** | `wp2shell_<hex>` plugins from the public exploit | Critical |
-| | | Fake **CMSmap** plugin (a 150 KB webshell) | Critical |
-| | | Fake **WP Static Cache Helper** / "WordPress Performance Team" author | Critical |
-| | | Plugins starting `gg-` (REST-API webshell naming) | High |
-| | | Folders of PHP in `/plugins` with no plugin header (hidden from the Plugins screen) | Medium |
-| | | Single-file plugins sitting loose in `/plugins` | Low |
-| | | Plugins installed or updated since July 17, 2026 (one combined line) | Low |
-| 3 | **Must-use plugins** | Added/changed since July 17 — these run on every page and are invisible on the Plugins screen. Known host files (Kinsta, WP Engine, GoDaddy, SiteGround…) are only *Low*. | Medium / Low |
-| 4 | **Users** | Administrators (and multisite super admins) created since July 17. The account created when the site was set up is recognised and only *Low*. | High |
-| | | Application passwords added to admins since July 17 (API access that skips the login screen) | Medium |
-| 5 | **REST API** | Routes registered under the `morning/v1` namespace used by a known backdoor | Critical |
-| 6 | **Files in `wp-content`** | PHP files in `uploads/`, `cache/`, `upgrade/` (placeholder "Silence is golden" files and cache-plugin files are skipped) | High |
-| | | `.htaccess` in those folders that switches PHP on | High |
-| | | Hidden PHP files (names starting with a dot) | Medium |
-| | | The exploit's leftovers: `wp2shell_*.zip`, `temp-write-test-*`, `wp2shell_<hex>` staging folders | Critical / High |
-| | | Theme PHP changed since July 17 (one line per theme) | Low |
-| 7 | **Webshell code** | `eval($_POST[…] ?? 'http_response_code(404);')` — the one-liner seen with wp2shell | Critical |
-| | | Running code or shell commands straight from a request (`eval`, `assert`, `system`, `passthru`… with request input) | Critical |
-| | | REST endpoints anyone can call that run shell commands | Critical |
-| | | Packed payloads: `eval(gzuncompress(base64_decode(…)))`, large base64 blobs, split `${'_P'.'OST'}` names, `create_function` with request input | High |
-| | | Including a file named by the request; writing request data to disk | High |
-| | | Request input + decoder + `eval` in one small file (some legit plugins do this) | Medium |
-| 8 | **Known bad files** | SHA-1 hashes of webshells published by researchers | Critical |
-| 9 | **This plugin's own folder** | Any PHP file the plugin doesn't ship — attackers like hiding inside security tools | High |
-| 10 | **WordPress core** | Core files that differ from the official wordpress.org checksums | High |
-| | | Unknown PHP files inside `wp-admin/` or `wp-includes/` | High |
-| | | Unknown PHP files in the site root (known extras like `wordfence-waf.php` are allowed) | Medium |
-| 11 | **Access log** *(optional)* | Successful (200/207) requests to the batch API — strong sign the exploit worked | Critical |
-| | | Exploit-tool user agents (`wp2shell`, `rezwp2shell`, `cve-2026-63030`) | High |
-| | | Requests from published attacker IP addresses | High |
-| | | Plugin uploads and admin user-enumeration requests | Medium |
+```mermaid
+sequenceDiagram
+    actor You
+    participant S as Scanner
+    participant H as Your host
+    S->>You: "PHP 8.3.10 is vulnerable to PHP2Shell"
+    You->>S: Copy message
+    You->>H: Support ticket / live chat
+    H->>H: Update PHP to 8.3.36 (or confirm the OS package is patched)
+    H-->>You: Done
+    You->>S: Scan again
+    S->>You: 🟢 PHP includes the PHP2Shell fix
+```
 
-**Built not to cry wolf.** Every release is tested against WordPress core and some of the most-installed plugins (WooCommerce, Yoast SEO, Elementor, Jetpack, Contact Form 7, WP Super Cache — over 16,000 PHP files) and must produce **zero** High or Critical matches.
+**Can I do it myself?** On many hosts, yes: look in your hosting control panel for **"PHP version"**, **"Select PHP Version"** or **"MultiPHP Manager"** (cPanel) and choose **8.2 or newer**. Test your site afterwards — very old plugins and themes may not work on newer PHP.
 
-## 6. Settings, automatic scans and email alerts
+**Temporary protections** your host can set in `php.ini` until PHP is updated (the scanner shows which ones are on):
 
-All settings are on the scanner page (**Tools → wp2shell Scanner**, right-hand box):
+| Setting | Protects against | Note |
+|---|---|---|
+| `session.upload_progress.enabled = 0` | CVE-2026-109619 | Rarely needed by WordPress sites |
+| `memory_limit = -1` | CVE-2026-109618 | Must be set where the application can't override it |
+| `fatal_error_backtraces = 0` | PHP 8.5 only | |
+
+These reduce the risk; they don't remove it. PHP must be restarted after changing them.
+
+## 6. What it checks
+
+### PHP2Shell
+
+| Check | What it looks for | Severity |
+|---|---|---|
+| **PHP version** | The version your **website** runs — not just the command line's — against the fixed releases | Critical / High / Medium → *Vulnerable* or *Needs review* |
+| **OS packages** | Ubuntu/Debian/RHEL-family builds that may carry the fix without a new version number | Medium ("ask your host") |
+| **Riskiest setup** | Apache `mod_php`, which researchers rate highest-risk | Noted in the finding |
+| **Temporary protections** | `session.upload_progress.enabled`, `memory_limit`, `fatal_error_backtraces` | Info |
+| **PHP history** | Whether this site ran an unpatched PHP **after October 17, 2026**, even if it's patched now | Medium — change your passwords and keys |
+| **PHP error log** | `Allowed memory size … exhausted … in Unknown on line 0` (out-of-memory before any script ran — the tell-tale sign), `Failed to decode session object`, worker crashes (`SIGSEGV`, heap corruption) since October 17 | Medium; **High** for bursts or crashes |
+| | Out-of-memory errors even though `memory_limit = -1` (they should be impossible) | High |
+| **Access log** | Bursts of POST requests answered with HTTP 500/502 from one address since October 17 | Medium (a lead, not proof) |
+
+### wp2shell
+
+| Check | What it looks for | Severity |
+|---|---|---|
+| **WordPress version** | 6.8 – 6.8.5, 6.9 – 6.9.4, 7.0 – 7.0.1 | Critical / High → *Vulnerable* |
+| **Exploit plugins** | `wp2shell_<hex>`, fake **CMSmap**, fake **WP Static Cache Helper**, `gg-` REST shells | Critical / High |
+| **Exploit leftovers** | `wp2shell_*.zip`, `temp-write-test-*`, `wp2shell_<hex>` staging folders | Critical / High |
+| **REST backdoor** | The `morning/v1` namespace | Critical |
+| **Known files** | SHA-1 hashes of published webshells | Critical |
+| **Access log** | Successful (200/207) batch-API requests (even URL-encoded), exploit-tool user agents, attacker IPs, plugin uploads, admin enumeration | Critical → Medium |
+
+### What either attack leaves behind
+
+| Check | What it looks for | Severity |
+|---|---|---|
+| **Webshell code** (whole site) | Code run straight from a request (`eval`, `assert`, `system`, `passthru`…), functions named by the request (`$_GET['f'](…)`), packed `eval(gzuncompress(base64_decode(…)))`, large base64 payloads, split `${'_P'.'OST'}`, `create_function` with request input, including images as PHP, writing request data to disk, REST endpoints that run shell commands | Critical / High |
+| | Request input + decoder + `eval` in one small file (some legitimate plugins do this) | Medium |
+| **PHP where it doesn't belong** | PHP in `uploads/`, `cache/`, `upgrade/`, or loose in `wp-content/` — **High** if changed since July 17, *Medium* if older, *Low* if it can't be run directly | High / Medium / Low |
+| **Images with PHP inside** | `<?php` hidden in uploaded `.jpg`/`.png`/`.gif`… files | High |
+| **Hidden PHP** | PHP files whose names start with a dot — in the site root or `wp-content` | High / Medium |
+| **PHP loaded into every page** | `auto_prepend_file` / `auto_append_file` in `.user.ini`, `.htaccess` or `php.ini` (Wordfence's firewall is recognised) | High |
+| **Uploads `.htaccess`** | Lines that make PHP executable in uploads (Wordfence's protective rules are recognised) | High |
+| **`wp-config.php`** | Webshell code in it; edits since July 17 | Critical / Low |
+| **Administrators** | Admins created since July 17 (the one created at site setup is recognised) | High |
+| | Existing or backdated accounts that **became** admins since the previous scan | High |
+| | Application passwords added to admins since July 17 | Medium |
+| **Roles** | Non-admin roles given admin powers (`install_plugins`, `edit_plugins`, `promote_users`…) | Medium |
+| **Must-use plugins** | Added or changed since July 17 (known host files only *Low*) | Medium / Low |
+| **Plugins** | Folders of PHP hidden from the Plugins screen; loose single-file plugins; plugins updated since July 17 | Medium / Low |
+| **WordPress core** | Files that differ from wordpress.org's checksums; unknown PHP in `wp-admin/`, `wp-includes/` or the site root (old leftovers from manual updates are only *Low*) | High / Medium / Low |
+| **This scanner itself** | Every file checked against the official release's fingerprints — attackers like to blind security tools | Critical / High |
+
+**Built not to cry wolf.** Every release is tested against WordPress core and some of the most-installed plugins — WooCommerce, Yoast SEO, Elementor, Jetpack, Contact Form 7, WP Super Cache, over 16,000 PHP files — and must produce **zero** High or Critical matches. Common legitimate files (cache plugins, Wordfence, Performance Lab, host must-use plugins, "Silence is golden" placeholders, WordPress's own update backups) are recognised.
+
+## 7. Settings, automatic scans and email alerts
+
+All settings are on the scanner page (**Tools → PHP2Shell Scanner**, right-hand box):
 
 | Setting | Default | What it does |
 |---|---|---|
 | **Automatic scans** | Weekly | Off, Daily or Weekly. The first run happens within an hour of activating. |
 | **Email me when an automatic scan finds something new** | On | Emails only when a scheduled scan finds a **new** High/Critical problem, or the site becomes vulnerable. You won't get the same alert twice. |
 | **Alert email address** | Site admin email | Where alerts go. |
-| **Verify core files against wordpress.org** | On | Downloads the official checksums for your version (cached for a day). Turn off only if your server can't reach wordpress.org. |
-| **Web server access log** | *(empty)* | Optional. Full path to your access log so scans can spot exploit traffic. See [Finding your access log](#14-finding-your-access-log). |
+| **Verify core files against wordpress.org** | On | Downloads the official checksums for your version (cached for a day). |
+| **PHP error log** *(Server logs)* | Detected automatically | Where PHP2Shell attempts show up. Leave empty to use the log PHP reports, plus WordPress's `debug.log`. |
+| **Web server access log** *(Server logs)* | *(empty)* | Optional. Lets scans spot attack traffic. See [Finding your logs](#15-finding-your-logs). |
+
+The bottom of the box shows the **PHP your website runs** (version, server type, operating system), as seen by the scanner.
 
 You'll also see results:
 - in a **red notice** across the admin area when the result is *Compromised*, *Suspicious* or *Vulnerable* (dismissible; it comes back only if a later scan is still bad),
-- under **Tools → Site Health** as a "wp2shell scan" check.
+- under **Tools → Site Health**, which also warns when the last clean scan is out of date.
 
 How a scheduled scan runs on a host with short time limits:
 
@@ -242,66 +339,68 @@ sequenceDiagram
     participant M as Your inbox
     C->>S: Weekly scan is due
     S->>DB: Start a scan job
-    loop Until finished (each slice a few seconds)
-        S->>S: Scan for up to ~20 seconds
-        S->>DB: Save its place
-        S->>C: Schedule the next slice in 5 seconds
+    loop Until finished
+        S->>S: Scan for as long as this request safely can
+        S->>DB: Save its exact place
+        S->>C: Schedule the next slice
     end
     S->>DB: Save the report
     alt New High or Critical problem
-        S->>M: Alert email (once per problem)
+        S->>M: Plain-text alert (once per problem)
     else Nothing new
         Note over S: Stays quiet
     end
 ```
 
 > [!NOTE]
-> WordPress's built-in scheduler only runs when someone visits the site. On a very quiet site a scheduled scan may take a while to finish — it always picks up where it left off. If your host runs a real server cron (`DISABLE_WP_CRON`), scans run in bigger slices and finish faster.
+> WordPress's built-in scheduler only runs when someone visits the site. On a very quiet site a scheduled scan may take a while — it always picks up where it left off, and is only abandoned after a full day with no progress. With a real server cron (`DISABLE_WP_CRON`), scans run in bigger slices.
 
-## 7. Ignoring things that are yours
+## 8. Ignoring things that are yours
 
-If a finding is something you know about — your own admin account, your host's must-use plugin, a plugin you edited — click **Ignore** next to it.
+If a finding is something you know about — your own admin account, your host's must-use plugin, a PHP version your host confirmed is patched — click **Ignore** next to it.
 
 - Ignored findings no longer count toward the result and never trigger an email.
 - They're kept in an **"ignored findings"** list at the bottom, where **Restore** brings them back.
-- A finding stays ignored even if a date or a count in its text changes later (e.g. your host updates their must-use plugin again).
-- From WP-CLI: `wp wp2shell ignore <id>` and `wp wp2shell ignore <id> --undo`.
+- A finding stays ignored when only a date or count in its text changes (e.g. your host updates their must-use plugin again).
+- **If an ignored file changes, it's flagged again** — so an attacker can't hide inside something you once approved.
+- The ignore list is **signed** with your site's secret keys from `wp-config.php`, so an attacker who only got into the database can't quietly add their own files to it.
+- From WP-CLI: `wp php2shell ignore <id>` and `wp php2shell ignore <id> --undo`.
 
 > [!CAUTION]
-> Only ignore things you're sure about. If you're unsure, ask your developer or host — or [open an issue](https://github.com/CptNope/PHP2Shell-WP-scanner/issues) and describe what was flagged (don't post passwords or full file contents).
+> Only ignore things you're sure about. If you're unsure, ask your developer or host — or [open an issue](https://github.com/CptNope/PHP2Shell-WP-scanner/issues) describing what was flagged (don't post passwords or full file contents).
 
-## 8. If your site is compromised
+## 9. If your site is compromised
 
 Don't panic, and don't start deleting things yet. Work through these steps in order:
 
 ```mermaid
 flowchart TD
     A["🚨 Compromised or Suspicious"] --> B["1. Back up everything<br/>files + database"]
-    B --> C["2. Update WordPress<br/>to 6.8.6 / 6.9.5 / 7.0.2+"]
+    B --> C["2. Close the way in<br/>update PHP and WordPress"]
     C --> D["3. Remove what was flagged<br/>files · plugins · admin users"]
-    D --> E["4. Change every secret<br/>passwords · DB password · salts"]
-    E --> F["5. Hunt for other ways back in<br/>mu-plugins · .htaccess · cron"]
+    D --> E["4. Change every secret<br/>passwords · DB · API keys · salts"]
+    E --> F["5. Hunt for other ways back in<br/>mu-plugins · .htaccess · .user.ini · cron"]
     F --> G["6. Scan again"]
     G --> H{"Clean?"}
     H -- Yes --> I["🟢 Keep scanning weekly"]
-    H -- No --> J["Restore a backup from before<br/>July 17, 2026 — or get professional help"]
+    H -- No --> J["Restore a clean backup<br/>or get professional help"]
 ```
 
 | Step | How |
 |---|---|
-| **1. Back up** | Use your host's backup tool or a backup plugin to take a full copy of files **and** database. This is your evidence and your undo button. |
-| **2. Update WordPress** | **Dashboard → Updates → Update to version …**. Update all plugins and themes while you're there. |
-| **3. Remove what was flagged** | Delete flagged plugins on the **Plugins** screen. Delete flagged files with your host's file manager or SFTP. Delete unknown admins under **Users** (assign their content to yourself). For modified core files, use **Dashboard → Updates → Re-install version …**. |
-| **4. Change every secret** | Reset the password of **every** administrator. Revoke application passwords you don't recognise (**Users → Profile**). Change the database password in your hosting panel and in `wp-config.php`. Replace the security keys ("salts") in `wp-config.php` with fresh ones from the [WordPress salt generator](https://api.wordpress.org/secret-key/1.1/salt/) — this logs everyone out. |
-| **5. Look for other ways back in** | Check `wp-content/mu-plugins/`, every `.htaccess` file, scheduled tasks (a plugin such as WP Crontrol lists them), your hosting panel's cron jobs, and FTP/SFTP accounts. |
-| **6. Scan again** | Click **Scan again**. Repeat until the result is clean. |
+| **1. Back up** | Use your host's backup tool or a backup plugin to copy files **and** database. It's your evidence and your undo button. |
+| **2. Close the way in** | **PHP:** have your host update it (see [section 5](#5-getting-your-host-to-update-php)). **WordPress:** **Dashboard → Updates**. Update all plugins and themes too. |
+| **3. Remove what was flagged** | Delete flagged plugins on the **Plugins** screen; flagged files with your host's file manager or SFTP; unknown admins under **Users** (assign their content to yourself). For modified core files use **Dashboard → Updates → Re-install**. If *this scanner's* files were modified, delete and reinstall it from the release. |
+| **4. Change every secret** | PHP2Shell can leak memory, so assume anything that passed through PHP is known: reset **every** admin password; revoke unknown application passwords (**Users → Profile**); change the **database password** (hosting panel + `wp-config.php`); regenerate **API keys** stored in plugins (payment, email, backup, CDN…); replace the **salts** in `wp-config.php` with fresh ones from the [WordPress salt generator](https://api.wordpress.org/secret-key/1.1/salt/) (this logs everyone out). |
+| **5. Look for other ways back in** | `wp-content/mu-plugins/`, every `.htaccess` and `.user.ini`, scheduled tasks (a plugin such as WP Crontrol lists them), your hosting panel's cron jobs, FTP/SFTP and SSH accounts. |
+| **6. Scan again** | Click **Scan again** until the result is clean. |
 
 > [!TIP]
-> Not comfortable doing this yourself? Your host's support team or a WordPress security service can clean the site for you — many do it for a fixed fee. Show them the **Download report (JSON)** file; it lists everything that was found.
+> Not comfortable doing this yourself? Your host's support team or a WordPress security service can clean the site — many for a fixed fee. Give them the **Download report (JSON)** file; it lists everything found.
 
-## 9. Updating the plugin
+## 10. Updating the plugin
 
-The plugin **updates itself** from this GitHub repository, through the normal WordPress update screen — exactly like plugins from wordpress.org.
+The plugin **updates itself** from this GitHub repository, through the normal WordPress update screen.
 
 ```mermaid
 sequenceDiagram
@@ -311,35 +410,41 @@ sequenceDiagram
     GH-->>WP: Latest release + download link
     alt Newer than installed
         WP->>WP: Shows "update available" on Plugins and Dashboard → Updates
-        WP->>GH: Downloads wp2shell-scanner.zip when you click Update (or automatically if auto-updates are on)
+        WP->>GH: Downloads wp2shell-scanner.zip when you update (or automatically)
     else Up to date
         WP->>WP: Nothing to do
     end
 ```
 
-- Click **Update now** when WordPress offers it — or click **Enable auto-updates** on the Plugins screen and forget about it.
-- Updates are only downloaded from this repository's official releases.
-- Manual update: download the latest zip and upload it again under **Plugins → Add New Plugin → Upload Plugin**; WordPress offers to **Replace current with uploaded**.
+- Click **Update now** when WordPress offers it — or **Enable auto-updates** on the Plugins screen (recommended: new indicators are added as attacks evolve).
+- Updates only come from this repository's official releases. The plugin declares its own update source, so a different plugin with the same folder name elsewhere can never replace it.
+- Manual update: upload the latest zip under **Plugins → Add New Plugin → Upload Plugin** and choose **Replace current with uploaded**.
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Problem | Likely cause | Fix |
 |---|---|---|
-| No **Upload Plugin** button | Host or plan blocks uploads, or `DISALLOW_FILE_MODS` is set | Ask your host to install it, or use WP-CLI |
-| "The uploaded file exceeds the upload_max_filesize" | Very low upload limit | The zip is under 100 KB; ask your host to raise the limit, or upload via SFTP to `wp-content/plugins/` |
-| Progress bar stops with "The scan stopped: HTTP 500/503/504" | Host killed the request (very strict limits) or a temporary hiccup | It retries automatically three times. Click **Scan again** — it continues where it stopped. |
-| Progress bar sits still for a while | Another tab, or a scheduled scan, is working on the same scan | Normal — they take turns. It moves on within seconds. |
+| No **Upload Plugin** button | Host or plan blocks uploads, or `DISALLOW_FILE_MODS` | Ask your host to install it, or use WP-CLI |
+| "PHP … is vulnerable" but my host says it's patched | Your host uses OS packages that keep the old version number | If they confirm both CVEs are fixed, click **Ignore** on that finding |
+| PHP version shown is "command line" | The scan ran from WP-CLI and the dashboard hasn't been opened since installing | Open the scanner page once in the dashboard; the website's PHP is then remembered |
+| Progress bar stops with "HTTP 500/503/504" | Host killed the request, or a temporary hiccup | It retries three times. Click **Scan again** — it continues where it stopped. |
+| "Waiting for another scan in progress…" | Another tab or a scheduled scan is working on the same scan | Normal — they take turns |
 | "Your session expired" | You were logged out | Reload the page and log in again |
-| "Couldn't download core checksums" | Server can't reach wordpress.org | Harmless; other checks still ran. Your host can run `wp core verify-checksums`. |
-| "Access log not readable" | Wrong path, or PHP isn't allowed to read it (`open_basedir`, permissions) | See [Finding your access log](#14-finding-your-access-log), or leave the setting empty |
-| Lots of **Low** findings about plugin/theme updates | You (or auto-updates) updated things after July 17 | Expected. Glance at the names; **Ignore** them. |
-| An admin you know is flagged | It was created after July 17, 2026 | If it's yours, click **Ignore** |
-| Weekly scans don't seem to run | Quiet site, or WP-Cron disabled with no server cron | Visit the site occasionally, or ask your host to set up a real cron for `wp-cron.php` |
-| No alert emails arrive | Your site can't send email | Install an SMTP plugin; check the **Alert email address** |
-| "The … stopped early: …" info finding | One check hit an unexpected error; the rest of the scan still ran | Please [open an issue](https://github.com/CptNope/PHP2Shell-WP-scanner/issues) with that message |
-| The admin notice keeps coming back | A later scan still has the same problem | Fix it, or **Ignore** it if it's yours |
+| "Couldn't get core checksums" | Server can't reach wordpress.org | Harmless; other checks still ran |
+| "Log file not readable" | Wrong path, or PHP isn't allowed to read it (`open_basedir`, permissions) | See [Finding your logs](#15-finding-your-logs), or leave the setting empty |
+| Lots of **Low** findings about plugin/theme updates | Things were updated after July 17 | Expected. Glance at the names; **Ignore** them. |
+| An admin you know is flagged | Created (or promoted) after July 17 / since the last scan | If it's yours, click **Ignore** |
+| "A role has administrator powers" | A plugin (e.g. a membership or shop plugin) changed a role | If you trust that plugin, click **Ignore** |
+| Weekly scans don't seem to run | Quiet site, or WP-Cron disabled with no server cron | Visit the site now and then, or ask your host for a real cron |
+| No alert emails arrive | Your site can't send email | Install an SMTP plugin; check the alert address |
+| "The … stopped early: …" info finding | One check hit an unexpected error; the rest still ran | Please [open an issue](https://github.com/CptNope/PHP2Shell-WP-scanner/issues) with that message |
 
-## 11. FAQ
+## 12. FAQ
+
+<details><summary><b>Can a WordPress plugin really detect a bug in PHP?</b></summary>
+
+It can tell whether your PHP version is vulnerable, which temporary protections are on, and whether the traces researchers describe appear in your logs — and it can find the backdoors an attacker leaves afterwards. It **can't** see inside PHP's memory or stop the attack; only updating PHP does that.
+</details>
 
 <details><summary><b>Will it change, quarantine or delete anything?</b></summary>
 
@@ -353,75 +458,79 @@ No. It does nothing for visitors. Scans run only when you click **Scan** or on t
 
 <details><summary><b>It says "Vulnerable". Was I hacked?</b></summary>
 
-Not necessarily. "Vulnerable" means no evidence of an attack was found, but your WordPress version can be attacked this way. Update WordPress right away, then scan again.
+Not necessarily. "Vulnerable" means no evidence of a break-in was found, but your PHP or WordPress can be attacked. Get it updated, then scan again.
 </details>
 
 <details><summary><b>It says "No signs". Am I definitely safe?</b></summary>
 
-It means none of the known traces were found. Attackers can rename and rewrite things, so no scanner can promise 100%. If your site ran an affected version while online, consider also reviewing your admin users and recent changes yourself.
+It means none of the known traces were found. Attackers can rename and rewrite things, and PHP2Shell's memory leak leaves nothing on disk, so no scanner can promise 100%. If your site ran a vulnerable PHP after October 17, 2026, change your passwords and keys anyway.
 </details>
 
-<details><summary><b>Does it work with Wordfence / Sucuri / Solid Security / my host's scanner?</b></summary>
+<details><summary><b>Does it work alongside Wordfence / Sucuri / Solid Security / my host's scanner?</b></summary>
 
-Yes. It's narrowly focused on wp2shell and doesn't conflict with general security plugins. It complements them rather than replacing them.
+Yes. It's narrowly focused on these two attacks and recognises those tools' files. It complements them rather than replacing them.
 </details>
 
 <details><summary><b>Does it send my data anywhere?</b></summary>
 
-No. See [Privacy and stored data](#17-privacy-and-stored-data).
+No. See [Privacy and stored data](#18-privacy-and-stored-data).
 </details>
 
 <details><summary><b>Can I remove it once I'm sure my site is clean?</b></summary>
 
-Yes. Deactivate and delete it on the Plugins screen; it removes everything it stored. Keeping it means you get weekly checks and alerts, which is useful because new indicators are added in updates.
+Yes — deactivate and delete it; it removes everything it stored. Keeping it gives you weekly checks and alerts as new indicators are added.
 </details>
 
-<details><summary><b>Is it on wordpress.org?</b></summary>
+<details><summary><b>Why is the plugin file called wp2shell-scanner?</b></summary>
 
-Not yet — it's distributed here on GitHub and updates itself from here.
+Version 1.0 only covered wp2shell. The internal name stayed the same so existing installs keep updating automatically.
 </details>
 
 ---
 
-## 12. WP-CLI reference
+## 13. WP-CLI reference
 
-For people with command-line access. Everything the dashboard does is available here too.
+Everything the dashboard does is available from the command line. The command is `wp php2shell` (the 1.0 name `wp wp2shell` still works).
 
 | Command | What it does |
 |---|---|
-| `wp wp2shell scan` | Run a full scan now and print the findings |
-| `wp wp2shell status` | Show the last result without scanning again |
-| `wp wp2shell ignore <id>…` | Mark finding(s) as ignored (`--undo` to restore) |
+| `wp php2shell scan` | Run a full scan now and print the findings |
+| `wp php2shell status` | Show the last result without scanning again |
+| `wp php2shell ignore <id>…` | Mark finding(s) as ignored (`--undo` to restore) |
 
-**`wp wp2shell scan` options**
+**`wp php2shell scan` options**
 
 | Option | Default | Meaning |
 |---|---|---|
 | `--log=<path>` | The path saved in settings | Access log to check (`.gz` works) |
+| `--error-log=<path>` | The setting, then the log PHP reports | PHP error log to check for PHP2Shell traces (`.gz` works) |
 | `--skip-core` | off | Don't verify core files against wordpress.org |
 | `--min=<severity>` | `low` | Hide findings below `info`, `low`, `medium`, `high` or `critical` |
 | `--format=<format>` | `table` | `table`, `json`, `csv`, `yaml` or `summary` (one line) |
 | `--include-ignored` | off | Also list findings marked as ignored |
 
+> [!NOTE]
+> WP-CLI often runs a **different PHP** from your website. For the PHP2Shell check, the scanner uses the website's PHP as last recorded by the dashboard (or by a scheduled scan). If it has never seen it, it checks the command-line PHP and says so.
+
 **Exit codes** — handy for scripts and monitoring:
 
 | Code | Result |
 |---|---|
-| `0` | No signs of wp2shell, or Needs review |
+| `0` | No signs, or Needs review |
 | `1` | Vulnerable, or Suspicious |
 | `2` | Compromised |
 
 **Examples**
 
 ```bash
-wp wp2shell scan                                        # human-readable table
-wp wp2shell scan --min=high                             # only what needs action
-wp wp2shell scan --log=/var/log/nginx/access.log        # include exploit traffic
-wp wp2shell scan --format=json > wp2shell-report.json   # full report
-wp wp2shell scan --format=summary                       # COMPROMISED  https://example.com  wp 7.0.1  critical:2 high:1 medium:0
-wp wp2shell scan --format=json | jq -r '.findings[] | select(.severity=="critical") | .message'
-wp wp2shell status --format=table
-wp wp2shell ignore 3f9a1c2b7d10
+wp php2shell scan                                          # human-readable table
+wp php2shell scan --min=high                               # only what needs action
+wp php2shell scan --error-log=/var/log/php-fpm/www-error.log --log=/var/log/nginx/access.log
+wp php2shell scan --format=json > php2shell-report.json    # full report
+wp php2shell scan --format=summary                         # VULNERABLE  https://example.com  wp 7.1.2  php 8.3.10  critical:0 high:1 medium:0
+wp php2shell scan --format=json | jq -r '.findings[] | select(.severity=="critical") | .message'
+wp php2shell status --format=table
+wp php2shell ignore 3f9a1c2b7d10
 ```
 
 **Install with WP-CLI**
@@ -431,15 +540,15 @@ wp plugin install https://github.com/CptNope/PHP2Shell-WP-scanner/releases/lates
 # Multisite: add --network
 ```
 
-## 13. Scanning many sites
+## 14. Scanning many sites
 
 ```mermaid
 flowchart LR
     A["Your sites"] --> B["Install / update the plugin<br/>wp plugin install URL --activate --force"]
-    B --> C["wp wp2shell scan --format=summary"]
+    B --> C["wp php2shell scan --format=summary"]
     C --> D{"Exit code"}
     D -- 0 --> E["🟢 OK"]
-    D -- 1 --> F["🟠 Update or review"]
+    D -- 1 --> F["🟠 Patch PHP / WordPress, or review"]
     D -- 2 --> G["🚨 Incident"]
 ```
 
@@ -448,127 +557,148 @@ flowchart LR
 ```bash
 URL=https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip
 wp @all plugin install "$URL" --activate --force
-wp @all wp2shell scan --format=summary
+wp @all php2shell scan --format=summary
 ```
 
-**Every WordPress on one server**, with a summary of the bad ones:
+**Every WordPress on one server**, flagging the bad ones:
 
 ```bash
 #!/usr/bin/env bash
 URL=https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip
 for wp in $(find /var/www /home -maxdepth 4 -name wp-config.php -printf '%h\n' 2>/dev/null); do
   wp --path="$wp" plugin install "$URL" --activate --force --quiet 2>/dev/null
-  wp --path="$wp" wp2shell scan --format=summary 2>/dev/null
+  wp --path="$wp" php2shell scan --format=summary 2>/dev/null
   case $? in 2) echo "!!! COMPROMISED: $wp";; 1) echo "!   check: $wp";; esac
 done
 ```
 
-> Run as the user that owns each site (e.g. `sudo -u www-data …`), not as root, so file ownership doesn't change. Add `--allow-root` only if you must.
+> Run as the user that owns each site (e.g. `sudo -u www-data …`), not as root, so file ownership doesn't change.
+
+> [!TIP]
+> **Hosts and server admins:** PHP2Shell is fixed per *server*, not per site. Check the PHP that actually serves the sites (`php-fpm -v`, or your control panel), not just `php -v`, and look at your distribution's changelog for CVE-2026-109618 / 109619 — e.g. `apt changelog php8.3-fpm | grep 1096` or `rpm -q --changelog php-fpm | grep 1096`.
 
 **Collect JSON reports centrally**
 
 ```bash
 for wp in /var/www/*/; do
-  wp --path="$wp" wp2shell scan --format=json > "reports/$(basename "$wp").json"
+  wp --path="$wp" php2shell scan --format=json > "reports/$(basename "$wp").json"
 done
-jq -r '[.site, .verdict] | @tsv' reports/*.json | sort -k2
+jq -r '[.site, .verdict, .php.version] | @tsv' reports/*.json | sort -k2
 ```
 
-## 14. Finding your access log
+## 15. Finding your logs
 
-The access log lets the scanner see attack *traffic*, not just leftovers. It's optional. PHP must be able to read the file — on shared hosting it often can't, and that's fine.
+Logs let the scanner see attack *attempts*, not just leftovers. Both are optional, and PHP must be allowed to read them — on shared hosting it often can't, and that's fine.
+
+**PHP error log** — where PHP2Shell attempts show up. Leave the setting empty and the scanner uses the log PHP itself reports plus WordPress's `debug.log`.
 
 | Setup | Typical location |
 |---|---|
-| Apache on Debian / Ubuntu | `/var/log/apache2/access.log` (or `other_vhosts_access.log`) |
-| Apache on RHEL / CentOS / Alma / Rocky | `/var/log/httpd/access_log` |
-| Nginx | `/var/log/nginx/access.log` (or a per-site file set in the server block) |
+| PHP-FPM (Debian/Ubuntu) | `/var/log/php8.3-fpm.log` (pool errors), or the `error_log` set in the pool config |
+| PHP-FPM (RHEL family) | `/var/log/php-fpm/www-error.log` |
+| Apache mod_php | Apache's error log (below) — PHP lines are tagged `[php:error]` |
+| cPanel | `error_log` files in the site folders, or `~/logs/` |
+| WordPress | `wp-content/debug.log` when `WP_DEBUG_LOG` is on |
+
+**Web server access log**
+
+| Setup | Typical location |
+|---|---|
+| Apache on Debian / Ubuntu | `/var/log/apache2/access.log` · errors: `/var/log/apache2/error.log` |
+| Apache on RHEL / Alma / Rocky | `/var/log/httpd/access_log` · errors: `/var/log/httpd/error_log` |
+| Nginx | `/var/log/nginx/access.log` · errors: `/var/log/nginx/error.log` |
 | LiteSpeed / OpenLiteSpeed | `/usr/local/lsws/logs/access.log` |
 | cPanel | `~/access-logs/<your-domain>` · server-wide `/usr/local/apache/domlogs/<your-domain>` |
 | Plesk | `/var/www/vhosts/<your-domain>/logs/access_log` |
 | Managed WordPress hosts | Usually not readable by PHP — use the host's log viewer, or ask support |
 
-Rotated logs (`access.log.1`, `access.log.2.gz`) hold older activity — point a one-off CLI scan at them: `wp wp2shell scan --log=/var/log/nginx/access.log.2.gz`.
+Attacks began **October 17, 2026** — make sure the logs you check go back that far. Rotated logs (`access.log.2.gz`) work too: `wp php2shell scan --log=/var/log/nginx/access.log.2.gz`.
 
-## 15. Hosting compatibility
+## 16. Hosting compatibility
 
 | Environment | Works? | Notes |
 |---|---|---|
 | Shared hosting with 30-second PHP limits | ✅ | Scans run in slices of a few seconds with automatic resume |
-| Managed WordPress (WP Engine, Kinsta, SiteGround, GoDaddy, …) | ✅ | Hosts' own must-use plugins are recognised as low-risk |
-| `DISABLE_WP_CRON` with a real server cron | ✅ | Scheduled scans run in bigger slices |
-| Quiet sites (WP-Cron rarely triggered) | ✅ | Scheduled scans resume across visits; nothing is lost |
-| Persistent object cache (Redis, Memcached) | ✅ | Job state is read fresh each slice |
-| Multisite | ✅ | Network-wide, one report; covers admins on every site |
-| Server blocks outbound requests | ✅ | Core-checksum check is skipped with a note; updates can't be fetched |
+| Managed WordPress (WP Engine, Kinsta, SiteGround, GoDaddy…) | ✅ | Hosts' own must-use plugins are recognised as low-risk |
+| `DISABLE_WP_CRON` with a real server cron | ✅ | Scheduled scans use bigger slices |
+| Quiet sites (WP-Cron rarely triggered) | ✅ | Scheduled scans resume across visits |
+| Persistent object cache (Redis, Memcached) | ✅ | Scan state is read fresh each slice |
+| Multisite | ✅ | One network-wide scan and report; admins on every site |
+| Server blocks outbound requests | ✅ | Core-checksum and self-check against GitHub are skipped with a note |
 | `open_basedir` restrictions | ✅ | Unreadable paths are counted and skipped |
-| Symlinked plugin folders | ✅ | Followed once each; loops are detected |
-| Huge folders (100,000+ files) | ✅ | Read one entry at a time, never loaded whole |
+| Symlinked plugin or upload folders (Bedrock, Capistrano, Pantheon) | ✅ | Followed once each; loops detected |
+| Plugin / upload folders outside `wp-content` | ✅ | Scanned too |
+| Huge folders (100,000+ files) | ✅ | Read one entry at a time; the scan can pause mid-folder |
+| File names in old encodings (Latin-1) | ✅ | Handled without stalling the scan |
 | Windows / IIS | ⚠️ | Should work (paths are normalised) but isn't tested in CI |
-| PHP 7.4 → 8.4 · WordPress 6.0 → 7.x | ✅ | Tested in CI on every change |
-| SQLite (WordPress Playground, etc.) | ✅ | Used in local testing |
+| PHP 7.0 → 8.5 · WordPress 6.0 → 7.x | ✅ | Tested in CI |
 
-## 16. How it works inside
+## 17. How it works inside
 
 **The files**
 
 | File | Job |
 |---|---|
-| `wp2shell-scanner.php` | Plugin header, constants, loads everything, activation/deactivation |
-| `includes/signatures.php` | **All indicators** — versions, hashes, IPs, user agents, code patterns. Easy to review and extend. |
+| `wp2shell-scanner.php` | Plugin header, constants, loads everything |
+| `includes/signatures.php` | **All indicators** — fixed PHP and WordPress versions, log patterns, hashes, IPs, code patterns. Easy to review and extend. |
 | `includes/class-scanner.php` | The scan engine: resumable job, locking, every check |
-| `includes/class-admin.php` | The admin page, AJAX scanning, ignore list, admin notice |
+| `includes/class-env.php` | Records the **website's** PHP (version, server type, php.ini settings, history) |
+| `includes/class-admin.php` | The admin page, AJAX scanning, host message, ignore list, notice |
 | `includes/class-cron.php` | Scheduled scans and email alerts |
 | `includes/class-settings.php` | Settings storage |
 | `includes/class-site-health.php` | Tools → Site Health test |
 | `includes/class-updater.php` | Updates from GitHub releases |
 | `includes/class-cli.php` | WP-CLI commands |
-| `assets/admin.js`, `assets/admin.css` | Progress bar, ignore buttons (no jQuery, no external files) |
+| `assets/admin.js`, `assets/admin.css` | Progress bar, buttons (no jQuery, no external files) |
 | `uninstall.php` | Removes everything on delete |
+| `manifest.json` *(release zip only)* | SHA-256 fingerprints of every file, for the self-check |
 
 ```mermaid
 flowchart TB
     subgraph Triggers
         UI["Dashboard<br/>Scan now"]
         CRON["WP-Cron<br/>weekly / daily"]
-        CLI["WP-CLI<br/>wp wp2shell scan"]
+        CLI["WP-CLI<br/>wp php2shell scan"]
     end
+    ENV["Website PHP snapshot<br/>class-env.php"]
     UI -->|"AJAX: start, then a step every few seconds"| ENGINE
-    CRON -->|"start, then chained step events"| ENGINE
+    CRON -->|"start, then chained steps"| ENGINE
     CLI -->|"steps in a loop"| ENGINE
+    UI -.->|"records on every admin page"| ENV
     subgraph ENGINE["Scan engine — class-scanner.php"]
         LOCK["Database lock<br/>one worker at a time"] --> JOB["Job state<br/>wp2ss_job option"]
-        JOB --> PH["Phases: quick → files → core → log"]
+        JOB --> PH["Phases: quick → files → core → logs"]
         SIG["signatures.php<br/>+ wp2ss_signatures filter"] --> PH
     end
+    ENV --> PH
     PH --> REPORT["Report<br/>wp2ss_report option"]
-    REPORT --> ADMIN["Admin page + notice"]
+    REPORT --> ADMIN["Admin page, host message, notice"]
     REPORT --> HEALTH["Site Health"]
     REPORT --> MAIL["Alert email<br/>scheduled scans only"]
     REPORT --> JSON["JSON / CLI output"]
 ```
 
-**A scan is a resumable job.** Instead of one long request (which cheap hosts kill after 30 seconds), the scanner does a few seconds of work, saves exactly where it is — down to the position inside a folder — and continues on the next request.
+**A scan is a resumable job.** Instead of one long request (which cheap hosts kill after 30 seconds), the scanner works for a few seconds, saves exactly where it is — down to the position inside a folder — and continues on the next request.
 
 ```mermaid
 stateDiagram-v2
     [*] --> quick : start()
-    quick : quick — version, plugins, mu-plugins, users, REST routes, own folder
-    files : files — walk wp-content one folder at a time
+    quick : quick — PHP, WordPress, plugins, users, roles, site root, own files
+    files : files — walk wp-content (and outside plugin/upload folders) depth-first
     core : core — compare core files with wordpress.org checksums
-    log : log — read the access log (if set)
+    logs : logs — PHP error log, debug.log, access log
     quick --> files
-    files --> files : out of time, save place and resume next step
+    files --> files : out of time, save place and resume
     files --> core
     core --> core : out of time, resume
-    core --> log
-    log --> log : out of time, resume at byte offset
-    log --> done
+    core --> logs
+    logs --> logs : out of time, resume at byte offset
+    logs --> done
     done : done — sort findings, save report, fire wp2ss_scan_complete
     done --> [*]
 ```
 
-**One worker at a time.** Each slice takes a short database lock. If two browser tabs — or a tab and a scheduled scan — try to work at once, the second simply waits its turn (the progress bar keeps polling). A lock left behind by a request that crashed expires after 5 minutes.
+**One worker at a time.** Each slice takes a short database lock. If two browser tabs — or a tab and a scheduled scan — try to work at once, the second waits its turn. A lock left by a crashed request expires after 5 minutes, and a cancelled scan can't be written back by a slice that was still running.
 
 ```mermaid
 sequenceDiagram
@@ -576,7 +706,7 @@ sequenceDiagram
     participant T2 as Browser tab 2
     participant S as Scanner
     T1->>S: step
-    S->>S: lock acquired - work ~8s, save
+    S->>S: lock acquired - work, save
     T2->>S: step
     S-->>T2: busy, try again shortly
     S-->>T1: progress 40%
@@ -589,24 +719,32 @@ sequenceDiagram
 
 | Situation | What the scanner does |
 |---|---|
-| A check throws an unexpected error | Reports it as an *Info* finding and carries on with the rest |
-| A file can't be read | Counts it as unreadable and moves on |
-| A PHP file over 5 MB | Hashes it, and checks the first and last 1 MB (where injected code sits) |
-| A folder with hundreds of thousands of files | Reads it entry by entry and can stop mid-folder |
-| Symlinked folders | Follows each target once (max 200); skips loops |
+| A check throws an unexpected error | Reports it as an *Info* finding and carries on |
+| A step could hang (e.g. a host silently dropping connections to wordpress.org) | Attempted at most twice, then skipped with a note |
+| A file can't be read | Counted as unreadable; the scan moves on |
+| A PHP file over 5 MB | Hashed, and the first and last 1 MB checked (where injected code sits) |
+| A folder with hundreds of thousands of files | Read entry by entry; the scan can stop mid-folder; saved state stays tiny |
+| Symlinked folders | Followed once each (max 200); loops skipped |
+| File names that aren't valid UTF-8 | Stored safely and shown readably — they can't stall the scan |
 | The scan pauses for hours (quiet site) | Resumes; only a job with no progress for 24 hours is abandoned |
-| Plugin updated in the middle of a scan | Old-format job is discarded and a fresh one starts |
-| A badly infected site | Stores at most 1,000 findings and says how many more there were |
+| Plugin updated mid-scan | Old-format job is discarded; a fresh one starts |
+| PHP warnings printed by the host | Can't corrupt the progress bar's replies |
+| A badly infected site | At most 1,000 findings stored, plus a count of the rest |
+| Database-only attacker | Ignore list and admin baseline are signed with `wp-config.php` secrets; tampering is reported |
+| Attacker edits this plugin | Files checked against the release fingerprints published on GitHub |
 
-## 17. Privacy and stored data
+## 18. Privacy and stored data
 
 **Nothing about your site is sent anywhere.** The only outside requests are:
 
 | Request | When | Why |
 |---|---|---|
 | `api.wordpress.org` — core checksums | During a scan, at most once a day (cached) | To check core files are untouched. Turn off in settings. |
-| `api.github.com` — latest release | At most twice a day | To offer plugin updates. Disable with `WP2SS_DISABLE_UPDATER`. |
+| `api.github.com` — latest release | At most twice a day | To offer plugin updates |
+| `github.com` — the release's `manifest.json` | At most weekly (cached) | To check this plugin's own files weren't tampered with |
 | `github.com` — release zip | Only when you install an update | The update itself |
+
+`WP2SS_DISABLE_UPDATER` turns off all three GitHub requests.
 
 **What it stores** (all removed when you delete the plugin):
 
@@ -615,30 +753,34 @@ sequenceDiagram
 | `wp2ss_settings` | Options | Your settings |
 | `wp2ss_report` | Options | The latest report |
 | `wp2ss_job` | Options | A scan in progress (deleted when it finishes) |
-| `wp2ss_ignored` | Options | IDs of findings you ignored |
+| `wp2ss_ignored` | Options | Findings you ignored (signed) |
+| `wp2ss_env` | Options | The website's PHP version, server type, relevant php.ini settings and a short version history |
+| `wp2ss_admins` | Options | Administrator user IDs at the last scan (signed) |
 | `wp2ss_lock` | Options (main site) | Short-lived lock while a slice runs |
-| `wp2ss_release`, `wp2ss_core_*` | Transients | Cached update info and core checksums |
+| `wp2ss_release`, `wp2ss_core_*`, `wp2ss_manifest_*` | Transients | Cached update info, checksums and fingerprints |
 | `wp2ss_dismissed` | User meta | Which report's notice you dismissed |
 | `wp2ss_scheduled_scan`, `wp2ss_scan_step` | WP-Cron | Scheduled scan events |
 
-On multisite these live in network-wide (site) options.
+On multisite these live in network-wide options.
 
-## 18. Hooks, filters and constants
+## 19. Hooks, filters and constants
 
 | Name | Type | Use |
 |---|---|---|
-| `wp2ss_signatures` | Filter | Add or change indicators (code patterns, hashes, IPs, user agents…). Receives the array from `includes/signatures.php`. |
+| `wp2ss_signatures` | Filter | Add or change indicators (fixed PHP versions, code patterns, hashes, IPs, log patterns…). Receives the array from `includes/signatures.php`. |
 | `wp2ss_step_budget` | Filter | Seconds of work per slice (float). Lower it on very strict hosts. |
-| `wp2ss_scan_complete` | Action | Fires with `( $report, $previous_report )` when a scan finishes — send it to Slack, a SIEM, your monitoring… |
-| `WP2SS_DISABLE_UPDATER` | Constant | `define( 'WP2SS_DISABLE_UPDATER', true );` in `wp-config.php` to stop update checks to GitHub |
+| `wp2ss_scan_complete` | Action | Fires with `( $report, $previous_report )` when a scan finishes |
+| `WP2SS_DISABLE_UPDATER` | Constant | `define( 'WP2SS_DISABLE_UPDATER', true );` in `wp-config.php` stops all requests to GitHub |
 
-**Add your own code signature**
+**Add your own indicators**
 
 ```php
 add_filter( 'wp2ss_signatures', function ( $sig ) {
     // [ severity, regex, description ]
     $sig['code'][] = array( 'high', '/my_known_bad_function\s*\(/i', 'Our internal backdoor marker' );
     $sig['sha1']['0123456789abcdef0123456789abcdef01234567'] = 'Sample from our incident';
+    // If PHP ships another fix, tell the scanner about it:
+    $sig['php_fixed']['8.4'] = '8.4.28';
     return $sig;
 } );
 ```
@@ -648,23 +790,25 @@ add_filter( 'wp2ss_signatures', function ( $sig ) {
 ```php
 add_action( 'wp2ss_scan_complete', function ( $report ) {
     wp_remote_post( 'https://hooks.slack.com/services/XXX', array(
-        'body' => wp_json_encode( array( 'text' => $report['site'] . ': ' . $report['verdict'] ) ),
+        'body'    => wp_json_encode( array( 'text' => "{$report['site']}: {$report['verdict']} (PHP {$report['php']['version']})" ) ),
         'headers' => array( 'Content-Type' => 'application/json' ),
     ) );
 } );
 ```
 
-## 19. Report format (JSON)
+## 20. Report format (JSON)
 
-What **Download report (JSON)** and `wp wp2shell scan --format=json` produce:
+What **Download report (JSON)** and `wp php2shell scan --format=json` produce:
 
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | string | Unique ID of this scan |
 | `site` | string | Site URL |
 | `wp` | string | WordPress version |
+| `php` | object | `version`, `sapi` (server type), `source` (`web`, `web-snapshot` or `cli`) |
 | `plugin` | string | Scanner version |
 | `source` | string | `manual`, `cron` or `cli` |
+| `args` | object | `core`, `log`, `error_log` — what this scan was asked to do |
 | `scanned` | string | Finish time, ISO 8601 UTC |
 | `duration` | int | Seconds from start to finish |
 | `verdict` | string | `CLEAN`, `REVIEW`, `VULNERABLE`, `SUSPICIOUS`, `COMPROMISED` |
@@ -674,14 +818,15 @@ What **Download report (JSON)** and `wp wp2shell scan --format=json` produce:
 
 | `findings[]` field | Meaning |
 |---|---|
-| `id` | Stable 12-character ID (use with `wp wp2shell ignore`) |
+| `id` | Stable 12-character ID (use with `wp php2shell ignore`) |
 | `severity` | `critical`, `high`, `medium`, `low`, `info` |
-| `type` | `version`, `plugin`, `mu-plugin`, `user`, `rest`, `file`, `code`, `hash`, `core`, `log`, `scan` |
+| `type` | `php`, `version`, `plugin`, `mu-plugin`, `user`, `rest`, `file`, `code`, `hash`, `core`, `log`, `scan` |
 | `message` | What was found |
 | `advice` | What to do about it |
-| `location` | File path, `user:<ID>`, `rest:<namespace>`, or empty |
+| `location` | File path, `user:<ID>`, `role:<name>`, `rest:<namespace>`, or empty |
+| `sha1` | Fingerprint of the file, where relevant (so an ignored file that changes is flagged again) |
 
-## 20. Development, tests and releases
+## 21. Development, tests and releases
 
 ```bash
 # Integration tests — they plant FAKE malware files, so only use a throwaway site
@@ -698,8 +843,8 @@ npm i mermaid@11 jsdom && node tests/check-mermaid.mjs README.md
 
 | Job | What |
 |---|---|
-| PHP syntax | Every file on PHP 7.4, 8.0, 8.1, 8.2, 8.3, 8.4 |
-| Integration | Real WordPress + MySQL: latest WP on PHP 7.4 and 8.4, and the vulnerable 7.0.1 and 6.9.4. ~50 checks: detection, false-positive bait, evasion (padded files, symlinks, hiding in the scanner's own folder), resumable slices, locking, crash isolation, ignore list, exit codes. Fails on any PHP notice from the plugin. |
+| PHP syntax | Every file on PHP 7.0 – 8.5 |
+| Integration | Real WordPress + MySQL: latest WP on PHP 7.4 and 8.4; WP 7.0, 7.0.1 and 6.9.4 (vulnerable); WP 6.4 on PHP 7.0. ~90 checks: PHP2Shell version logic and log evidence, wp2shell indicators, false-positive bait (Wordfence, Performance Lab, cache plugins…), evasion (padded files, symlinks, images, odd file names, hiding in the scanner), resumable slices, locking, cancellation, crash isolation, signed ignore list, admin baseline, self-integrity, exit codes. Fails on any PHP notice. |
 | False positives | Signatures vs. WordPress core, WooCommerce, Yoast SEO, Elementor, Jetpack, Contact Form 7, WP Super Cache — zero High/Critical allowed |
 | Docs | Every Mermaid diagram in this README must parse |
 
@@ -707,35 +852,49 @@ npm i mermaid@11 jsdom && node tests/check-mermaid.mjs README.md
 
 ```mermaid
 flowchart LR
-    A["Bump version in<br/>wp2shell-scanner.php (×2)<br/>+ readme.txt"] --> B["Add CHANGELOG.md entry"]
+    A["Bump version in<br/>wp2shell-scanner.php ×2<br/>+ readme.txt"] --> B["Add CHANGELOG.md entry"]
     B --> C["Push to main"]
     C --> D["CI: lint, integration,<br/>false positives, docs"]
     D -- all green --> E["Release workflow:<br/>versions match? new version?"]
-    E -- yes --> F["Tag vX.Y.Z +<br/>GitHub release with zip"]
+    E -- yes --> F["Zip + manifest.json + checksum<br/>tag vX.Y.Z, GitHub release"]
     F --> G["Every installed site<br/>sees the update within ~12h"]
     D -- any red --> H["Nothing is released"]
 ```
 
-Pushing a `vX.Y.Z` tag yourself also triggers a release. Detection rules live in [`includes/signatures.php`](includes/signatures.php) — **new indicators are very welcome**: open an issue or pull request with a link to the source.
+Workflow actions are pinned to exact commits. Detection rules live in [`includes/signatures.php`](includes/signatures.php) — **new indicators are very welcome**: open an issue or pull request with a link to the source.
 
-## 21. Limits
+## 22. Limits
 
-- Detection is based on public exploit tools, published samples and research. Attackers can rename files and rewrite code, so "no signs" means **no known indicators**, not a guarantee.
-- It looks for wp2shell specifically. It isn't a general antivirus — keep using your usual security plugin or host scanner.
-- It reads files and the database; it doesn't inspect your server outside WordPress (system cron, other sites, SSH keys).
-- Findings text is in English; the interface is translation-ready (`languages/wp2shell-scanner.pot`).
+- **PHP2Shell happens below WordPress.** The plugin can judge your PHP version and settings and look for traces and leftovers, but it can't watch PHP's memory or processes, and it can't stop the attack. Only updating PHP does.
+- **Memory leaks leave no trace on disk.** If you ran a vulnerable PHP after October 17, 2026, change your secrets even if the scan is clean.
+- **OS packages** can be patched without a version change; the scanner can't always tell. Your host can.
+- **Known indicators only.** Attackers can rename files and rewrite code, so "no signs" means no *known* indicators — not a guarantee.
+- **An attacker with full control of the server** could tamper with any tool running on it, including this one. The self-check against GitHub makes that harder, not impossible. For certainty, have your host check from outside.
+- It looks for these two attacks specifically. It isn't a general antivirus — keep your usual security plugin or host scanner.
+- Finding texts are in English; the interface is translation-ready (`languages/wp2shell-scanner.pot`).
 
-## 22. Security
+## 23. Security
 
-Found a security problem **in this plugin**? Please report it privately via **Security → Report a vulnerability** on this repository — see [SECURITY.md](SECURITY.md). New wp2shell indicators aren't secret; share them as a normal issue or pull request.
+Found a security problem **in this plugin**? Please report it privately via **Security → Report a vulnerability** on this repository — see [SECURITY.md](SECURITY.md). New indicators aren't secret; share them as a normal issue or pull request.
 
-## 23. Sources
+## 24. Sources
 
+**PHP2Shell**
+- [PHP security advisory GHSA-w8hw-w9fx-j79w (php-src)](https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w)
+- [Wiz — PHP2Shell: AI uncovers critical RCE vulnerabilities](https://www.wiz.io/blog/php2shell-php-rce)
+- [Tenable — PHP2Shell FAQ](https://www.tenable.com/blog/php2shell-cve-2026-109618-cve-2026-109619-frequently-asked-questions-about-critical-php-remote)
+- [Help Net Security — PHP2Shell patched, update now](https://www.helpnetsecurity.com/2026/10/21/php2shell-php-vulnerabilities-patched-cve-2026-109618-cve-2026-109619/)
+- [Sansec — PHP2Shell](https://sansec.io/research/php2shell)
+- [Patchstack — PHP major vulnerability alert](https://patchstack.com/articles/php-major-vulnerability-alert-10-2026/)
+- [PHP2Shell detection opportunities (community gist)](https://gist.github.com/Blevene/472692937d05145d29d17dc3c6edc2a0)
+- [AlmaLinux — patched PHP packages](https://almalinux.org/blog/2026-10-21-php2shell-cve-2026-109618-cve-2026-109619/)
+
+**wp2shell**
 - [Wiz Research — Exploitation in the Wild of wp2shell](https://www.wiz.io/blog/wp2shell-cve-2026-63030-cve-2026-60137)
 - [Elastic Security Labs — wp2shell detection end to end](https://www.elastic.co/security-labs/blog/wp2shell-wordpress-rce-detection-elastic-defend)
 - [MalwareBazaar — wp-static-cache webshell sample](https://bazaar.abuse.ch/sample/4b7ff0262fe7d98cfd1c3ec38cb17d1aa7b66524be8fa2de0ce7a30a3d81fa38/)
-- [Malwarebytes — What happens if you visit a site hacked through wp2shell](https://www.malwarebytes.com/blog/bugs/2026/07/what-happens-if-you-visit-a-wordpress-site-hacked-through-wp2shell)
+- [BleepingComputer — wp2shell RCE flaws get public exploits](https://bleepingcomputer.com/news/security/wordpress-core-wp2shell-rce-flaws-get-public-exploits-patch-now)
 
-## 24. License
+## 25. License
 
 MIT — see [LICENSE](LICENSE). Changes are listed in [CHANGELOG.md](CHANGELOG.md).

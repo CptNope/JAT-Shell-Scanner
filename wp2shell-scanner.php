@@ -1,17 +1,18 @@
 <?php
 /**
- * Plugin Name:       wp2shell Scanner
+ * Plugin Name:       PHP2Shell & wp2shell Scanner
  * Plugin URI:        https://github.com/CptNope/PHP2Shell-WP-scanner
- * Description:       Checks your site for signs of the wp2shell attack on WordPress core (CVE-2026-63030 / CVE-2026-60137): vulnerable versions, webshell plugins and files, rogue admins, modified core files and exploit traffic. Read-only — it never changes or deletes anything.
- * Version:           1.0.0
+ * Description:       Checks whether your site is exposed to — or was broken into through — PHP2Shell (CVE-2026-109618 / CVE-2026-109619, critical bugs in PHP itself) and wp2shell (CVE-2026-63030 / CVE-2026-60137, a WordPress core bug). Looks at your PHP and WordPress versions, webshells, rogue admins, changed files and server logs. Read-only — it never changes or deletes anything.
+ * Version:           1.1.0
  * Requires at least: 6.0
- * Requires PHP:      7.4
+ * Requires PHP:      7.0
  * Author:            Jeremy Anderson
  * Author URI:        https://jeremyanderson.tech
  * License:           MIT
  * License URI:       https://opensource.org/licenses/MIT
  * Text Domain:       wp2shell-scanner
  * Network:           true
+ * Update URI:        https://github.com/CptNope/PHP2Shell-WP-scanner
  *
  * @package WP2Shell_Scanner
  */
@@ -24,13 +25,14 @@ if ( defined( 'WP2SS_VERSION' ) ) {
 	return; // Another copy is already loaded (e.g. installed twice under different folder names).
 }
 
-define( 'WP2SS_VERSION', '1.0.0' );
+define( 'WP2SS_VERSION', '1.1.0' );
 define( 'WP2SS_FILE', __FILE__ );
 define( 'WP2SS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WP2SS_URL', plugin_dir_url( __FILE__ ) );
 define( 'WP2SS_BASENAME', plugin_basename( __FILE__ ) );
 
 require_once WP2SS_DIR . 'includes/class-scanner.php';
+require_once WP2SS_DIR . 'includes/class-env.php';
 require_once WP2SS_DIR . 'includes/class-settings.php';
 require_once WP2SS_DIR . 'includes/class-cron.php';
 require_once WP2SS_DIR . 'includes/class-admin.php';
@@ -42,6 +44,7 @@ add_action(
 	function () {
 		load_plugin_textdomain( 'wp2shell-scanner', false, dirname( WP2SS_BASENAME ) . '/languages' );
 
+		WP2SS_Env::init();
 		WP2SS_Cron::init();
 		WP2SS_Updater::init();
 
@@ -52,7 +55,8 @@ add_action(
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			require_once WP2SS_DIR . 'includes/class-cli.php';
-			WP_CLI::add_command( 'wp2shell', 'WP2SS_CLI' );
+			WP_CLI::add_command( 'php2shell', 'WP2SS_CLI' );
+			WP_CLI::add_command( 'wp2shell', 'WP2SS_CLI' ); // Name used by version 1.0.
 		}
 	}
 );

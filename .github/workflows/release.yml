@@ -1,17 +1,16 @@
 name: Release
 
 # Releases happen automatically: when CI passes on main and the plugin's
-# version has no release yet, this tags vX.Y.Z and publishes the zip.
-# So to release, bump the version (plugin header, WP2SS_VERSION, readme.txt
+# version has no release yet, this tags vX.Y.Z and publishes the zip, its
+# SHA-256 checksum and the file manifest the plugin uses to check itself.
+#
+# To release: bump the version (plugin header, WP2SS_VERSION, readme.txt
 # Stable tag), add a CHANGELOG.md entry, and push to main.
-# Pushing a vX.Y.Z tag yourself also works.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
-  push:
-    tags: ['v*']
 
 permissions:
   contents: write
@@ -22,17 +21,12 @@ concurrency:
 
 jobs:
   release:
-    if: github.event_name == 'push' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
-
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          coverage: none
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Read and check version
         id: v
@@ -46,31 +40,29 @@ jobs:
           if [ "$HEADER" != "$CONST" ] || [ "$HEADER" != "$STABLE" ]; then
             echo "::error::Versions disagree — plugin header $HEADER, WP2SS_VERSION $CONST, readme.txt $STABLE"; exit 1
           fi
-          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$HEADER" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME doesn't match plugin version $HEADER"; exit 1
-          fi
           echo "version=$HEADER" >> "$GITHUB_OUTPUT"
           if gh release view "v$HEADER" >/dev/null 2>&1; then
             echo "Release v$HEADER already exists — nothing to do."
             echo "skip=1" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Lint
-        if: steps.v.outputs.skip != '1'
-        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
-
-      - name: Build zip
+      - name: Build zip and manifest
         if: steps.v.outputs.skip != '1'
         run: |
-          git archive --format=zip --prefix=wp2shell-scanner/ -o wp2shell-scanner.zip HEAD
+          V="${{ steps.v.outputs.version }}"
+          git archive --format=tar --prefix=wp2shell-scanner/ HEAD | tar -x -C "$RUNNER_TEMP"
+          php .github/scripts/make-manifest.php "$RUNNER_TEMP/wp2shell-scanner" "$V"
+          cp "$RUNNER_TEMP/wp2shell-scanner/manifest.json" manifest.json
+          (cd "$RUNNER_TEMP" && zip -qr "$GITHUB_WORKSPACE/wp2shell-scanner.zip" wp2shell-scanner)
           unzip -l wp2shell-scanner.zip
           sha256sum wp2shell-scanner.zip > wp2shell-scanner.zip.sha256
 
       - name: Release notes from CHANGELOG.md
         if: steps.v.outputs.skip != '1'
         run: |
-          awk -v v="${{ steps.v.outputs.version }}" '
-            $0 ~ "^## \\[?" v "\\]?" {on=1; next}
+          # Exact match on "## [X.Y.Z]" (so 1.0.1 never matches 1.0.10).
+          awk -v h="## [${{ steps.v.outputs.version }}]" '
+            index($0, h) == 1 {on=1; next}
             on && /^## / {exit}
             on {print}
           ' CHANGELOG.md > notes.md
@@ -82,7 +74,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ steps.v.outputs.version }}" wp2shell-scanner.zip wp2shell-scanner.zip.sha256 \
-            --target "$(git rev-parse HEAD)" \
-            --title "wp2shell Scanner v${{ steps.v.outputs.version }}" \
+          gh release create "v${{ steps.v.outputs.version }}" \
+            wp2shell-scanner.zip wp2shell-scanner.zip.sha256 manifest.json \
+            --target "${{ github.event.workflow_run.head_sha }}" \
+            --title "PHP2Shell & wp2shell Scanner v${{ steps.v.outputs.version }}" \
             --notes-file notes.md
