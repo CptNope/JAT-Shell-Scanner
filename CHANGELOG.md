@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1] — 2026-10-22
+
+### Fewer false alarms
+- **`temp-write-test-…` files:** WordPress itself creates these when checking it can write files, and leaves them behind if deleting fails. The scanner now reads the creation time built into the name: files made before the wp2shell attacks (July 17, 2026) are reported as harmless leftovers (Low), later ones as Medium with an honest explanation, and only files that don't follow WordPress's naming stay High.
+- **`wp-includes/collaboration/…`:** three files from WordPress 7.0's real-time collaboration feature, which later versions removed (changeset 62334). WordPress updates don't delete old files, so sites updated from 7.0.x keep them. They were reported as "very likely a backdoor"; now, if a file matches one of the official 7.0 versions (checked by fingerprint), it's a harmless leftover (Low). A file using one of those names with other contents is still flagged (Medium).
+
 ## [1.3.0] — 2026-10-22
 
 ### Security (from an independent review of 1.2.0)

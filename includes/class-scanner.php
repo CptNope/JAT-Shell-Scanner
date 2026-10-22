@@ -1332,7 +1332,18 @@ class WP2SS_Scanner {
 		$is_php = (bool) preg_match( $this->sig['php_ext'], $name );
 
 		if ( 0 === stripos( $name, 'temp-write-test-' ) ) {
-			$this->add( 'high', 'file', "Write-test file: $show", 'The public wp2shell exploit creates these to check it can write to the site.', $path );
+			// WordPress itself makes these (temp-write-test-<uniqid>) when it checks it can write files,
+			// and leaves them behind if deleting fails. The uniqid starts with the time it was made.
+			if ( preg_match( '/^temp-write-test-([0-9a-f]{8})[0-9a-f]{5}\d-\d{8}$/i', $name, $wt ) ) {
+				$made = (int) hexdec( $wt[1] );
+				if ( $made < $this->sig['disclosure_ts'] ) {
+					$this->add( 'low', 'file', 'WordPress write-test file left over from ' . gmdate( 'Y-m-d', $made ) . ": $show", 'WordPress creates these when it checks it can write files, and sometimes fails to delete them. This one predates the wp2shell attacks. Safe to delete.', $path );
+				} else {
+					$this->add( 'medium', 'file', 'Write-test file created ' . gmdate( 'Y-m-d', $made ) . ", after wp2shell attacks began: $show", 'WordPress itself makes these when updating, but the public wp2shell exploit does the same. If nobody updated the site around then, check the other findings.', $path );
+				}
+			} else {
+				$this->add( 'high', 'file', "Write-test file: $show", 'Named like WordPress’s write test, but not made by WordPress. The public wp2shell exploit creates these to check it can write to the site.', $path );
+			}
 		}
 		if ( preg_match( '/^wp2shell_[0-9a-f]{4,}\.zip$/i', $name ) ) {
 			$this->add( 'critical', 'file', "wp2shell plugin archive: $show", 'The exploit’s uploaded payload.', $path );
@@ -1515,6 +1526,13 @@ class WP2SS_Scanner {
 					}
 					if ( isset( $old[ $rel ] ) ) {
 						$this->add( 'low', 'core', 'Leftover file from an older WordPress version: ' . self::clean_text( $rel ), 'Usually harmless (left by a manual update). Reinstalling core removes it.', $abs . $rel );
+					} elseif ( isset( $this->sig['core_removed'][ $rel ] ) ) {
+						$sha1 = (string) @sha1_file( $f->getPathname() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+						if ( in_array( $sha1, $this->sig['core_removed'][ $rel ], true ) ) {
+							$this->add( 'low', 'core', 'Leftover file from WordPress 7.0: ' . self::clean_text( $rel ), 'Part of WordPress 7.0’s real-time collaboration feature, which later versions removed; updates don’t delete old files. It matches the official file. Harmless, and safe to delete.', $abs . $rel, '', $sha1 );
+						} else {
+							$this->add( 'medium', 'core', 'File named like a WordPress 7.0 leftover, but its contents don’t match any official version: ' . self::clean_text( $rel ), 'It may be a development copy — or a backdoor using a real file’s name. Open it and check.', $abs . $rel, '', $sha1 );
+						}
 					} else {
 						$this->add( 'high', 'core', 'Unknown PHP file in a core folder: ' . self::clean_text( $rel ), 'Not part of WordPress — very likely a backdoor.', $abs . $rel );
 					}

@@ -3,7 +3,7 @@
  * Plugin Name:       PHP2Shell & wp2shell Scanner
  * Plugin URI:        https://github.com/CptNope/PHP2Shell-WP-scanner
  * Description:       Checks whether your site is exposed to — or was broken into through — PHP2Shell (CVE-2026-109618 / CVE-2026-109619, critical bugs in PHP itself) and wp2shell (CVE-2026-63030 / CVE-2026-60137, a WordPress core bug). Looks at your PHP and WordPress versions, webshells, rogue admins, changed files and server logs. Scans only read; one-click fixes (quarantine, removing admin rights) are optional and can be undone. Includes a self-hosted fleet dashboard for many sites, with alerts.
- * Version:           1.3.0
+ * Version:           1.3.1
  * Requires at least: 6.0
  * Requires PHP:      7.0
  * Author:            Jeremy Anderson
@@ -25,7 +25,7 @@ if ( defined( 'WP2SS_VERSION' ) ) {
 	return; // Another copy is already loaded (e.g. installed twice under different folder names).
 }
 
-define( 'WP2SS_VERSION', '1.3.0' );
+define( 'WP2SS_VERSION', '1.3.1' );
 define( 'WP2SS_FILE', __FILE__ );
 define( 'WP2SS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WP2SS_URL', plugin_dir_url( __FILE__ ) );

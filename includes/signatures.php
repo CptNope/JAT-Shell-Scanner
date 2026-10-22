@@ -96,6 +96,15 @@ return array(
 	// Public disclosure: 2026-07-17 00:00 UTC. Changes after this are worth a look.
 	'disclosure_ts'     => 1784246400,
 
+	// WordPress 7.0's real-time collaboration files, removed from later versions (changeset 62334).
+	// Updates don't delete them, so sites that ran 7.0.x keep them. SHA-1 of every official
+	// version, from wordpress-develop's 7.0 branch history.
+	'core_removed'      => array(
+		'wp-includes/collaboration/class-wp-http-polling-sync-server.php' => array( '01e1a64182e49fc3f60c84b85b3a54e02e291ec5', '06d81cd7405ff354dbf0fb6bf4a3463fbc007abf', '3431f06b1c4014333f9a8f2ff4866cb8b907951a', '95e97548ea1bff8a289b4f5f0ed007f98c08fd97', 'b913c26dc6bc1485cae723e928bd03efeca8df05', 'bec1e14cbdfa39e8863f9a76c04d78324aeb4a60', 'cf0a75674ddc97d7505a0b5623c45ce6282542a4' ),
+		'wp-includes/collaboration/class-wp-sync-post-meta-storage.php'   => array( '30c81cefbe3635a8207324bf9f2043213a800b72', '31f2a4fa7b6fa0280941ceb27366d02d78bd9bf2', '8c9981c9ba12a393d7b40e4a8359dd80eaa7730a', 'a96a5fb2a98ef6fe799fa68ee453cf843ab9d85e' ),
+		'wp-includes/collaboration/interface-wp-sync-storage.php'         => array( '21d2bfa1fdf69a8b73551c9c7c89f118983a39f1' ),
+	),
+
 	// Affected WordPress ranges: [ min inclusive, max exclusive, severity, label, fixed in ].
 	// WordPress names major releases "7.0", not "7.0.0", so lower bounds are written that way.
 	'vulnerable'        => array(

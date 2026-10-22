@@ -121,7 +121,11 @@ has "$R" "$(msg 'Packed/obfuscated')"           "packed eval in uploads"
 has "$R" "$(sev high 'PHP file in a data folder.*uploads/2026/07/img.php')" "recent PHP in uploads is high"
 has "$R" "$(msg 'htaccess makes PHP executable')" ".htaccess PHP handler in uploads"
 has "$R" "$(msg 'Hidden PHP file')"             "hidden PHP file"
-has "$R" "$(msg 'Write-test file')"             "temp-write-test probe"
+has "$R" "$(sev high 'Write-test file')"        "temp-write-test probe (not WordPress's own naming) is high"
+touch "$C/temp-write-test-68348b2b1afa57-55308598"
+R2=$(scan)
+has "$R2" "$(sev low 'WordPress write-test file left over from 2025-05-26')" "WordPress's own old write-test leftovers are low, not an alarm"
+rm -f "$C/temp-write-test-68348b2b1afa57-55308598"
 has "$R" "$(msg 'plugin archive')"              "wp2shell_*.zip"
 has "$R" "$(msg 'staging folder')"              "upgrade/wp2shell_<hex> folder"
 has "$R" '[.findings[] | select(.type=="user" and .severity=="high" and (.message|test("backdoor")))] | length > 0' "rogue admin is high"
@@ -281,6 +285,31 @@ EOF
 R=$(scan)
 has "$R" "$(sev critical 'WordPress 7.0 is vulnerable')" "WordPress \"7.0\" (no .0 suffix) is detected as vulnerable"
 rm -f "$C/mu-plugins/wp2ss-test-version.php"
+
+# Core check offline: seed this version's checksums from the files on disk, then check the 7.0 leftovers.
+$WP eval '
+	$sums = array();
+	foreach ( array( "wp-admin", "wp-includes" ) as $d ) {
+		$it = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( ABSPATH . $d, FilesystemIterator::SKIP_DOTS ) );
+		foreach ( $it as $f ) { $sums[ substr( wp_normalize_path( $f->getPathname() ), strlen( wp_normalize_path( ABSPATH ) ) ) ] = md5_file( $f->getPathname() ); }
+	}
+	foreach ( glob( ABSPATH . "*.php" ) as $f ) { $sums[ basename( $f ) ] = md5_file( $f ); }
+	// As on WordPress 7.1+, whose checksums no longer list the 7.0 collaboration files.
+	foreach ( array_keys( $sums ) as $k ) { if ( 0 === strpos( $k, "wp-includes/collaboration/" ) ) { unset( $sums[ $k ] ); } }
+	set_site_transient( "wp2ss_core_" . md5( get_bloginfo( "version" ) . "|" . get_locale() ), $sums, HOUR_IN_SECONDS );
+' >/dev/null 2>&1
+mkdir -p "$SITE/wp-includes/collaboration"; COLLAB_BAK=$(mktemp -d); cp -a "$SITE/wp-includes/collaboration/." "$COLLAB_BAK/" 2>/dev/null
+printf "<?php\n/** Official copy (test stand-in). @package WordPress */\ninterface WP_Sync_Storage {}\n" > "$SITE/wp-includes/collaboration/interface-wp-sync-storage.php"
+printf "<?php\n/** Not the official file. */\nclass WP_Sync_Post_Meta_Storage {}\n" > "$SITE/wp-includes/collaboration/class-wp-sync-post-meta-storage.php"
+H=$(sha1sum "$SITE/wp-includes/collaboration/interface-wp-sync-storage.php" | cut -d' ' -f1)
+printf "<?php add_filter( 'wp2ss_signatures', function ( \$s ) { \$s['core_removed']['wp-includes/collaboration/interface-wp-sync-storage.php'][] = '%s'; return \$s; } );\n" "$H" > "$C/mu-plugins/wp2ss-test-core.php"
+R=$($WP php2shell scan --format=json --min=info 2>/dev/null)
+has "$R" "$(sev low 'Leftover file from WordPress 7.0: wp-includes/collaboration/interface-wp-sync-storage.php')" "official WordPress 7.0 leftovers are low, not 'backdoor'"
+if [ -n "$(ls -A "$COLLAB_BAK")" ]; then has "$R" "$(sev low 'Leftover file from WordPress 7.0: wp-includes/collaboration/class-wp-http-polling-sync-server.php')" "the untouched official 7.0 file is recognised by its fingerprint"; fi
+has "$R" "$(sev medium 'contents don.t match any official version: wp-includes/collaboration/class-wp-sync-post-meta-storage.php')" "a file using a WordPress 7.0 leftover name with other contents still needs a look"
+rm -rf "$SITE/wp-includes/collaboration" "$C/mu-plugins/wp2ss-test-core.php"
+if [ -n "$(ls -A "$COLLAB_BAK")" ]; then mkdir -p "$SITE/wp-includes/collaboration"; cp -a "$COLLAB_BAK/." "$SITE/wp-includes/collaboration/"; fi; rm -rf "$COLLAB_BAK"
+$WP eval 'delete_site_transient( "wp2ss_core_" . md5( get_bloginfo( "version" ) . "|" . get_locale() ) );' >/dev/null 2>&1
 
 section "12. PHP2Shell: PHP versions"
 set_php 8.3.10
