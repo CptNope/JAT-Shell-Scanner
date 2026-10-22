@@ -1,0 +1,96 @@
+/* wp2shell Scanner admin — sits on top of core WP admin styles. */
+
+.wp2ss .wp2ss-lede { max-width: 760px; font-size: 14px; }
+
+.wp2ss-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+	gap: 20px;
+	margin: 20px 0 8px;
+	max-width: 1200px;
+}
+@media (max-width: 960px) {
+	.wp2ss-grid { grid-template-columns: 1fr; }
+}
+
+.wp2ss-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
+}
+.wp2ss-card h2 { margin-top: 0; font-size: 15px; }
+
+/* Verdict */
+.wp2ss-verdict {
+	border-left: 6px solid #8c8f94;
+	padding: 12px 16px;
+	margin-bottom: 12px;
+	background: #f6f7f7;
+}
+.wp2ss-verdict-label { display: block; font-size: 22px; font-weight: 600; line-height: 1.3; }
+.wp2ss-verdict-sub { display: block; margin-top: 4px; color: #50575e; }
+.wp2ss-v-compromised { border-color: #8a1f11; background: #fcf0f1; }
+.wp2ss-v-compromised .wp2ss-verdict-label { color: #8a1f11; }
+.wp2ss-v-suspicious { border-color: #d63638; background: #fcf0f1; }
+.wp2ss-v-suspicious .wp2ss-verdict-label { color: #b32d2e; }
+.wp2ss-v-review { border-color: #dba617; background: #fcf9e8; }
+.wp2ss-v-vulnerable { border-color: #d63638; background: #fcf9e8; }
+.wp2ss-v-vulnerable .wp2ss-verdict-label { color: #b32d2e; }
+.wp2ss-v-clean { border-color: #00a32a; background: #edfaef; }
+.wp2ss-v-clean .wp2ss-verdict-label { color: #00701a; }
+
+.wp2ss-meta { color: #50575e; margin: 0 0 16px; }
+.wp2ss-status form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Progress */
+.wp2ss-progress { margin-top: 16px; }
+.wp2ss-bar { height: 8px; background: #dcdcde; border-radius: 4px; overflow: hidden; }
+.wp2ss-bar span { display: block; height: 100%; background: #2271b1; transition: width .4s ease; }
+.wp2ss-progress-text { margin: 8px 0 4px; color: #50575e; }
+
+/* Findings */
+.wp2ss-h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 28px; }
+.wp2ss-table { max-width: 1200px; }
+.wp2ss-table td { vertical-align: top; }
+.wp2ss-col-sev { width: 92px; }
+.wp2ss-col-act { width: 64px; text-align: right; }
+.wp2ss-advice { color: #50575e; }
+.wp2ss-loc {
+	display: block;
+	margin-top: 4px;
+	font-size: 11px;
+	word-break: break-all;
+	background: transparent;
+	padding: 0;
+	color: #646970;
+}
+.wp2ss-pill {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .02em;
+	white-space: nowrap;
+	color: #fff;
+	background: #8c8f94;
+}
+.wp2ss-s-critical { background: #8a1f11; }
+.wp2ss-s-high { background: #d63638; }
+.wp2ss-s-medium { background: #996800; }
+.wp2ss-s-low { background: #2271b1; }
+.wp2ss-s-info { background: #646970; }
+
+.wp2ss-ignored { margin-top: 16px; max-width: 1200px; }
+.wp2ss-ignored summary { cursor: pointer; color: #2271b1; margin-bottom: 8px; }
+.wp2ss-ignored .wp2ss-table { opacity: .75; }
+.wp2ss-empty { color: #50575e; }
+
+.wp2ss-cleanup { margin-top: 24px; max-width: 1160px; border-left: 4px solid #d63638; }
+.wp2ss-cleanup ol { margin-left: 1.5em; }
+.wp2ss-cleanup li { margin-bottom: 6px; }
+
+.wp2ss-update { margin-top: 10px; }

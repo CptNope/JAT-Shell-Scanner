@@ -1,56 +1,67 @@
 === wp2shell Scanner ===
+Contributors: cptnope
+Tags: security, malware, scanner, webshell, wp2shell
 Requires at least: 6.0
+Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: 1.0.0
 License: MIT
+License URI: https://opensource.org/licenses/MIT
 
-Read-only scan for signs of wp2shell (CVE-2026-63030 + CVE-2026-60137) exploitation. Nothing is changed or deleted.
+Checks your site for signs of the wp2shell attack on WordPress core (CVE-2026-63030 / CVE-2026-60137). Read-only.
 
-== What it checks ==
+== Description ==
 
-* Core version: 6.9.0–6.9.4 and 7.0.0–7.0.1 (full RCE), 6.8.0–6.8.5 (SQLi)
-* Dropped plugins: wp2shell_<hex>, "CMSmap", fake "WP Static Cache Helper", "gg-" REST shells, folders with no plugin header
-* wp-content: PHP in uploads/cache/upgrade, wp2shell_*.zip, temp-write-test-* probes, staging folders
-* Webshell code: eval($_POST…), packed eval(gzuncompress(base64_decode…)), base64 command exec, open REST routes running shell commands
-* Published webshell SHA1 hashes
-* Administrators created on/after 2026-07-17
-* Must-use plugins changed since disclosure
-* Registered REST routes in the morning/v1 namespace
-* Core files vs wordpress.org checksums + unknown PHP in wp-admin / wp-includes / root
-* Optional access log: 200/207 batch API hits, wp2shell user-agents, known attacker IPs, plugin uploads, user enumeration
+wp2shell is a vulnerability chain in WordPress core, made public on July 17, 2026, that lets anyone take over an unpatched site without logging in. This plugin checks whether your site is vulnerable and whether it shows signs of having been attacked.
 
-== Using it ==
+The scan only reads. It never changes or deletes anything.
 
-Dashboard: Tools → wp2shell Scanner (Network Admin → Settings on multisite). Download results as JSON.
+It checks:
 
-WP-CLI (recommended for big sites):
+* Your WordPress version (6.9.0–6.9.4 and 7.0.0–7.0.1 fully vulnerable; 6.8.0–6.8.5 partly)
+* Plugins dropped by the attack, and plugins hidden from the Plugins screen
+* PHP files in uploads, cache and upgrade folders, hidden PHP files and .htaccess tricks
+* Known webshell code patterns and file hashes
+* Administrators and application passwords created since July 17, 2026
+* WordPress core files against official checksums
+* Your web server access log, if PHP can read it
 
-    wp wp2shell scan
-    wp wp2shell scan --log=/var/log/nginx/access.log --min=medium
-    wp wp2shell scan --format=json > report.json
+Features:
 
-Exit codes: 0 clean/review, 1 suspicious, 2 compromised.
+* Works on shared hosting with short time limits — scans run in slices with a progress bar
+* Weekly or daily automatic scans with email alerts for new, serious findings
+* Ignore false positives
+* Site Health integration
+* WP-CLI: `wp wp2shell scan`, `status`, `ignore`
+* Multisite aware
+* Updates automatically from GitHub releases
 
-== Sweeping many sites ==
+== Installation ==
 
-With WP-CLI aliases (wp-cli.yml @all):
+1. Upload the zip under Plugins → Add New Plugin → Upload Plugin, and activate.
+2. Go to Tools → wp2shell Scanner and click Scan now.
 
-    wp @all plugin install /path/wp2shell-scanner.zip --activate
-    wp @all wp2shell scan --format=summary
+On multisite, network-activate and use Network Admin → Settings → wp2shell Scanner.
 
-Or a loop on one server:
+== Frequently Asked Questions ==
 
-    for d in /var/www/*/; do
-      wp --path="$d" plugin install /path/wp2shell-scanner.zip --activate --force --quiet
-      wp --path="$d" wp2shell scan --format=summary
-    done
+= Will it change or delete my files? =
 
-== If a site is flagged ==
+No. It only reads and reports. You decide what to remove.
 
-1. Back up files + database first (evidence).
-2. Update WordPress to 6.8.6 / 6.9.5 / 7.0.2 or later.
-3. Remove flagged files, plugins and admin users.
-4. Reset all admin passwords, rotate the DB password and the salts in wp-config.php.
-5. Check for other persistence: cron jobs, mu-plugins, .htaccess, server crontab.
+= It says "Vulnerable". Was I hacked? =
 
-Severity "low" items (e.g. theme files changed after July 17) are usually just updates — they're there so you can confirm.
+Not necessarily. "Vulnerable" means there's no evidence of an attack, but your WordPress version can be attacked this way. Update WordPress, then scan again.
+
+= Something it flagged is mine. =
+
+Click Ignore next to it. It won't affect the result or send alerts again.
+
+= Does it send my data anywhere? =
+
+No. The only outside requests are core checksums from wordpress.org and a twice-daily update check to GitHub.
+
+== Changelog ==
+
+= 1.0.0 =
+* First public release.

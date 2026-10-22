@@ -1,0 +1,55 @@
+name: Release
+
+# Push a tag like v1.2.0 to publish. The tag must match the plugin version.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Check versions match the tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          HEADER=$(grep -m1 -E '^\s*\*\s*Version:' wp2shell-scanner.php | awk '{print $NF}')
+          CONST=$(grep -m1 "define( 'WP2SS_VERSION'" wp2shell-scanner.php | grep -oE "[0-9]+\.[0-9]+\.[0-9]+[^']*")
+          STABLE=$(grep -m1 -i '^Stable tag:' readme.txt | awk '{print $NF}')
+          echo "tag=$TAG header=$HEADER const=$CONST readme=$STABLE"
+          [ "$TAG" = "$HEADER" ] && [ "$TAG" = "$CONST" ] && [ "$TAG" = "$STABLE" ] || { echo "::error::Version mismatch — update the plugin header, WP2SS_VERSION and readme.txt Stable tag to $TAG"; exit 1; }
+
+      - name: Lint
+        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
+
+      - name: Build zip
+        run: |
+          git archive --format=zip --prefix=wp2shell-scanner/ -o wp2shell-scanner.zip HEAD
+          unzip -l wp2shell-scanner.zip
+          sha256sum wp2shell-scanner.zip > wp2shell-scanner.zip.sha256
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" '
+            $0 ~ "^## \\[?" v "\\]?" {on=1; next}
+            on && /^## / {exit}
+            on {print}
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md" > notes.md
+          cat notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" wp2shell-scanner.zip wp2shell-scanner.zip.sha256 \
+            --title "wp2shell Scanner $GITHUB_REF_NAME" --notes-file notes.md --verify-tag
