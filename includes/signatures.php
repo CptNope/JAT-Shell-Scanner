@@ -96,6 +96,11 @@ return array(
 	// Public disclosure: 2026-07-17 00:00 UTC. Changes after this are worth a look.
 	'disclosure_ts'     => 1784246400,
 
+	// Installatron (the one-click installer many hosts use, IONOS included) drops a temporary
+	// "Installatron Worker" script in the site root. It only runs commands signed with this RSA key:
+	// SHA-256 of the key's base64 body.
+	'installatron_keys' => array( 'f2f895bae0a1d5598c665828385a62366b289e7a12263e818f5211dfdf1bacf2' ),
+
 	// WordPress 7.0's real-time collaboration files, removed from later versions (changeset 62334).
 	// Updates don't delete them, so sites that ran 7.0.x keep them. SHA-1 of every official
 	// version, from wordpress-develop's 7.0 branch history.

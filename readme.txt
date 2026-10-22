@@ -4,7 +4,7 @@ Tags: security, php2shell, malware, scanner, webshell
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -68,6 +68,10 @@ Some hosts fix PHP without changing its version number. If your host confirms bo
 No. The only outside requests are core checksums from wordpress.org and update/self-check requests to GitHub. If you set up a fleet, member sites send a short summary to your own hub site.
 
 == Changelog ==
+
+= 1.3.2 =
+* Recognises the Installatron Worker (it-api.php), the temporary script IONOS and other hosts use for one-click installs, by its signature check.
+* Hidden "data" files that can only answer 404 (a plugin's stored key or settings) are no longer reported as backdoors.
 
 = 1.3.1 =
 * Fewer false alarms: WordPress's own leftover write-test files, and WordPress 7.0 files left behind after updating, are no longer reported as attacks.

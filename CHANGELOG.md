@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.2] — 2026-10-22
+
+### Fewer false alarms on hosted sites
+- **Installatron Worker (`it-api.php`):** the temporary script that Installatron — the one-click installer IONOS and many other hosts use — puts in the site root. It was reported twice (Medium). It's now recognised by its structure rather than its name: Installatron's header, a single signature check using Installatron's pinned public key, and no command handling before unsigned requests are turned away. It's then listed as information. Look-alikes with another key, or with extra code, are still flagged.
+- **Inert "data" PHP files:** files that only answer "404 Not Found" (or exit) and stop, followed by plain data — the way plugins store keys and settings out of the web's reach, e.g. `.htXXXXXX.appconfig.php`. A hidden one in the site root was reported as a High "classic backdoor"; it's now Low with an explanation, and its contents aren't scanned as code (they can never run). A file with any real PHP after the guard is still High.
+
 ## [1.3.1] — 2026-10-22
 
 ### Fewer false alarms

@@ -351,6 +351,47 @@ class WP2SS_Scanner {
 	}
 
 	/**
+	 * A "PHP" file that can't run anything: it only answers 404 (or exits) and
+	 * stops, and the rest is plain data. Plugins use this to keep keys and
+	 * settings out of reach of the web. Nothing after the guard is executed.
+	 */
+	public static function is_inert_data( $code ) {
+		$code = (string) $code;
+		if ( ! preg_match( '/^\s*<\?php\s+(?:header\s*\(\s*([\'"])HTTP\/1\.[01]\s+40[34][^\'"]*\1\s*\)\s*;\s*)?(?:exit|die)\s*(?:\(\s*(?:[\'"][^\'"<]*[\'"])?\s*\))?\s*;?\s*(__halt_compiler\s*\(\s*\)\s*;\s*)?\?>/i', $code, $m ) ) {
+			return false;
+		}
+		// No second PHP block anywhere after the guard (unless the compiler was halted).
+		return ! empty( $m[2] ) || false === strpos( substr( $code, strlen( $m[0] ) ), '<?' );
+	}
+
+	/**
+	 * The Installatron Worker: the temporary script the Installatron one-click
+	 * installer (used by IONOS and many other hosts) puts in the site root.
+	 * Recognised by its structure, not its name: the header, a single signature
+	 * check using Installatron's pinned public key, and every command handled
+	 * only after an unsigned request has been turned away.
+	 */
+	public static function is_installatron_worker( $code, $keys ) {
+		$code = (string) $code;
+		if ( ! preg_match( '/^<\?php\s*\/\*\s*Plugin Name:\s*Installatron Worker\b/', $code ) || false === strpos( $code, 'Installatron LLC' ) || 1 !== substr_count( $code, 'function __i_verify_signature' ) ) {
+			return false;
+		}
+		$fn  = strpos( $code, 'function __i_verify_signature' );
+		$ret = strpos( $code, 'return $rsa->verify($message, $signature);', $fn );
+		if ( false === $ret || ! preg_match( "/loadKey\\('-----BEGIN PUBLIC KEY-----([A-Za-z0-9+\\/=\\s]+)-----END PUBLIC KEY-----'\\)/", substr( $code, $fn, $ret - $fn ), $k ) ) {
+			return false;
+		}
+		if ( ! in_array( hash( 'sha256', preg_replace( '/\s+/', '', $k[1] ) ), (array) $keys, true ) ) {
+			return false;
+		}
+		$deny = strpos( $code, 'I_ACCESS_DENIED' );
+		// Needles split so this file doesn't match its own code signatures.
+		$eval = strpos( $code, 'ev' . 'al(' );
+		$cmd  = strpos( $code, '$_PO' . 'ST["cmd"]' );
+		return false !== $deny && $deny > $ret && ( false === $eval || $eval > $deny ) && ( false === $cmd || $cmd > $deny );
+	}
+
+	/**
 	 * Check PHP source against the code signatures. Pure function: also used by
 	 * the false-positive test that runs over popular plugins in CI.
 	 *
@@ -1106,10 +1147,20 @@ class WP2SS_Scanner {
 				continue;
 			}
 			$code = (string) @file_get_contents( $path, false, null, 0, self::MAX_READ ); // phpcs:ignore
+			if ( self::is_inert_data( $code ) ) {
+				if ( '.' === $name[0] ) {
+					$this->add( 'low', 'file', 'Hidden data file in the site root: ' . self::clean_text( $name ), 'It can’t run code: it only answers “404 Not Found” and stops, and the rest is stored data — often a plugin’s key or settings. If you don’t know what made it, check its date against when you installed plugins; quarantining it is harmless.', $path, '', sha1( $code ) );
+				}
+				continue;
+			}
+			$hit = self::match_code( $code );
+			if ( self::is_installatron_worker( $code, $this->sig['installatron_keys'] ) && ( ! $hit || self::sev_rank( $hit[0] ) <= 3 ) ) {
+				$this->add( 'info', 'file', 'Installatron Worker: ' . self::clean_text( $name ) . ' (site root)', 'A temporary script from Installatron, the one-click installer many hosts use (IONOS included). It only runs commands digitally signed by Installatron, and deletes itself after a while. If your host doesn’t use Installatron, delete it.', $path, 'installatron', sha1( $code ) );
+				continue;
+			}
 			if ( '.' === $name[0] ) {
 				$this->add( 'high', 'file', 'Hidden PHP file in the site root: ' . self::clean_text( $name ), 'Hidden PHP files next to WordPress are a classic backdoor. Open it and confirm what it is.', $path );
 			}
-			$hit = self::match_code( $code );
 			if ( $hit ) {
 				$this->add( $hit[0], 'code', $hit[1] . ': ' . self::clean_text( $name ) . ' (site root)', $hit[2], $path, '', sha1( $code ) );
 			}
@@ -1396,7 +1447,7 @@ class WP2SS_Scanner {
 
 		// PHP inside data folders, or loose in wp-content itself.
 		if ( ( $data || $in_cr ) && ! ( $whole && self::is_empty_php( $code ) ) && ! preg_match( $this->sig['data_allow'], $sub ) && ! ( $in_cr && in_array( $name, $this->sig['content_root_allow'], true ) ) ) {
-			$guarded = $whole && self::is_guarded_php( $code );
+			$guarded = $whole && ( self::is_guarded_php( $code ) || self::is_inert_data( $code ) );
 			$recent  = $mtime >= $this->sig['disclosure_ts'];
 			$sev     = $guarded ? 'low' : ( $recent ? 'high' : 'medium' );
 			$where   = $in_cr ? 'directly in wp-content' : 'in a data folder';
@@ -1412,10 +1463,10 @@ class WP2SS_Scanner {
 		}
 
 		if ( '.' === $name[0] ) {
-			$this->add( 'medium', 'file', "Hidden PHP file: $show", 'Hidden PHP files are a common way to tuck away backdoors.', $path, '', $sha1 );
+			$this->add( $whole && self::is_inert_data( $code ) ? 'low' : 'medium', 'file', "Hidden PHP file: $show", 'Hidden PHP files are a common way to tuck away backdoors.' . ( $whole && self::is_inert_data( $code ) ? ' This one can’t run code (it only answers 404 and stops), so it’s probably a plugin’s data file.' : '' ), $path, '', $sha1 );
 		}
 
-		if ( is_string( $code ) && '' !== $code ) {
+		if ( is_string( $code ) && '' !== $code && ! ( $whole && self::is_inert_data( $code ) ) ) {
 			$hit = self::match_code( $code );
 			if ( $hit ) {
 				$this->add( $hit[0], 'code', "{$hit[1]}: $show", $hit[2], $path, '', $sha1 );
@@ -1542,6 +1593,10 @@ class WP2SS_Scanner {
 			$entries = @scandir( $abs ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 			foreach ( $entries ? $entries : array() as $b ) {
 				if ( '.' !== $b[0] && is_file( $abs . $b ) && preg_match( $this->sig['php_ext'], $b ) && ! isset( $sums[ $b ] ) && ! in_array( $b, $this->sig['root_allow'], true ) ) {
+					$head = (string) @file_get_contents( $abs . $b, false, null, 0, self::MAX_READ ); // phpcs:ignore
+					if ( self::is_inert_data( $head ) || self::is_installatron_worker( $head, $this->sig['installatron_keys'] ) ) {
+						continue; // Reported (or explained) by the site-root check.
+					}
 					$this->add( 'medium', 'core', 'Unknown PHP file in the site root: ' . self::clean_text( $b ), 'Confirm you or your host put it there.', $abs . $b );
 				}
 			}
