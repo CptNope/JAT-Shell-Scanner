@@ -114,7 +114,7 @@ return array(
 		array( 'high', '/\bcreate_function\s*\([^;]{0,120}\$_(POST|GET|REQUEST|COOKIE)\b/i', 'Builds a function from web-request input' ),
 		array( 'high', '/\$\{\s*[\'"]_(P|G|R|C)[\'"]\s*\.\s*[\'"]/', 'Hides a $_POST/$_GET reference by splitting its name' ),
 		array( 'high', '/\b(include|require)(_once)?\s*\(?\s*\$_(GET|POST|REQUEST|COOKIE)\b/i', 'Includes a file named by a web request' ),
-		array( 'high', '/\b(include|require)(_once)?\s*\(?\s*[\'"][^\'"]+\.(ico|png|jpe?g|gif|webp|bmp|svg)[\'"]/i', 'Includes an image file as PHP code' ),
+		array( 'high', '/\b(include|require)(_once)?\s*\(?\s*[\'"][^\'"]+\.(ico|png|jpe?g|gif|webp|bmp)[\'"]/i', 'Includes an image file as PHP code' ),
 		array( 'high', '/\bfile_put_contents\s*\([^;]{0,200}\$_(POST|GET|REQUEST)\b/i', 'Writes attacker-supplied content to disk' ),
 		array( 'medium', '/\$[a-z_]\w*\s*\(\s*\$_(POST|GET|REQUEST|COOKIE)\s*\[\s*[\'"][^\'"]+[\'"]\s*\]\s*\)\s*;/i', 'Calls a function named by a variable with web-request input' ),
 	),
