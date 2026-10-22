@@ -44,12 +44,16 @@ return array(
 	'php_backport_only' => array( '7.4', '8.0', '8.1' ),
 
 	// Distribution packages that keep the old PHP version number but carry the fix:
-	// [ package version prefix, first fixed revision ]. Ubuntu USN-8948-1/-2.
+	// [ package version prefix, first fixed revision ]. Ubuntu USN-8948-1 / USN-8948-2 (ESM).
+	// Debian (DSA-6574-1, DLA-4848-1) and RHEL (RHSA-2026:87072) moved to the fixed upstream versions.
 	'php_fixed_pkg'     => array(
-		array( '8.1.2-1ubuntu2.', 28 ),
-		array( '8.3.6-0ubuntu0.24.04.', 13 ),
-		array( '8.5.4-0ubuntu1.', 5 ),
-		array( '8.5.9-0ubuntu2.', 1 ),
+		array( '8.1.2-1ubuntu2.', 28 ),                // Ubuntu 22.04
+		array( '8.3.6-0ubuntu0.24.04.', 13 ),          // Ubuntu 24.04
+		array( '8.5.4-0ubuntu1.', 5 ),                 // Ubuntu 26.04
+		array( '8.5.9-0ubuntu2.', 1 ),                 // Ubuntu 26.10
+		array( '7.4.3-4ubuntu2.29+esm', 5 ),           // Ubuntu 20.04 ESM
+		array( '7.2.24-0ubuntu0.18.04.17+esm', 14 ),   // Ubuntu 18.04 ESM
+		array( '7.0.33-0ubuntu0.16.04.16+esm', 22 ),   // Ubuntu 16.04 ESM
 	),
 
 	// The fix was published 2026-10-21; a PHP built on or after this date may carry a backport.
@@ -62,6 +66,8 @@ return array(
 		array( 'oom_unknown', 'medium', '/Allowed memory size of \d+ bytes exhausted.*\bin (<b>)?Unknown(<\/b>)? on line (<b>)?0\b/i', 'out-of-memory errors raised before any script ran ("in Unknown on line 0")' ),
 		// Also logged by the *patched* 8.4.27 / 8.5.12 (php-src #24493), so it only counts on unpatched PHP.
 		array( 'session_decode', 'medium', '/Failed to decode session object/i', '"Failed to decode session object" errors' ),
+		// Time limits hit before any script ran (CVE-2026-109619 advisory).
+		array( 'timeout_unknown', 'medium', '/Maximum execution time of \d+ seconds? exceeded in (<b>)?Unknown(<\/b>)? on line (<b>)?0\b/i', '"Maximum execution time exceeded" errors raised before any script ran' ),
 		array( 'segfault', 'high', '/exited on signal 11|\bSIGSEGV\b|segfault at [0-9a-f]+ .*php|zend_mm_heap corrupted/i', 'PHP worker crashes (segmentation faults / heap corruption)' ),
 	),
 

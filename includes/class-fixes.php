@@ -89,7 +89,7 @@ class WP2SS_Fixes {
 			if ( 'core' === $f['type'] && false !== stripos( $f['message'], 'Modified WordPress core file' ) ) {
 				return null; // Reinstall core instead — never move core files.
 			}
-			if ( self::safe_target( $loc ) ) {
+			if ( self::safe_target( $loc ) && @is_file( $loc ) && ! self::through_link( $loc ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 				return array(
 					'action'  => 'quarantine',
 					'label'   => __( 'Quarantine', 'wp2shell-scanner' ),
@@ -106,6 +106,9 @@ class WP2SS_Fixes {
 	 * never WordPress's own folders, wp-config.php, or this plugin itself.
 	 */
 	public static function safe_target( $path ) {
+		if ( self::through_link( $path ) ) {
+			return false; // A link could point anywhere — and could be swapped in after the scan.
+		}
 		$real = realpath( $path );
 		if ( ! $real || ! file_exists( $real ) ) {
 			return false;
@@ -132,6 +135,21 @@ class WP2SS_Fixes {
 			$abs . '/wp-load.php',
 			$abs . '/wp-settings.php',
 			$abs . '/wp-blog-header.php',
+			$abs . '/wp-login.php',
+			$abs . '/wp-cron.php',
+			$abs . '/xmlrpc.php',
+			$abs . '/wp-activate.php',
+			$abs . '/wp-signup.php',
+			$abs . '/wp-comments-post.php',
+			$abs . '/wp-links-opml.php',
+			$abs . '/wp-mail.php',
+			$abs . '/wp-trackback.php',
+			$abs . '/.htaccess',
+			$abs . '/.user.ini',
+			$content . '/db.php',
+			$content . '/object-cache.php',
+			$content . '/advanced-cache.php',
+			$content . '/sunrise.php',
 			$content . '/plugins',
 			$content . '/themes',
 			$content . '/uploads',
@@ -143,9 +161,9 @@ class WP2SS_Fixes {
 		if ( in_array( $real, $never, true ) ) {
 			return false;
 		}
-		// Nothing inside this plugin's own folder except files it doesn't ship (handled by the finding itself).
+		// Nothing inside this plugin's own folder except files it doesn't ship (an attacker's addition).
 		$self = wp_normalize_path( untrailingslashit( (string) realpath( WP2SS_DIR ) ) );
-		if ( 0 === strpos( $real . '/', $self . '/' ) && is_dir( $real ) ) {
+		if ( 0 === strpos( $real . '/', $self . '/' ) && ( is_dir( $real ) || in_array( substr( $real, strlen( $self ) + 1 ), WP2SS_Scanner::OWN_PHP, true ) ) ) {
 			return false;
 		}
 		// Whole theme folders are too big a hammer; single files inside them are fine.
@@ -154,6 +172,43 @@ class WP2SS_Fixes {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * Does this path, or any folder between it and the site's own folders,
+	 * go through a symbolic link? (The site folders themselves may be links;
+	 * that's the host's business.)
+	 */
+	public static function through_link( $path ) {
+		$p     = wp_normalize_path( (string) $path );
+		$bases = array_filter(
+			array_unique(
+				array(
+					wp_normalize_path( untrailingslashit( ABSPATH ) ),
+					wp_normalize_path( untrailingslashit( WP_CONTENT_DIR ) ),
+					wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) ),
+					wp_normalize_path( untrailingslashit( (string) realpath( ABSPATH ) ) ),
+					wp_normalize_path( untrailingslashit( (string) realpath( WP_CONTENT_DIR ) ) ),
+					wp_normalize_path( untrailingslashit( (string) realpath( WP_PLUGIN_DIR ) ) ),
+				)
+			)
+		);
+		$base = '';
+		foreach ( $bases as $b ) {
+			if ( 0 === strpos( $p, $b . '/' ) && strlen( $b ) > strlen( $base ) ) {
+				$base = $b;
+			}
+		}
+		if ( '' === $base ) {
+			return true; // Outside the site: treat as unsafe.
+		}
+		while ( strlen( $p ) > strlen( $base ) ) {
+			if ( @is_link( $p ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+				return true;
+			}
+			$p = dirname( $p );
+		}
+		return false;
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -222,9 +277,16 @@ class WP2SS_Fixes {
 	}
 
 	/** Fix record for a finding (so the UI can show "Quarantined — Undo"). */
-	public static function record_for_finding( $finding_id ) {
+	public static function record_for_finding( $finding ) {
+		$finding_id = is_array( $finding ) ? $finding['id'] : (string) $finding;
+		$loc        = is_array( $finding ) && ! empty( $finding['location'] ) ? wp_normalize_path( (string) $finding['location'] ) : '';
 		foreach ( self::records() as $r ) {
-			if ( isset( $r['finding'] ) && $r['finding'] === $finding_id && 'done' === $r['state'] ) {
+			// Other findings about the same file count as handled too.
+			$same = $loc && 'demote' !== $r['action'] && ! empty( $r['original'] ) && ( wp_normalize_path( $r['original'] ) === $loc || 0 === strpos( $loc, wp_normalize_path( $r['original'] ) . '/' ) );
+			if ( ( ( isset( $r['finding'] ) && $r['finding'] === $finding_id ) || $same ) && 'done' === $r['state'] ) {
+				if ( 'demote' !== $r['action'] && ! empty( $r['original'] ) && file_exists( $r['original'] ) ) {
+					continue; // Something is back at the quarantined path: it needs fixing again.
+				}
 				return $r;
 			}
 		}
@@ -276,6 +338,10 @@ class WP2SS_Fixes {
 			}
 			$r += $res;
 		} else {
+			// The file must still be the one the scan saw: never act on something swapped in since.
+			if ( 'quarantine' === $fix['action'] && ! empty( $finding['sha1'] ) && ! hash_equals( (string) $finding['sha1'], (string) @sha1_file( $fix['target'] ) ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+				return new WP_Error( 'wp2ss_changed', __( 'This file has changed since the scan. Scan again, then retry.', 'wp2shell-scanner' ) );
+			}
 			if ( 'quarantine_plugin' === $fix['action'] ) {
 				self::deactivate_folder( $fix['target'] );
 			}
@@ -348,7 +414,8 @@ class WP2SS_Fixes {
 		}
 		$real = wp_normalize_path( realpath( $target ) );
 		$sha1 = is_file( $real ) ? (string) @sha1_file( $real ) : ''; // phpcs:ignore WordPress.PHP.NoSilencedErrors
-		$dest = $q . '/' . gmdate( 'Ymd-His' ) . '-' . strtolower( wp_generate_password( 6, false ) ) . '-' . sanitize_file_name( basename( $real ) ) . '.quarantined';
+		// No ".php" anywhere in the name: some servers run any file whose name merely contains it.
+		$dest = $q . '/' . gmdate( 'Ymd-His' ) . '-' . strtolower( wp_generate_password( 6, false ) ) . '-' . str_replace( '.', '_', sanitize_file_name( basename( $real ) ) ) . '.quarantined';
 
 		if ( ! @rename( $real, $dest ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 			// Different filesystem, or a rename the host blocks: copy, then delete the original.
@@ -368,27 +435,46 @@ class WP2SS_Fixes {
 			'quarantined' => $dest,
 			'kind'        => is_dir( $dest ) ? 'dir' : 'file',
 			'sha1'        => $sha1,
+			'defang'      => 2,
 		);
 	}
 
-	/** Rename every PHP-ish file in a quarantined folder so it can't run. */
+	/**
+	 * Rename every file in a quarantined folder — .htaccess included — so
+	 * nothing can run or change server rules: dots are encoded (so no ".php"
+	 * is left anywhere in a name) and ".off" is appended. Reversible.
+	 */
 	private static function defang( $dir ) {
-		$sig = WP2SS_Scanner::signatures();
-		$it  = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::LEAVES_ONLY, RecursiveIteratorIterator::CATCH_GET_CHILD );
-		foreach ( $it as $f ) {
-			if ( preg_match( $sig['php_ext'], $f->getFilename() ) ) {
-				@rename( $f->getPathname(), $f->getPathname() . '.off' ); // phpcs:ignore
-			}
+		foreach ( self::leaves( $dir ) as $path ) {
+			$name = basename( $path );
+			@rename( $path, dirname( $path ) . '/' . str_replace( array( '%', '.' ), array( '%25', '%2E' ), $name ) . '.off' ); // phpcs:ignore
 		}
 	}
 
-	private static function undefang( $dir ) {
-		$it = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::LEAVES_ONLY, RecursiveIteratorIterator::CATCH_GET_CHILD );
+	private static function undefang( $dir, $version ) {
+		foreach ( self::leaves( $dir ) as $path ) {
+			$name = basename( $path );
+			if ( '.off' !== substr( $name, -4 ) ) {
+				continue;
+			}
+			$orig = substr( $name, 0, -4 );
+			if ( $version >= 2 ) {
+				$orig = rawurldecode( $orig );
+			}
+			@rename( $path, dirname( $path ) . '/' . $orig ); // phpcs:ignore
+		}
+	}
+
+	/** Files under a folder (not following links), collected first so renaming doesn't disturb the walk. */
+	private static function leaves( $dir ) {
+		$out = array();
+		$it  = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::LEAVES_ONLY, RecursiveIteratorIterator::CATCH_GET_CHILD );
 		foreach ( $it as $f ) {
-			if ( '.off' === substr( $f->getFilename(), -4 ) ) {
-				@rename( $f->getPathname(), substr( $f->getPathname(), 0, -4 ) ); // phpcs:ignore
+			if ( ! $f->isDir() ) {
+				$out[] = $f->getPathname();
 			}
 		}
+		return $out;
 	}
 
 	private static function restore( $r ) {
@@ -398,12 +484,21 @@ class WP2SS_Fixes {
 		if ( file_exists( $r['original'] ) ) {
 			return new WP_Error( 'wp2ss_exists', __( 'Something already exists at the original location, so it wasn’t overwritten.', 'wp2shell-scanner' ) );
 		}
-		$parent = dirname( $r['original'] );
+		// The way back must still be the real folder it came from: no links swapped in since.
+		$original = wp_normalize_path( $r['original'] );
+		$parent   = dirname( $original );
+		$exists   = $parent;
+		while ( ! file_exists( $exists ) && dirname( $exists ) !== $exists ) {
+			$exists = dirname( $exists );
+		}
+		if ( self::through_link( $original ) || wp_normalize_path( (string) realpath( $exists ) ) !== $exists ) {
+			return new WP_Error( 'wp2ss_moved', __( 'The original folder has been replaced by a link since this was quarantined, so it wasn’t restored. Restore it by hand if you’re sure.', 'wp2shell-scanner' ) );
+		}
 		if ( ! is_dir( $parent ) && ! wp_mkdir_p( $parent ) ) {
 			return new WP_Error( 'wp2ss_parent', __( 'The original folder no longer exists and couldn’t be recreated.', 'wp2shell-scanner' ) );
 		}
 		if ( 'dir' === $r['kind'] ) {
-			self::undefang( $r['quarantined'] );
+			self::undefang( $r['quarantined'], isset( $r['defang'] ) ? (int) $r['defang'] : 1 );
 		}
 		if ( ! @rename( $r['quarantined'], $r['original'] ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 			return new WP_Error( 'wp2ss_move_failed', __( 'Couldn’t move it back (file permissions).', 'wp2shell-scanner' ) );
@@ -430,6 +525,12 @@ class WP2SS_Fixes {
 		}
 		if ( get_current_user_id() === $user_id ) {
 			return new WP_Error( 'wp2ss_self', __( 'You can’t remove your own admin rights here.', 'wp2shell-scanner' ) );
+		}
+		if ( ! is_multisite() && count( get_users( array( 'role' => 'administrator', 'fields' => 'ID', 'exclude' => array( $user_id ), 'number' => 1 ) ) ) < 1 ) {
+			return new WP_Error( 'wp2ss_last_admin', __( 'This is the only administrator left, so its admin rights weren’t removed. Create your own administrator account first.', 'wp2shell-scanner' ) );
+		}
+		if ( is_multisite() && is_super_admin( $user_id ) && count( array_diff( get_super_admins(), array( $u->user_login ) ) ) < 1 ) {
+			return new WP_Error( 'wp2ss_last_admin', __( 'This is the only network administrator left, so its rights weren’t removed.', 'wp2shell-scanner' ) );
 		}
 		$roles = array();
 		$sites = is_multisite() ? get_blogs_of_user( $user_id, true ) : array( (object) array( 'userblog_id' => get_current_blog_id() ) );

@@ -311,6 +311,9 @@ has "$R" "$(sev high 'PHP 8.3.6 is vulnerable to PHP2Shell: its operating-system
 set_php 8.3.6 "" ubuntu 256M "[]" 8.3.6-0ubuntu0.24.04.13
 R=$(scan)
 has "$R" "$(sev info 'package 8.3.6-0ubuntu0.24.04.13. includes the PHP2Shell fix')" "Ubuntu's fixed package is recognised (same PHP version number)"
+set_php 7.4.3 "" ubuntu 256M "[]" 7.4.3-4ubuntu2.29+esm5
+R=$(scan)
+has "$R" "$(sev info 'package 7.4.3-4ubuntu2.29.esm5. includes the PHP2Shell fix')" "Ubuntu ESM package for PHP 7.4 is recognised as fixed"
 set_php 8.1.34 "" linux 256M "[]" "" 1792627200
 R=$(scan)
 has "$R" "$(sev medium 'was built on 2026-10-22')" "a PHP built after the fix was released is 'probably patched'"
@@ -355,12 +358,31 @@ H=$(sha256sum "$TMPD/nfs" | cut -d' ' -f1)
 printf "<?php add_filter( 'wp2ss_signatures', function ( \$s ) { \$s['php2shell_files']['%s'] = 'test sample'; return \$s; } );\n" "$H" > "$C/mu-plugins/wp2ss-test-hash.php"
 R=$(scan)
 has "$R" "$(sev critical 'PHP2Shell malware found')" "known PHP2Shell second-stage hash in the temp folder"
+TO=$(mktemp)
+echo "[22-Oct-2026 09:10:00 UTC] PHP Fatal error:  Maximum execution time of 30 seconds exceeded in Unknown on line 0" > "$TO"
+R=$(scan --error-log="$TO")
+has "$R" "$(msg 'Maximum execution time exceeded. errors raised before any script ran')" "time-limit errors before any script ran (CVE-2026-109619 advisory)"
+printf '<?php echo 1;\n' > "$TMPD/wp2ss-staged-$$.php"
+R=$(scan)
+has "$R" "$(sev medium "PHP file in the temporary folder.*wp2ss-staged-$$.php")" "PHP written to the temp folder since the attacks began"
+SP=$($WP eval '$p = (string) ini_get( "session.save_path" ); $p = false !== strpos( $p, ";" ) ? substr( $p, strrpos( $p, ";" ) + 1 ) : $p; echo "" !== $p ? $p : sys_get_temp_dir();' 2>/dev/null)
+if [ -w "$SP" ]; then
+	printf 'a|s:20:"<?php system($_GET[1]);";' > "$SP/sess_wp2sstest$$"
+	R=$(scan)
+	has "$R" "$(sev high 'session file.s. contain PHP code')" "PHP code planted in a session file"
+	rm -f "$SP/sess_wp2sstest$$"
+else
+	ok "session-file check skipped (session folder not writable here)"
+fi
+rm -f "$TO" "$TMPD/wp2ss-staged-$$.php"
 rm -f "$TMPD/nfs" "$C/mu-plugins/wp2ss-test-hash.php" "$P2S" "$SES"
 rm -f "$ERR" "$ERR.gz" "$ACC"
 set_php 8.3.36
 
 section "14. Own-file integrity (release manifest)"
 php "$(dirname "$0")/../.github/scripts/make-manifest.php" "$SELF" 9.9.9 2>/dev/null
+# Test the local manifest only: once this version is released, GitHub's real one would (rightly) disagree.
+$WP eval 'set_site_transient( "wp2ss_manifest_" . WP2SS_VERSION, array(), HOUR_IN_SECONDS );' >/dev/null
 R=$(scan)
 hasnt "$R" "$(msg 'scanner plugin has been modified')" "untouched plugin files pass the manifest check"
 cp "$SELF/includes/class-settings.php" "$OUTSIDE.bak" 2>/dev/null || cp "$SELF/includes/class-settings.php" /tmp/wp2ss-settings.bak
@@ -383,6 +405,8 @@ $WP php2shell fix "$FID" "$UID2" --yes >/dev/null 2>&1
 [ "$($WP user get rogue2 --field=roles 2>/dev/null)" = "subscriber" ] && ok "rogue admin turned into a subscriber" || bad "rogue admin still admin"
 QD=$($WP eval 'echo WP2SS_Fixes::qdir();' 2>/dev/null)
 ls "$QD" 2>/dev/null | grep -q 'fixme.php.quarantined' && ok "quarantined copy kept, renamed so it can't run" || bad "quarantined copy missing"
+OUT=$($WP eval '$n = 0; $h = 0; foreach ( WP2SS_Scanner::last_report()["findings"] as $f ) { if ( false !== strpos( $f["location"], "fixme.php" ) ) { $n++; $h += WP2SS_Fixes::record_for_finding( $f ) ? 1 : 0; } } echo "$n/$h";' 2>/dev/null)
+[ "${OUT%/*}" -ge 2 ] && [ "${OUT%/*}" = "${OUT#*/}" ] && ok "every finding about a quarantined file counts as handled ($OUT)" || bad "sibling findings still need action ($OUT)"
 R=$(scan)
 hasnt "$R" "$(msg 'fixme.php')" "the quarantine folder isn't scanned"
 for RID in $($WP php2shell quarantine list --format=json 2>/dev/null | jq -r '.[].id'); do $WP php2shell quarantine restore "$RID" >/dev/null 2>&1; done
@@ -400,6 +424,42 @@ OUT=$($WP eval '
 [ "$OUT" = "nnnnn0" ] && ok "fixes refuse wp-config, core folders, uploads root, the scanner itself, files outside the site; forged records ignored" || bad "safety rules failed ($OUT)"
 $WP eval 'delete_site_option( "wp2ss_fixes" );' >/dev/null
 rm -rf "$C/uploads/2026/09"; $WP user delete rogue2 --yes --quiet
+
+# Attacks on the fixes themselves (from an independent security review).
+mkdir -p "$C/uploads/2026/08" "$OUTSIDE/victim"
+SW="$C/uploads/2026/08/swap.php"
+printf "<?php eval(\$_POST['g']);\n" > "$SW"
+R=$(scan)
+FID=$(echo "$R" | jq -r '[.findings[] | select(.type=="code" and (.message|test("swap.php")))][0].id')
+mv "$SW" "$OUTSIDE/swap.php"; ln -s "$C/plugins" "$SW"
+$WP php2shell fix "$FID" --yes >/dev/null 2>&1
+[ -L "$SW" ] && [ -d "$C/plugins" ] && ok "a link swapped in after the scan is never followed" || bad "quarantine followed a swapped-in link"
+rm -f "$SW"; mv "$OUTSIDE/swap.php" "$SW"
+printf "<?php eval(\$_POST['g']); // changed\n" > "$SW"
+$WP php2shell fix "$FID" --yes >/dev/null 2>&1
+[ -e "$SW" ] && ok "a file changed since the scan isn't moved" || bad "changed file was quarantined"
+printf "<?php eval(\$_POST['g']);\n" > "$SW"
+$WP php2shell fix "$FID" --yes >/dev/null 2>&1
+QD=$($WP eval 'echo WP2SS_Fixes::qdir();' 2>/dev/null)
+[ ! -e "$SW" ] && ! ls "$QD" | grep -v '^index\.php$' | grep -qi '\.php' && ok "quarantined names never contain .php (servers that run any *.php.* name)" || bad "quarantine name still contains .php"
+printf "<?php eval(\$_POST['g']);\n" > "$SW"
+[ "$($WP eval "echo WP2SS_Fixes::record_for_finding( '$FID' ) ? 'fixed' : 'open';" 2>/dev/null)" = "open" ] && ok "a webshell dropped again at the same path needs action again" || bad "re-dropped webshell shown as fixed"
+rm -f "$SW"; rm -rf "$C/uploads/2026/08"; ln -s "$OUTSIDE/victim" "$C/uploads/2026/08"
+RID=$($WP php2shell quarantine list --format=json 2>/dev/null | jq -r '.[0].id')
+$WP php2shell quarantine restore "$RID" >/dev/null 2>&1
+[ ! -e "$OUTSIDE/victim/swap.php" ] && ok "restore refuses a folder swapped for a link" || bad "restore wrote through a link"
+rm -f "$C/uploads/2026/08"; $WP php2shell quarantine delete "$RID" --yes >/dev/null 2>&1
+OUT=$($WP eval '
+	$admins = get_users( array( "role" => "administrator", "fields" => "ID" ) );
+	$last   = (int) array_pop( $admins );
+	foreach ( $admins as $id ) { ( new WP_User( $id ) )->set_role( "subscriber" ); }
+	$m = new ReflectionMethod( "WP2SS_Fixes", "demote" ); $m->setAccessible( true );
+	$r = $m->invoke( null, $last );
+	foreach ( $admins as $id ) { ( new WP_User( $id ) )->set_role( "administrator" ); }
+	echo is_wp_error( $r ) ? $r->get_error_code() : "demoted";
+' 2>/dev/null)
+[ "$OUT" = "wp2ss_last_admin" ] && ok "the last administrator is never demoted" || bad "last admin demoted ($OUT)"
+$WP eval 'delete_site_option( "wp2ss_fixes" );' >/dev/null
 
 section "16. Fleet hub (signed reports)"
 $WP php2shell fleet hub >/dev/null 2>&1
@@ -423,8 +483,92 @@ OUT=$($WP eval '
 	echo $m ? $m["verdict"] : "missing", " ", false === strpos( wp_json_encode( $m ), "<script>" ) ? "clean" : "unsafe";
 ' 2>&1)
 [ "$OUT" = "200 401 401 SUSPICIOUS clean" ] && ok "hub accepts signed reports, rejects bad keys and stale timestamps, strips markup" || bad "fleet hub checks failed ($OUT)"
+OUT=$($WP eval '
+	$key  = WP2SS_Fleet::settings()["key"];
+	$send = function ( $route, $data, $secret = null, $ahead = 0 ) use ( $key ) {
+		$body = wp_json_encode( $data ); $t = time() + $ahead;
+		$r = new WP_REST_Request( "POST", "/wp2ss/v1/fleet/" . $route );
+		$r->set_header( "X-WP2SS-Time", (string) $t );
+		$r->set_header( "X-WP2SS-Signature", hash_hmac( "sha256", "$t.$body", $key ) );
+		if ( $secret ) { $r->set_header( "X-WP2SS-Site-Signature", hash_hmac( "sha256", "$t.$body", $secret ) ); }
+		$r->set_body( $body );
+		$res = rest_do_request( $r );
+		return $res->get_status() . ( isset( $res->get_data()["enrolled"] ) && $res->get_data()["enrolled"] ? "e" : "" );
+	};
+	$sec = wp_generate_password( 48, false );
+	$out = array();
+	$out[] = $send( "report", array( "site" => "https://pinned.example", "verdict" => "CLEAN", "enroll" => $sec ), $sec );
+	$out[] = $send( "report", array( "site" => "https://pinned.example/", "verdict" => "CLEAN" ) );
+	$out[] = $send( "report", array( "site" => "https://pinned.example", "verdict" => "SUSPICIOUS" ), $sec );
+	$out[] = $send( "report", array( "site" => home_url(), "verdict" => "CLEAN" ) );
+	$out[] = $send( "report", array( "site" => "https://later.example", "verdict" => "CLEAN" ), null, 300 );
+	$out[] = $send( "report", array( "site" => "https://other.example", "verdict" => "CLEAN", "admin" => "https://evil.example/wp-login.php" ) );
+	$out[] = $send( "poll", array( "site" => "https://other.example" ) );
+	$s = WP2SS_Fleet::sites();
+	$out[] = $s[ WP2SS_Fleet::site_key( "https://pinned.example" ) ]["verdict"];
+	$o = $s[ WP2SS_Fleet::site_key( "https://other.example" ) ];
+	$out[] = ( "" === $o["admin"] ? "nolink" : "link" ) . ( $o["legacy"] ? "-legacy" : "" );
+	echo implode( " ", $out );
+' 2>&1)
+[ "$OUT" = "200e 403 200e 403 401 200 403 SUSPICIOUS nolink-legacy" ] && ok "each site registers its own secret; the shared key alone can't overwrite a registered site or the hub itself; future timestamps and foreign admin links rejected" || bad "fleet identity checks ($OUT)"
 has "$($WP php2shell fleet list --format=json 2>/dev/null | jq '{verdict:"x", findings:[]} + {list: .}')" '.list | map(.site) | index("https://member.example") != null' "fleet list shows the member"
+
+# Alerts: capture outgoing mail and webhooks instead of sending them.
+OUTBOX=$(mktemp)
+cat > "$C/mu-plugins/wp2ss-test-outbox.php" <<PHP
+<?php
+add_filter( 'pre_wp_mail', function ( \$r, \$a ) { file_put_contents( '$OUTBOX', "MAIL " . \$a['to'] . " | " . \$a['subject'] . "\n" . \$a['message'] . "\n", FILE_APPEND ); return true; }, 10, 2 );
+add_filter( 'pre_http_request', function ( \$r, \$args, \$url ) { if ( false === strpos( \$url, 'hooks.example' ) ) { return \$r; } file_put_contents( '$OUTBOX', "HOOK " . \$url . "\n" . \$args['body'] . "\n", FILE_APPEND ); return array( 'headers' => array(), 'body' => 'ok', 'response' => array( 'code' => 200, 'message' => 'OK' ), 'cookies' => array() ); }, 10, 3 );
+PHP
+$WP eval 'delete_site_option( "wp2ss_fleet_queue" ); wp_clear_scheduled_hook( "wp2ss_fleet_alerts" );' >/dev/null
+$WP php2shell fleet alerts --email=ops@example.test --webhook=https://hooks.example/services/T0/B0/x --stale-days=10 >/dev/null 2>&1
+OUT=$($WP eval '
+	$key  = WP2SS_Fleet::settings()["key"];
+	$sec  = wp_generate_password( 48, false );
+	$send = function ( $route, $data ) use ( $key, $sec ) {
+		$data["enroll"] = $sec;
+		$body = wp_json_encode( $data ); $t = time();
+		$r = new WP_REST_Request( "POST", "/wp2ss/v1/fleet/" . $route );
+		$r->set_header( "X-WP2SS-Time", (string) $t );
+		$r->set_header( "X-WP2SS-Signature", hash_hmac( "sha256", "$t.$body", $key ) );
+		$r->set_header( "X-WP2SS-Site-Signature", hash_hmac( "sha256", "$t.$body", $sec ) );
+		$r->set_body( $body );
+		return rest_do_request( $r );
+	};
+	$base = array( "site" => "https://shop.example", "name" => "Shop <!channel>", "php" => "8.3.36", "wp" => "7.1.2", "counts" => array() );
+	$send( "report", $base + array( "verdict" => "CLEAN", "serious" => array() ) );
+	echo wp_next_scheduled( "wp2ss_fleet_alerts" ) ? "q " : "none ";
+	sleep( 1 );
+	$send( "report", $base + array( "verdict" => "COMPROMISED", "serious" => array( array( "severity" => "critical", "type" => "file", "message" => "Webshell @everyone <a href=x>y</a>" ) ) ) );
+	echo wp_next_scheduled( "wp2ss_fleet_alerts" ) ? "q " : "none ";
+	WP2SS_Fleet::send_digest();
+	// Overdue, then back again.
+	$sites = get_site_option( "wp2ss_fleet_sites" ); $k = WP2SS_Fleet::site_key( "https://shop.example" );
+	$sites[ $k ]["received"] = time() - 11 * DAY_IN_SECONDS; update_site_option( "wp2ss_fleet_sites", $sites );
+	WP2SS_Fleet::check_stale(); WP2SS_Fleet::check_stale();
+	echo count( get_site_option( "wp2ss_fleet_queue", array() ) ), " ";
+	WP2SS_Fleet::send_digest();
+	sleep( 1 );
+	$send( "report", $base + array( "verdict" => "COMPROMISED", "serious" => array( array( "severity" => "critical", "type" => "file", "message" => "Webshell @everyone <a href=x>y</a>" ) ) ) );
+	echo count( get_site_option( "wp2ss_fleet_queue", array() ) ), " ";
+	WP2SS_Fleet::send_digest();
+	// Scan requests reach the member at its next check-in, once.
+	WP2SS_Fleet::request_rescan( $k );
+	echo $send( "poll", array( "site" => "https://shop.example/" ) )->get_data()["rescan"] ? "yes " : "no ";
+	echo $send( "poll", array( "site" => "https://shop.example" ) )->get_data()["rescan"] ? "yes" : "no";
+' 2>&1)
+[ "$OUT" = "none q 1 1 yes no" ] && ok "alerts queue only on trouble, overdue alerts once, scan requests delivered once" || bad "fleet alert flow ($OUT)"
+D=$(cat "$OUTBOX")
+echo "$D" | grep -q 'MAIL ops@example.test | PHP2Shell fleet: 1 site needs a look' && ok "digest email goes to the alert address" || bad "no digest email"
+echo "$D" | grep -q 'is now “Compromised' && ok "the digest says what changed" || bad "digest text"
+echo "$D" | grep -q "hasn’t reported for" && ok "overdue site alert" || bad "no overdue alert"
+echo "$D" | grep -q 'is reporting again' && ok "site back after going quiet" || bad "no 'reporting again' alert"
+echo "$D" | grep '^{' | grep -q '<!channel>\|<a href' && bad "webhook text can ping or link" || ok "webhook text can't ping a channel or add links"
+$WP eval 'echo is_wp_error( WP2SS_Fleet::save_alerts( true, "", "http://hooks.example/x", true, 10 ) ) ? "refused" : "saved";' 2>/dev/null | grep -q refused && ok "non-HTTPS webhook refused" || bad "http webhook accepted"
+$WP php2shell fleet test-alert >/dev/null 2>&1 && grep -q 'test alert' "$OUTBOX" && ok "test alert" || bad "test alert failed"
+rm -f "$C/mu-plugins/wp2ss-test-outbox.php" "$OUTBOX"
 $WP php2shell fleet leave >/dev/null 2>&1; $WP eval 'delete_site_option( "wp2ss_fleet_sites" ); delete_site_option( "wp2ss_fleet" );' >/dev/null
+$WP eval 'delete_site_option( "wp2ss_fleet_queue" ); wp_clear_scheduled_hook( "wp2ss_fleet_alerts" );' >/dev/null
 
 section "17. Cleanup → clean again"
 rm -rf "$C/plugins/wp2shell_6a5566a6" "$C/plugins/cmsmap" "$C/upgrade/wp2shell_79b06a80" \

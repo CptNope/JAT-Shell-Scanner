@@ -4,7 +4,7 @@ Tags: security, php2shell, malware, scanner, webshell
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -35,7 +35,7 @@ Features:
 * A ready-to-send message for your host when PHP needs updating
 * Weekly or daily automatic scans with email alerts for new, serious findings
 * One-click quarantine and admin removal, with undo
-* Fleet dashboard: one hub site shows the results of all your sites
+* Fleet dashboard: one hub site shows the results of all your sites, with email/Slack/Discord alerts and remote rescans
 * Ignore false positives (signed, so attackers can't forge it)
 * Site Health integration
 * WP-CLI: `wp php2shell scan`, `status`, `ignore`, `fix`, `quarantine`, `fleet`
@@ -68,6 +68,12 @@ Some hosts fix PHP without changing its version number. If your host confirms bo
 No. The only outside requests are core checksums from wordpress.org and update/self-check requests to GitHub. If you set up a fleet, member sites send a short summary to your own hub site.
 
 == Changelog ==
+
+= 1.3.0 =
+* Security fixes from an independent review: per-site fleet identities, safer quarantine and restore (no links, contents must match the scan), last admin never demoted.
+* Fleet alerts (email, Slack, Discord) and "Scan again" for member sites.
+* New PHP2Shell intel: Ubuntu ESM packages, more log, temp-folder, session and server checks.
+* The page keeps your place after a fix.
 
 = 1.2.0 =
 * One-click fixes with undo: quarantine files and plugins, remove admin rights.

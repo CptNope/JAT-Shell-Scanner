@@ -24,7 +24,7 @@ if ( $wp2ss_qname && preg_match( '/^wp2ss-quarantine-[a-z0-9]{16}$/', $wp2ss_qna
 	}
 }
 
-foreach ( array( 'wp2ss_job', 'wp2ss_report', 'wp2ss_ignored', 'wp2ss_settings', 'wp2ss_env', 'wp2ss_admins', 'wp2ss_fixes', 'wp2ss_quarantine_dir', 'wp2ss_fleet', 'wp2ss_fleet_sites', 'wp2ss_fleet_status' ) as $wp2ss_opt ) {
+foreach ( array( 'wp2ss_job', 'wp2ss_report', 'wp2ss_ignored', 'wp2ss_settings', 'wp2ss_env', 'wp2ss_admins', 'wp2ss_fixes', 'wp2ss_quarantine_dir', 'wp2ss_fleet', 'wp2ss_fleet_sites', 'wp2ss_fleet_status', 'wp2ss_fleet_queue', 'wp2ss_fleet_pins' ) as $wp2ss_opt ) {
 	delete_site_option( $wp2ss_opt );
 }
 delete_site_transient( 'wp2ss_release' );
@@ -36,6 +36,9 @@ if ( is_multisite() ) {
 }
 wp_clear_scheduled_hook( 'wp2ss_scheduled_scan' );
 wp_clear_scheduled_hook( 'wp2ss_scan_step' );
+foreach ( array( 'wp2ss_fleet_alerts', 'wp2ss_fleet_daily', 'wp2ss_fleet_poll' ) as $wp2ss_hook ) {
+	wp_clear_scheduled_hook( $wp2ss_hook );
+}
 if ( is_multisite() ) {
 	restore_current_blog();
 }

@@ -521,7 +521,7 @@ class WP2SS_Scanner {
 		while ( 'done' !== $this->s['phase'] && ! $this->out_of_time() ) {
 			switch ( $this->s['phase'] ) {
 				case 'quick':
-					$checks = array( 'check_php', 'check_tmp', 'check_version', 'check_plugins', 'check_mu_plugins', 'check_admins', 'check_admin_baseline', 'check_app_passwords', 'check_roles', 'check_rest_routes', 'check_root_files', 'check_own_folder' );
+					$checks = array( 'check_php', 'check_tmp', 'check_server', 'check_version', 'check_plugins', 'check_mu_plugins', 'check_admins', 'check_admin_baseline', 'check_app_passwords', 'check_roles', 'check_rest_routes', 'check_root_files', 'check_own_folder' );
 					foreach ( $checks as $check ) {
 						$this->guarded( array( $this, $check ), $check );
 					}
@@ -745,7 +745,7 @@ class WP2SS_Scanner {
 			$on  = array();
 			$off = array();
 			$this->truthy( $e['upload_progress'] ) ? ( $off[] = 'session.upload_progress.enabled is on (0 partly protects against CVE-2026-109619)' ) : ( $on[] = 'session upload progress is off (partial)' );
-			'-1' === (string) $e['memory_limit'] ? ( $on[] = 'memory_limit is -1 (partial; a runaway script can then use all memory)' ) : ( $off[] = 'memory_limit is ' . $e['memory_limit'] . ' (-1 partly protects against CVE-2026-109618)' );
+			'-1' === (string) $e['memory_limit'] ? ( $on[] = 'memory_limit is -1 (partial; it must be enforced so sites can’t change it)' ) : ( $off[] = 'memory_limit is ' . $e['memory_limit'] . ' (PHP’s advisory: -1, enforced with php_admin_value, partly protects against CVE-2026-109618)' );
 			if ( version_compare( $e['branch'], '8.5', '>=' ) ) {
 				$this->truthy( $e['fatal_bt'] ) ? ( $off[] = 'fatal_error_backtraces is on (set it to 0)' ) : ( $on[] = 'fatal_error_backtraces is off' );
 			}
@@ -755,7 +755,7 @@ class WP2SS_Scanner {
 			if ( isset( $e['max_nesting'] ) && '' !== (string) $e['max_nesting'] && (int) $e['max_nesting'] > 32 ) {
 				$off[] = 'max_input_nesting_level is ' . (int) $e['max_nesting'] . ' (PHP advises reducing it)';
 			}
-			$this->add( 'info', 'php', 'Temporary PHP2Shell protections: ' . ( $on ? 'in place — ' . implode( ', ', $on ) . '. ' : '' ) . ( $off ? 'missing — ' . implode( ', ', $off ) . '.' : '' ), 'None of these is a complete fix — only updating PHP is. Your host must set them in php.ini or the PHP-FPM pool (not .user.ini or ini_set), then fully restart PHP.', '', 'php-mitigations' );
+			$this->add( 'info', 'php', 'Temporary PHP2Shell protections: ' . ( $on ? 'in place — ' . implode( ', ', $on ) . '. ' : '' ) . ( $off ? 'missing — ' . implode( ', ', $off ) . '.' : '' ), 'None of these is a complete fix — only updating PHP is. Your host must set them in php.ini or the PHP-FPM pool (php_admin_value, not .user.ini or ini_set), then fully restart PHP. PHP’s advisory also suggests pm.max_requests = 1 for PHP-FPM, and no operating-system memory limits (RLIMIT_AS / RLIMIT_DATA) on PHP.', '', 'php-mitigations' );
 		}
 
 		// Did this site run an unpatched PHP during the attack window, even if it's fixed now?
@@ -787,10 +787,11 @@ class WP2SS_Scanner {
 			}
 			foreach ( array_slice( $entries, 0, 5000 ) as $name ) {
 				$p = "$d/$name";
-				if ( 'nfs' !== strtolower( $name ) && 0 !== stripos( $name, 'nfs.' ) ) {
+				if ( '.' === $name || '..' === $name || ! @is_file( $p ) || @is_link( $p ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 					continue;
 				}
-				if ( ! @is_file( $p ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+				if ( 'nfs' !== strtolower( $name ) && 0 !== stripos( $name, 'nfs.' ) ) {
+					$this->check_tmp_file( $d, $p, $name );
 					continue;
 				}
 				$hash = @filesize( $p ) < 50 * MB_IN_BYTES ? (string) @hash_file( 'sha256', $p ) : ''; // phpcs:ignore WordPress.PHP.NoSilencedErrors
@@ -800,6 +801,66 @@ class WP2SS_Scanner {
 					$this->add( 'high', 'file', "Suspicious file named \"nfs\" in $d", 'PHP2Shell attacks download a program called nfs into the temporary folder. Ask your host to check it.', $p );
 				}
 			}
+		}
+	}
+
+	/**
+	 * Other things attackers stage in temporary folders: programs in shared
+	 * memory (/dev/shm), and PHP files written since the attacks began.
+	 */
+	private function check_tmp_file( $dir, $p, $name ) {
+		$recent = (int) @filemtime( $p ) >= $this->sig['php2shell_ts']; // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		if ( '/dev/shm' === $dir || $recent ) {
+			$head = (string) @file_get_contents( $p, false, null, 0, 4 ); // phpcs:ignore
+			if ( "\x7fELF" === $head ) {
+				$this->add( '/dev/shm' === $dir ? 'high' : 'medium', 'file', "Program file in the temporary folder $dir: $name", 'Attackers stage their tools in temporary folders and shared memory after breaking in through PHP. Ask your host what it is.', $p );
+				return;
+			}
+		}
+		if ( $recent && preg_match( $this->sig['php_ext'], $name ) ) {
+			$this->add( 'medium', 'file', "PHP file in the temporary folder $dir: $name", 'Webshells are often written to temporary folders first. Ask your host what it is.', $p );
+		}
+	}
+
+	/**
+	 * 1c. Server-wide persistence and PHP sessions with code in them — the
+	 * checks a PHP2Shell incident response starts with. Silent where PHP may
+	 * not look.
+	 */
+	private function check_server() {
+		$pre = @is_readable( '/etc/ld.so.preload' ) ? (string) @file_get_contents( '/etc/ld.so.preload', false, null, 0, 4096 ) : ''; // phpcs:ignore
+		$pre = trim( preg_replace( '/^\s*#.*$/m', '', $pre ) );
+		if ( '' !== $pre ) {
+			$this->add( 'high', 'file', 'The server loads a library into every program (/etc/ld.so.preload): ' . self::clean_text( substr( strtok( $pre, "\n" ), 0, 120 ) ), 'Rootkits use this to hide themselves. A few security agents use it too — ask your host whether they put it there.', '/etc/ld.so.preload', 'ld-preload' );
+		}
+
+		// Session files with PHP code in them (written by an attack, then included).
+		$path = (string) ini_get( 'session.save_path' );
+		$path = false !== strpos( $path, ';' ) ? substr( $path, strrpos( $path, ';' ) + 1 ) : $path;
+		$path = '' !== $path ? $path : sys_get_temp_dir();
+		$list = @is_dir( $path ) ? @scandir( $path ) : false; // phpcs:ignore
+		if ( ! $list ) {
+			return;
+		}
+		$found = 0;
+		$first = '';
+		$seen  = 0;
+		foreach ( $list as $name ) {
+			if ( 0 !== strpos( $name, 'sess_' ) || ++$seen > 3000 ) {
+				continue;
+			}
+			$f = rtrim( $path, '/' ) . '/' . $name;
+			if ( (int) @filemtime( $f ) < $this->sig['php2shell_ts'] ) { // phpcs:ignore
+				continue;
+			}
+			$data = (string) @file_get_contents( $f, false, null, 0, 65536 ); // phpcs:ignore
+			if ( preg_match( '/<\?php|<\?=\s*\$|\beval\s*\(\s*\$_(POST|GET|REQUEST|COOKIE)/i', $data ) ) {
+				$found++;
+				$first = $first ? $first : $name;
+			}
+		}
+		if ( $found ) {
+			$this->add( 'high', 'file', sprintf( '%d PHP session file(s) contain PHP code (e.g. %s).', $found, self::clean_text( $first ) ), 'Attackers write code into session files and then make PHP include them. Ask your host to inspect the session folder.', $path, 'sess-code' );
 		}
 	}
 
@@ -1290,7 +1351,7 @@ class WP2SS_Scanner {
 		if ( 'uploads' === $top && ! $is_php && preg_match( $this->sig['image_ext'], $name ) ) {
 			$head = @file_get_contents( $path, false, null, 0, self::IMAGE_READ ); // phpcs:ignore
 			if ( $head && false !== stripos( $head, '<?php' ) ) {
-				$this->add( 'high', 'file', "Image file contains PHP code: $show", 'A known trick to smuggle a backdoor in as a picture. Delete it unless you know what it is.', $path );
+				$this->add( 'high', 'file', "Image file contains PHP code: $show", 'A known trick to smuggle a backdoor in as a picture. Delete it unless you know what it is.', $path, '', (string) @sha1_file( $path ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 			}
 			return;
 		}
@@ -1660,7 +1721,7 @@ class WP2SS_Scanner {
 					$c['sample'][] = self::clean_text( trim( substr( $line, 0, 240 ) ) );
 				}
 			} else {
-				if ( false !== stripos( $line, 'Allowed memory size' ) || false !== stripos( $line, 'session object' ) || false !== stripos( $line, 'signal 11' ) || false !== stripos( $line, 'SIGSEGV' ) || false !== stripos( $line, 'segfault' ) || false !== stripos( $line, 'heap corrupted' ) ) {
+				if ( false !== stripos( $line, 'Allowed memory size' ) || false !== stripos( $line, 'session object' ) || false !== stripos( $line, 'signal 11' ) || false !== stripos( $line, 'SIGSEGV' ) || false !== stripos( $line, 'segfault' ) || false !== stripos( $line, 'heap corrupted' ) || false !== stripos( $line, 'Maximum execution time' ) ) {
 					$t = $this->line_time( $line );
 					if ( $t >= $cut || ( 0 === $t && $mt >= $cut ) ) {
 						if ( false !== stripos( $line, 'Allowed memory size' ) ) {

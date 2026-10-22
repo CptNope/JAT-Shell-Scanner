@@ -166,12 +166,24 @@
 
 	/* ---------------- Buttons: fix, undo, delete, ignore, copy ---------------- */
 
+	try {
+		var keep = window.sessionStorage.getItem( 'wp2ss-scroll' );
+		if ( null !== keep ) {
+			window.sessionStorage.removeItem( 'wp2ss-scroll' );
+			window.scrollTo( 0, parseInt( keep, 10 ) || 0 );
+		}
+	} catch ( x ) {}
+
 	var act = function ( el, action, data ) {
 		el.disabled = true;
 		var old = el.textContent;
 		el.textContent = cfg.i18n.working;
 		post( action, data )
 			.then( function () {
+				// Come back to the same place in the list after the page reloads.
+				try {
+					window.sessionStorage.setItem( 'wp2ss-scroll', String( window.scrollY ) );
+				} catch ( x ) {}
 				window.location.reload();
 			} )
 			.catch( function ( err ) {

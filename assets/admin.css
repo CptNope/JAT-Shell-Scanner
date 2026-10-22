@@ -210,7 +210,14 @@
 .wp2ss-fleet-details ul { margin: 6px 0 0 1.2em; list-style: disc; }
 .wp2ss-stale { color: var(--wp2ss-warn); font-weight: 600; }
 
-.wp2ss-connect { margin-top: 28px; padding-top: 4px; border-top: 1px solid var(--wp2ss-line); max-width: 80ch; }
+.wp2ss-connect,
+.wp2ss-alerts { margin-top: 28px; padding-top: 4px; border-top: 1px solid var(--wp2ss-line); max-width: 80ch; }
+.wp2ss-fleet-tools { display: inline-flex; gap: 8px; margin-left: auto; }
+.wp2ss-fleet-tools form { margin: 0; }
+.wp2ss-fleet-actions form { margin: 0 0 4px; }
+.wp2ss-pending { color: var(--wp2ss-muted); font-style: italic; }
+.wp2ss-inline-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 782px) { .wp2ss-fleet-tools { margin-left: 0; } }
 .wp2ss-fleet-setup { margin-top: 24px; }
 .wp2ss-fleet-setup summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .wp2ss-choice { display: block; margin: 10px 0; }
@@ -222,3 +229,5 @@
 /* Keyboard focus stays visible on our custom controls. */
 .wp2ss .button-link:focus-visible,
 .wp2ss summary:focus-visible { outline: 2px solid #2271b1; outline-offset: 2px; }
+.wp2ss-flash { margin: 0 0 16px; }
+.wp2ss-legacy { display: block; color: var(--wp2ss-warn); font-size: 12px; }

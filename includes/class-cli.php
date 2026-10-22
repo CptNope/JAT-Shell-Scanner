@@ -243,7 +243,7 @@ class WP2SS_CLI {
 			$ignored = WP2SS_Scanner::ignored();
 			foreach ( $report['findings'] as $f ) {
 				$fix = WP2SS_Fixes::fix_for( $f );
-				if ( $fix && 'demote' !== $fix['action'] && WP2SS_Scanner::sev_rank( $f['severity'] ) >= 4 && ! WP2SS_Scanner::is_ignored( $f, $ignored ) && ! WP2SS_Fixes::record_for_finding( $f['id'] ) ) {
+				if ( $fix && 'demote' !== $fix['action'] && WP2SS_Scanner::sev_rank( $f['severity'] ) >= 4 && ! WP2SS_Scanner::is_ignored( $f, $ignored ) && ! WP2SS_Fixes::record_for_finding( $f ) ) {
 					$ids[ $fix['target'] ] = $f['id'];
 				}
 			}
@@ -334,7 +334,7 @@ class WP2SS_CLI {
 	 * ## OPTIONS
 	 *
 	 * <action>
-	 * : join, leave, send, status, hub or list.
+	 * : join, leave, send, status, hub, list, rescan, alerts, test-alert or check-in.
 	 * ---
 	 * options:
 	 *   - join
@@ -343,13 +343,26 @@ class WP2SS_CLI {
 	 *   - status
 	 *   - hub
 	 *   - list
+	 *   - rescan
+	 *   - alerts
+	 *   - test-alert
+	 *   - check-in
 	 * ---
 	 *
 	 * [<hub-url>]
-	 * : For join: the hub site's address.
+	 * : For join: the hub site's address. For rescan: one site's address (default: every site).
 	 *
 	 * [<key>]
-	 * : For join: the fleet key shown on the hub.
+	 * : For join: the fleet key shown on the hub. Or set WP2SS_FLEET_KEY, or pass - to read it from standard input.
+	 *
+	 * [--email=<address>]
+	 * : For alerts: where to email alerts ("off" to stop emails, "default" for the scanner's alert address).
+	 *
+	 * [--webhook=<url>]
+	 * : For alerts: Slack or Discord incoming-webhook URL ("off" to remove).
+	 *
+	 * [--stale-days=<days>]
+	 * : For alerts: days without a report before a site counts as overdue ("off" to not alert on that).
 	 *
 	 * [--format=<format>]
 	 * : For list: table, json or csv.
@@ -362,6 +375,10 @@ class WP2SS_CLI {
 	 *     # On the hub site
 	 *     wp php2shell fleet hub
 	 *     wp php2shell fleet list
+	 *     wp php2shell fleet alerts --webhook=https://hooks.slack.com/services/… --email=me@example.com
+	 *     wp php2shell fleet test-alert
+	 *     wp php2shell fleet rescan                       # every site scans within the hour
+	 *     wp php2shell fleet rescan https://shop.example.com
 	 *
 	 *     # On every other site
 	 *     wp php2shell fleet join https://hub.example.com 3kd9…
@@ -371,10 +388,15 @@ class WP2SS_CLI {
 		$action = $args[0];
 		switch ( $action ) {
 			case 'join':
-				if ( count( $args ) < 3 ) {
-					WP_CLI::error( 'Usage: wp php2shell fleet join <hub-url> <key>' );
+				// The key can also come from WP2SS_FLEET_KEY or standard input ("-"), keeping it out of the process list.
+				$key = isset( $args[2] ) ? $args[2] : (string) getenv( 'WP2SS_FLEET_KEY' );
+				if ( '-' === $key ) {
+					$key = trim( (string) fgets( STDIN ) );
 				}
-				$r = WP2SS_Fleet::save( 'member', $args[1], $args[2] );
+				if ( empty( $args[1] ) || '' === $key ) {
+					WP_CLI::error( 'Usage: wp php2shell fleet join <hub-url> <key>   (or set WP2SS_FLEET_KEY, or pass - to read the key from standard input)' );
+				}
+				$r = WP2SS_Fleet::save( 'member', $args[1], $key );
 				if ( is_wp_error( $r ) ) {
 					WP_CLI::error( $r->get_error_message() );
 				}
@@ -401,6 +423,55 @@ class WP2SS_CLI {
 				WP_CLI::success( 'This site is now the fleet hub.' );
 				WP_CLI::log( 'Run this on each of your other sites:' );
 				WP_CLI::log( sprintf( '  wp php2shell fleet join %s %s', network_home_url(), $s['key'] ) );
+				break;
+
+			case 'rescan':
+				$key = isset( $args[1] ) ? WP2SS_Fleet::site_key( $args[1] ) : null;
+				if ( $key && ! isset( WP2SS_Fleet::sites()[ $key ] ) ) {
+					WP_CLI::error( 'That site isn’t in the fleet list.' );
+				}
+				$n = WP2SS_Fleet::request_rescan( $key );
+				WP_CLI::success( sprintf( 'Scan requested for %d site(s). Each starts at its next hourly check-in.', $n ) );
+				break;
+
+			case 'alerts':
+				$s     = WP2SS_Fleet::settings();
+				$email = $s['alert_email'];
+				$to    = $s['alert_to'];
+				$hook  = $s['alert_webhook'];
+				$stale = $s['alert_stale'];
+				$days  = $s['stale_days'];
+				if ( isset( $assoc['email'] ) ) {
+					$email = 'off' !== $assoc['email'];
+					$to    = in_array( $assoc['email'], array( 'off', 'default' ), true ) ? '' : $assoc['email'];
+				}
+				if ( isset( $assoc['webhook'] ) ) {
+					$hook = 'off' === $assoc['webhook'] ? '' : $assoc['webhook'];
+				}
+				if ( isset( $assoc['stale-days'] ) ) {
+					$stale = 'off' !== $assoc['stale-days'];
+					$days  = $stale ? (int) $assoc['stale-days'] : $days;
+				}
+				$r = WP2SS_Fleet::save_alerts( $email, $to, $hook, $stale, $days );
+				if ( is_wp_error( $r ) ) {
+					WP_CLI::error( $r->get_error_message() );
+				}
+				WP_CLI::log( 'Email:   ' . ( $r['alert_email'] ? ( $r['alert_to'] ? $r['alert_to'] : WP2SS_Settings::alert_email() ) : 'off' ) );
+				WP_CLI::log( 'Webhook: ' . ( $r['alert_webhook'] ? preg_replace( '#^(https://[^/]+/).*#', '$1…', $r['alert_webhook'] ) : 'off' ) );
+				WP_CLI::log( 'Overdue: ' . ( $r['alert_stale'] ? 'after ' . $r['stale_days'] . ' days' : 'off' ) );
+				break;
+
+			case 'test-alert':
+				$r = WP2SS_Fleet::test_alert();
+				is_wp_error( $r ) ? WP_CLI::error( $r->get_error_message() ) : WP_CLI::success( 'Test alert sent.' );
+				break;
+
+			case 'check-in':
+				$r = WP2SS_Fleet::poll();
+				if ( is_wp_error( $r ) ) {
+					WP_CLI::error( 'Couldn’t reach the hub: ' . $r->get_error_message() );
+				}
+				WP_CLI::success( $r ? 'The hub asked for a scan; it has started in the background.' : 'Checked in. No scan requested.' );
 				break;
 
 			case 'list':

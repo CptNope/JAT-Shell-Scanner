@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.3.0] — 2026-10-22
+
+### Security (from an independent review of 1.2.0)
+- **Fleet: each member now has its own identity.** A member makes its own secret and registers it with its first report; after that, only that site can report for its address. Before, anyone holding the shared fleet key (for example, from one hacked member) could overwrite any site's row, including the hub's own. Reports for the hub's own address are refused.
+- Fleet reports "from the future" are refused (they could lock a member's real reports out); an "open scanner" link is kept only if it's on the member's own address; smaller limits on report size and number of sites.
+- Members send reports with redirects off and, by default, only to public addresses (`WP2SS_FLEET_PRIVATE_HUB` allows a private hub); only the hub's own error message is shown back.
+- **Quarantine never follows links:** a file swapped for a link after the scan, or changed since the scan, is refused. Restore refuses if the original folder was replaced by a link.
+- Quarantined names never contain `.php` (some servers run any file with `.php` anywhere in its name); every file inside a quarantined plugin is renamed, `.htaccess` included.
+- More files that are never moved: `wp-login.php` and other core root files, the site's `.htaccess` / `.user.ini`, drop-ins (`db.php`, `object-cache.php`, `advanced-cache.php`, `sunrise.php`), this plugin's own files.
+- The last administrator is never demoted.
+- Error messages are no longer passed in the page address.
+
+### Fleet alerts and remote rescans
+- The hub sends one digest by email and/or a Slack or Discord webhook when a site gets worse, joins in trouble, has new serious findings, stops reporting (adjustable) or reports again. Test button included.
+- **Scan again** per site and **Ask all sites to scan**: members check in hourly and start a scan when asked.
+- **Empty the list** on the hub. Members' fleet key field no longer shows the saved key.
+- WP-CLI: `fleet rescan`, `fleet alerts`, `fleet test-alert`, `fleet check-in`; `fleet join` can read the key from `WP2SS_FLEET_KEY` or standard input.
+
+### Latest PHP2Shell intel
+- Ubuntu ESM fixed packages for PHP 7.4 (20.04), 7.2 (18.04) and 7.0 (16.04); README corrected: `8.5.4-0ubuntu1.5` is Ubuntu 26.04, `8.5.9-0ubuntu2.1` is 26.10. Debian 12/13 and RHEL 9 documented.
+- New checks: "Maximum execution time exceeded in Unknown on line 0" in the error log; programs in `/dev/shm` (and in `/tmp` since the attacks began); PHP files written to `/tmp`; `/etc/ld.so.preload`; PHP code in session files.
+- Mitigation advice now matches PHP's advisory: `memory_limit=-1` enforced with `php_admin_value`, `pm.max_requests=1`, no OS memory limits — and says plainly that they only partly protect.
+
+### Easier to use
+- After a fix, the page stays where you were; tabs and messages land in view instead of at the top of the page.
+- Every finding about a quarantined file counts as handled (not only the one you clicked).
+- File locations are shown from the site's folder (`wp-content/…`) instead of the full server path.
+- README: screenshots and an animated walkthrough.
+
 ## [1.2.0] — 2026-10-22
 
 ### One-click fixes (optional, undoable)

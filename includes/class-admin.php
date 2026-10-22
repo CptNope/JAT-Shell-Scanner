@@ -22,7 +22,7 @@ class WP2SS_Admin {
 		foreach ( array( 'start', 'step', 'cancel', 'ignore', 'dismiss', 'fix', 'undo', 'purge' ) as $a ) {
 			add_action( 'wp_ajax_wp2ss_' . $a, array( __CLASS__, 'ajax_' . $a ) );
 		}
-		foreach ( array( 'scan', 'export', 'settings', 'fix_all', 'fleet', 'fleet_send', 'fleet_forget', 'fleet_rotate', 'fleet_csv' ) as $a ) {
+		foreach ( array( 'scan', 'export', 'settings', 'fix_all', 'fleet', 'fleet_send', 'fleet_forget', 'fleet_rotate', 'fleet_csv', 'fleet_alerts', 'fleet_test', 'fleet_rescan', 'fleet_clear' ) as $a ) {
 			add_action( 'admin_post_wp2ss_' . $a, array( __CLASS__, 'post_' . $a ) );
 		}
 	}
@@ -65,8 +65,14 @@ class WP2SS_Admin {
 		return $max > 0 ? max( 3, min( 10, $max / 3 ) ) : 10;
 	}
 
-	private static function back( $tab, $args = array() ) {
-		wp_safe_redirect( self::url( array_merge( array( 'tab' => $tab ), $args ) ) );
+	private static function back( $tab, $args = array(), $to_tabs = true ) {
+		// Error text never travels in the URL (a crafted link could show any message): it waits for this user.
+		if ( isset( $args['err'] ) ) {
+			set_transient( 'wp2ss_err_' . get_current_user_id(), (string) $args['err'], 5 * MINUTE_IN_SECONDS );
+			$args['err'] = 1;
+		}
+		// Land on the tabs (where the message is shown), not on the hero above them.
+		wp_safe_redirect( self::url( array_merge( array( 'tab' => $tab ), $args ) ) . ( $to_tabs ? '#wp2ss-tabs' : '' ) );
 		exit;
 	}
 
@@ -147,8 +153,6 @@ class WP2SS_Admin {
 		?>
 		<div class="wrap wp2ss">
 			<h1 class="wp2ss-title"><?php esc_html_e( 'PHP2Shell & wp2shell Scanner', 'wp2shell-scanner' ); ?></h1>
-			<?php self::flash(); ?>
-
 			<?php self::render_hero( $report, $job, $ignored ); ?>
 
 			<?php
@@ -157,14 +161,15 @@ class WP2SS_Admin {
 			}
 			?>
 
-			<nav class="nav-tab-wrapper wp2ss-tabs" aria-label="<?php esc_attr_e( 'Scanner sections', 'wp2shell-scanner' ); ?>">
+			<nav id="wp2ss-tabs" class="nav-tab-wrapper wp2ss-tabs" aria-label="<?php esc_attr_e( 'Scanner sections', 'wp2shell-scanner' ); ?>">
 				<?php foreach ( $tabs as $k => $label ) : ?>
-					<a href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) ); ?>" class="nav-tab <?php echo $tab === $k ? 'nav-tab-active' : ''; ?>" <?php echo $tab === $k ? 'aria-current="page"' : ''; ?>><?php echo esc_html( $label ); ?></a>
+					<a href="<?php echo esc_url( self::url( array( 'tab' => $k ) ) . '#wp2ss-tabs' ); ?>" class="nav-tab <?php echo $tab === $k ? 'nav-tab-active' : ''; ?>" <?php echo $tab === $k ? 'aria-current="page"' : ''; ?>><?php echo esc_html( $label ); ?></a>
 				<?php endforeach; ?>
 			</nav>
 
 			<div class="wp2ss-panel">
 				<?php
+				self::flash();
 				switch ( $tab ) {
 					case 'quarantine':
 						self::render_quarantine();
@@ -198,15 +203,23 @@ class WP2SS_Admin {
 			'sent'       => array( 'success', __( 'Report sent to the hub.', 'wp2shell-scanner' ) ),
 			'rotated'    => array( 'warning', __( 'New fleet key created. Member sites must be given the new key before they can report again.', 'wp2shell-scanner' ) ),
 			'forgot'     => array( 'success', __( 'Site removed from the fleet list.', 'wp2shell-scanner' ) ),
+			'alerts'     => array( 'success', __( 'Alert settings saved.', 'wp2shell-scanner' ) ),
+			'tested'     => array( 'success', __( 'Test alert sent. Check your inbox or chat channel.', 'wp2shell-scanner' ) ),
+			'cleared'    => array( 'success', __( 'The list is empty. Sites reappear (and register again) with their next report.', 'wp2shell-scanner' ) ),
+			'rescan'     => array( 'success', __( 'Scan requested. Sites pick this up within an hour (sites on version 1.2 or older can’t; scan those yourself).', 'wp2shell-scanner' ) ),
 		);
 		$done = isset( $_GET['done'] ) ? sanitize_key( $_GET['done'] ) : '';
-		$err  = isset( $_GET['err'] ) ? sanitize_text_field( wp_unslash( $_GET['err'] ) ) : '';
+		$err = '';
+		if ( ! empty( $_GET['err'] ) ) {
+			$err = (string) get_transient( 'wp2ss_err_' . get_current_user_id() );
+			delete_transient( 'wp2ss_err_' . get_current_user_id() );
+		}
 		// phpcs:enable
 		if ( isset( $map[ $done ] ) ) {
-			printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', esc_attr( $map[ $done ][0] ), esc_html( $map[ $done ][1] ) );
+			printf( '<div class="notice notice-%s inline is-dismissible wp2ss-flash"><p>%s</p></div>', esc_attr( $map[ $done ][0] ), esc_html( $map[ $done ][1] ) );
 		}
 		if ( $err ) {
-			printf( '<div class="notice notice-error is-dismissible"><p>%s</p></div>', esc_html( $err ) );
+			printf( '<div class="notice notice-error inline is-dismissible wp2ss-flash"><p>%s</p></div>', esc_html( $err ) );
 		}
 	}
 
@@ -419,7 +432,7 @@ class WP2SS_Admin {
 		$fixable = self::bulk_fixable( $report, $ignored );
 		$admins  = 0;
 		foreach ( $report['findings'] as $f ) {
-			$fix = WP2SS_Scanner::is_ignored( $f, $ignored ) || WP2SS_Fixes::record_for_finding( $f['id'] ) ? null : WP2SS_Fixes::fix_for( $f );
+			$fix = WP2SS_Scanner::is_ignored( $f, $ignored ) || WP2SS_Fixes::record_for_finding( $f ) ? null : WP2SS_Fixes::fix_for( $f );
 			if ( $fix && 'demote' === $fix['action'] && WP2SS_Scanner::sev_rank( $f['severity'] ) >= 4 ) {
 				$admins++;
 			}
@@ -497,7 +510,7 @@ class WP2SS_Admin {
 	private static function bulk_fixable( $report, $ignored ) {
 		$out = array();
 		foreach ( $report['findings'] as $f ) {
-			if ( WP2SS_Scanner::sev_rank( $f['severity'] ) < 4 || WP2SS_Scanner::is_ignored( $f, $ignored ) || WP2SS_Fixes::record_for_finding( $f['id'] ) ) {
+			if ( WP2SS_Scanner::sev_rank( $f['severity'] ) < 4 || WP2SS_Scanner::is_ignored( $f, $ignored ) || WP2SS_Fixes::record_for_finding( $f ) ) {
 				continue;
 			}
 			$fix = WP2SS_Fixes::fix_for( $f );
@@ -516,7 +529,7 @@ class WP2SS_Admin {
 		$ver   = $env['version'] . ( ! empty( $env['pkg'] ) ? ' (package ' . $env['pkg'] . ')' : '' );
 		$msg   = sprintf(
 			/* translators: 1: site URL, 2: PHP version, 3: server API, 4: fixed version */
-			__( "Hello,\n\nMy website %1\$s runs PHP %2\$s (%3\$s). A security scan says this version may be affected by PHP2Shell (CVE-2026-109618 and CVE-2026-109619), the critical PHP vulnerabilities announced on October 21, 2026.\n\nCould you please:\n1. Update PHP for my site to %4\$s (or your patched package), or confirm that the fix for both CVEs has already been applied to this server, and\n2. Restart PHP afterwards, and\n3. Until then, consider the temporary protections from PHP's advisory (session.upload_progress.enabled = 0, a low post_max_size and max_input_nesting_level) in php.ini or the PHP-FPM pool.\n\nCould you also let me know whether you've seen any signs of these attacks against my site since October 17, 2026?\n\nThank you!", 'wp2shell-scanner' ),
+			__( "Hello,\n\nMy website %1\$s runs PHP %2\$s (%3\$s). A security scan says this version may be affected by PHP2Shell (CVE-2026-109618 and CVE-2026-109619), the critical PHP vulnerabilities announced on October 21, 2026.\n\nCould you please:\n1. Update PHP for my site to %4\$s (or your patched package), or confirm that the fix for both CVEs has already been applied to this server, and\n2. Restart PHP afterwards, and\n3. Until then, consider the temporary protections from PHP's advisory (memory_limit = -1 enforced with php_admin_value, session.upload_progress.enabled = 0, a low post_max_size and max_input_nesting_level, pm.max_requests = 1) in php.ini or the PHP-FPM pool. These only partly protect.\n\nCould you also let me know whether you've seen any signs of these attacks against my site since October 17, 2026?\n\nThank you!", 'wp2shell-scanner' ),
 			$report['site'],
 			$ver,
 			self::sapi_label( $env['sapi'] ),
@@ -560,7 +573,7 @@ class WP2SS_Admin {
 		$count  = array( 'action' => 0, 'all' => 0, 'ignored' => 0 );
 		foreach ( $report['findings'] as $f ) {
 			$is_ign = WP2SS_Scanner::is_ignored( $f, $ignored );
-			$needs  = ! $is_ign && WP2SS_Scanner::sev_rank( $f['severity'] ) >= 3 && ! WP2SS_Fixes::record_for_finding( $f['id'] );
+			$needs  = ! $is_ign && WP2SS_Scanner::sev_rank( $f['severity'] ) >= 3 && ! WP2SS_Fixes::record_for_finding( $f );
 			$f['_state'] = $is_ign ? 'ignored' : ( $needs ? 'action' : 'other' );
 			$groups[ self::area( $f['type'] ) ][] = $f;
 			$count['all'] += $is_ign ? 0 : 1;
@@ -608,9 +621,16 @@ class WP2SS_Admin {
 		<?php
 	}
 
+	/** Paths inside the site are shown from the site's folder, which is what owners see in a file manager. */
+	private static function short_path( $p ) {
+		$root = wp_normalize_path( untrailingslashit( ABSPATH ) );
+		$norm = wp_normalize_path( $p );
+		return 0 === strpos( $norm, $root . '/' ) ? substr( $norm, strlen( $root ) + 1 ) : $p;
+	}
+
 	private static function finding_row( $f ) {
 		$loc     = (string) $f['location'];
-		$applied = WP2SS_Fixes::record_for_finding( $f['id'] );
+		$applied = WP2SS_Fixes::record_for_finding( $f );
 		$fix     = ( 'ignored' === $f['_state'] || $applied ) ? null : WP2SS_Fixes::fix_for( $f );
 		?>
 		<li class="wp2ss-f wp2ss-s-<?php echo esc_attr( $f['severity'] ); ?>" data-state="<?php echo esc_attr( $applied ? 'fixed' : $f['_state'] ); ?>" data-id="<?php echo esc_attr( $f['id'] ); ?>">
@@ -620,7 +640,7 @@ class WP2SS_Admin {
 				<?php if ( 0 === strpos( $loc, 'user:' ) && get_edit_user_link( (int) substr( $loc, 5 ) ) ) : ?>
 					<a class="wp2ss-loc" href="<?php echo esc_url( get_edit_user_link( (int) substr( $loc, 5 ) ) ); ?>"><?php esc_html_e( 'Open this account', 'wp2shell-scanner' ); ?></a>
 				<?php elseif ( $loc && ! preg_match( '/^(user|rest|role):/', $loc ) ) : ?>
-					<code class="wp2ss-loc"><?php echo esc_html( $loc ); ?></code>
+					<code class="wp2ss-loc"><?php echo esc_html( self::short_path( $loc ) ); ?></code>
 				<?php endif; ?>
 				<?php if ( $f['advice'] ) : ?>
 					<p class="wp2ss-f-advice"><?php echo esc_html( $f['advice'] ); ?></p>
@@ -675,7 +695,7 @@ class WP2SS_Admin {
 					<td>
 						<strong><?php echo esc_html( 'demote' === $r['action'] ? sprintf( /* translators: %s: login */ __( 'Removed admin rights from “%s”', 'wp2shell-scanner' ), $r['login'] ) : __( 'Quarantined', 'wp2shell-scanner' ) ); ?></strong>
 						<?php if ( 'demote' !== $r['action'] ) : ?>
-							<code class="wp2ss-loc"><?php echo esc_html( $r['original'] ); ?></code>
+							<code class="wp2ss-loc"><?php echo esc_html( self::short_path( $r['original'] ) ); ?></code>
 						<?php endif; ?>
 						<p class="wp2ss-f-advice"><?php echo esc_html( $r['message'] ); ?></p>
 					</td>
@@ -726,7 +746,7 @@ class WP2SS_Admin {
 					</p>
 					<p>
 						<label for="wp2ss-key"><strong><?php esc_html_e( 'Fleet key', 'wp2shell-scanner' ); ?></strong></label><br>
-						<input type="password" id="wp2ss-key" name="key" class="regular-text code" value="<?php echo esc_attr( 'member' === $s['mode'] ? $s['key'] : '' ); ?>" autocomplete="off">
+						<input type="password" id="wp2ss-key" name="key" class="regular-text code" value="" placeholder="<?php echo esc_attr( 'member' === $s['mode'] && $s['key'] ? __( 'Saved — leave blank to keep it', 'wp2shell-scanner' ) : '' ); ?>" autocomplete="off">
 						<br><span class="description"><?php esc_html_e( 'Shown on the hub’s Fleet tab.', 'wp2shell-scanner' ); ?></span>
 					</p>
 				</div>
@@ -749,7 +769,14 @@ class WP2SS_Admin {
 				<?php endif; ?>
 			<?php endforeach; ?>
 			<?php if ( $sites ) : ?>
-				<a class="button button-small" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=wp2ss_fleet_csv' ), 'wp2ss_fleet_csv' ) ); ?>"><?php esc_html_e( 'Download as CSV', 'wp2shell-scanner' ); ?></a>
+				<span class="wp2ss-fleet-tools">
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-confirm="<?php esc_attr_e( 'Ask every site to scan again? Each one starts within an hour.', 'wp2shell-scanner' ); ?>">
+						<?php wp_nonce_field( 'wp2ss_fleet_rescan' ); ?>
+						<input type="hidden" name="action" value="wp2ss_fleet_rescan">
+						<button class="button button-small"><?php esc_html_e( 'Ask all sites to scan', 'wp2shell-scanner' ); ?></button>
+					</form>
+					<a class="button button-small" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=wp2ss_fleet_csv' ), 'wp2ss_fleet_csv' ) ); ?>"><?php esc_html_e( 'Download as CSV', 'wp2shell-scanner' ); ?></a>
+				</span>
 			<?php endif; ?>
 		</div>
 
@@ -771,6 +798,9 @@ class WP2SS_Admin {
 						<td>
 							<strong><a href="<?php echo esc_url( $site['admin'] ? $site['admin'] : $site['site'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $site['name'] ? $site['name'] : $site['site'] ); ?></a></strong>
 							<span class="wp2ss-fleet-url"><?php echo esc_html( preg_replace( '#^https?://#', '', $site['site'] ) ); ?></span>
+							<?php if ( ! empty( $site['legacy'] ) ) : ?>
+								<span class="wp2ss-legacy"><?php esc_html_e( 'Older scanner version: update it so only this site can report for this address.', 'wp2shell-scanner' ); ?></span>
+							<?php endif; ?>
 							<?php if ( $site['serious'] ) : ?>
 								<details class="wp2ss-fleet-details">
 									<summary><?php /* translators: %d: count */ printf( esc_html( _n( '%d serious finding', '%d serious findings', count( $site['serious'] ), 'wp2shell-scanner' ) ), count( $site['serious'] ) ); ?></summary>
@@ -790,8 +820,17 @@ class WP2SS_Admin {
 							<?php if ( WP2SS_Fleet::is_stale( $site ) ) : ?>
 								<br><?php esc_html_e( 'Overdue', 'wp2shell-scanner' ); ?>
 							<?php endif; ?>
+							<?php if ( ! empty( $site['rescan'] ) ) : ?>
+								<br><span class="wp2ss-pending"><?php esc_html_e( 'Scan requested', 'wp2shell-scanner' ); ?></span>
+							<?php endif; ?>
 						</td>
-						<td>
+						<td class="wp2ss-fleet-actions">
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+								<?php wp_nonce_field( 'wp2ss_fleet_rescan' ); ?>
+								<input type="hidden" name="action" value="wp2ss_fleet_rescan">
+								<input type="hidden" name="site" value="<?php echo esc_attr( $key ); ?>">
+								<button class="button-link"><?php esc_html_e( 'Scan again', 'wp2shell-scanner' ); ?></button>
+							</form>
 							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-confirm="<?php esc_attr_e( 'Remove this site from the list? It reappears if it reports again.', 'wp2shell-scanner' ); ?>">
 								<?php wp_nonce_field( 'wp2ss_fleet_forget' ); ?>
 								<input type="hidden" name="action" value="wp2ss_fleet_forget">
@@ -805,6 +844,8 @@ class WP2SS_Admin {
 			</table>
 		<?php endif; ?>
 
+		<?php self::render_fleet_alerts( $s ); ?>
+
 		<section class="wp2ss-connect">
 			<h3><?php esc_html_e( 'Connect your other sites', 'wp2shell-scanner' ); ?></h3>
 			<p><?php esc_html_e( 'On each site: install this plugin, open its Fleet tab, choose “Report to a hub”, and paste this address and key.', 'wp2shell-scanner' ); ?></p>
@@ -815,15 +856,51 @@ class WP2SS_Admin {
 			<p><?php esc_html_e( 'With WP-CLI, one command per site does it:', 'wp2shell-scanner' ); ?></p>
 			<p><input type="text" class="large-text code" id="wp2ss-join" value="<?php echo esc_attr( $join ); ?>" readonly>
 				<button type="button" class="button wp2ss-copy" data-target="wp2ss-join"><?php esc_html_e( 'Copy command', 'wp2shell-scanner' ); ?></button></p>
-			<p class="description"><?php esc_html_e( 'Keep the key private: anyone with it can add a site to this list (they can’t read anything). If it leaks, make a new one — then give the new key to every site.', 'wp2shell-scanner' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Keep the key private: anyone with it can add a site to this list (they can’t read anything, or report for a site that has already registered). If it leaks, make a new one — then give the new key to every site.', 'wp2shell-scanner' ); ?></p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-confirm="<?php esc_attr_e( 'Make a new fleet key? Every member site will need the new key before it can report again.', 'wp2shell-scanner' ); ?>">
 				<?php wp_nonce_field( 'wp2ss_fleet_rotate' ); ?>
 				<input type="hidden" name="action" value="wp2ss_fleet_rotate">
 				<button class="button"><?php esc_html_e( 'Make a new key', 'wp2shell-scanner' ); ?></button>
 			</form>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-confirm="<?php esc_attr_e( 'Empty the whole list? Sites reappear with their next report.', 'wp2shell-scanner' ); ?>">
+				<?php wp_nonce_field( 'wp2ss_fleet_clear' ); ?>
+				<input type="hidden" name="action" value="wp2ss_fleet_clear">
+				<button class="button-link button-link-delete"><?php esc_html_e( 'Empty the list', 'wp2shell-scanner' ); ?></button>
+			</form>
 			<?php if ( 0 !== strpos( network_home_url(), 'https://' ) ) : ?>
 				<div class="notice notice-warning inline"><p><?php esc_html_e( 'This hub isn’t on HTTPS. Reports are signed, so they can’t be forged, but anyone on the network path could read them. Use HTTPS if you can.', 'wp2shell-scanner' ); ?></p></div>
 			<?php endif; ?>
+		</section>
+		<?php
+	}
+
+	private static function render_fleet_alerts( $s ) {
+		$default = WP2SS_Settings::alert_email();
+		?>
+		<section class="wp2ss-alerts">
+			<h3><?php esc_html_e( 'Alerts', 'wp2shell-scanner' ); ?></h3>
+			<p><?php esc_html_e( 'Get one message when sites need a look: a site gets worse, a new site joins in trouble, or a site stops reporting. Several sites at once arrive as a single digest.', 'wp2shell-scanner' ); ?></p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<?php wp_nonce_field( 'wp2ss_fleet_alerts' ); ?>
+				<input type="hidden" name="action" value="wp2ss_fleet_alerts">
+				<p>
+					<label><input type="checkbox" name="alert_email" value="1" <?php checked( $s['alert_email'] ); ?>> <?php esc_html_e( 'Email me', 'wp2shell-scanner' ); ?></label>
+					<input type="email" name="alert_to" class="regular-text" value="<?php echo esc_attr( $s['alert_to'] ); ?>" placeholder="<?php echo esc_attr( $default ); ?>" aria-label="<?php esc_attr_e( 'Alert email address', 'wp2shell-scanner' ); ?>">
+				</p>
+				<p>
+					<label for="wp2ss-webhook"><strong><?php esc_html_e( 'Slack or Discord webhook', 'wp2shell-scanner' ); ?></strong> <span class="description"><?php esc_html_e( '(optional)', 'wp2shell-scanner' ); ?></span></label><br>
+					<input type="url" id="wp2ss-webhook" name="alert_webhook" class="large-text code" value="<?php echo esc_attr( $s['alert_webhook'] ); ?>" placeholder="https://hooks.slack.com/services/…" autocomplete="off">
+					<br><span class="description"><?php esc_html_e( 'In Slack: Apps → Incoming Webhooks. In Discord: channel settings → Integrations → Webhooks.', 'wp2shell-scanner' ); ?></span>
+				</p>
+				<p>
+					<label><input type="checkbox" name="alert_stale" value="1" <?php checked( $s['alert_stale'] ); ?>> <?php esc_html_e( 'Also tell me when a site hasn’t reported for', 'wp2shell-scanner' ); ?></label>
+					<input type="number" name="stale_days" min="2" max="90" class="small-text" value="<?php echo esc_attr( $s['stale_days'] ); ?>" aria-label="<?php esc_attr_e( 'Days', 'wp2shell-scanner' ); ?>"> <?php esc_html_e( 'days', 'wp2shell-scanner' ); ?>
+				</p>
+				<p class="wp2ss-inline-buttons">
+					<?php submit_button( __( 'Save alerts', 'wp2shell-scanner' ), 'secondary', 'submit', false ); ?>
+					<button class="button" name="test" value="1"><?php esc_html_e( 'Save and send a test', 'wp2shell-scanner' ); ?></button>
+				</p>
+			</form>
 		</section>
 		<?php
 	}
@@ -1145,7 +1222,7 @@ class WP2SS_Admin {
 	public static function post_scan() {
 		self::guard( 'wp2ss_scan' );
 		WP2SS_Scanner::run_all( WP2SS_Settings::scan_args(), 'manual' );
-		self::back( 'findings' );
+		self::back( 'findings', array(), false );
 	}
 
 	public static function post_export() {
@@ -1237,6 +1314,48 @@ class WP2SS_Admin {
 		$key = isset( $_POST['site'] ) ? preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_POST['site'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		WP2SS_Fleet::forget( $key );
 		self::back( 'fleet', array( 'done' => 'forgot' ) );
+	}
+
+	public static function post_fleet_alerts() {
+		self::guard( 'wp2ss_fleet_alerts' );
+		// phpcs:disable WordPress.Security.NonceVerification
+		$r    = WP2SS_Fleet::save_alerts(
+			! empty( $_POST['alert_email'] ),
+			isset( $_POST['alert_to'] ) ? sanitize_email( wp_unslash( $_POST['alert_to'] ) ) : '',
+			isset( $_POST['alert_webhook'] ) ? esc_url_raw( wp_unslash( $_POST['alert_webhook'] ), array( 'https' ) ) : '',
+			! empty( $_POST['alert_stale'] ),
+			isset( $_POST['stale_days'] ) ? absint( $_POST['stale_days'] ) : 15
+		);
+		$test = ! empty( $_POST['test'] );
+		// phpcs:enable
+		if ( is_wp_error( $r ) ) {
+			self::back( 'fleet', array( 'err' => $r->get_error_message() ) );
+		}
+		if ( $test ) {
+			self::post_fleet_test( false );
+		}
+		self::back( 'fleet', array( 'done' => 'alerts' ) );
+	}
+
+	public static function post_fleet_test( $check = true ) {
+		if ( false !== $check ) {
+			self::guard( 'wp2ss_fleet_test' );
+		}
+		$t = WP2SS_Fleet::test_alert();
+		self::back( 'fleet', is_wp_error( $t ) ? array( 'err' => $t->get_error_message() ) : array( 'done' => 'tested' ) );
+	}
+
+	public static function post_fleet_rescan() {
+		self::guard( 'wp2ss_fleet_rescan' );
+		$key = isset( $_POST['site'] ) ? preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_POST['site'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		WP2SS_Fleet::request_rescan( $key ? $key : null );
+		self::back( 'fleet', array( 'done' => 'rescan' ) );
+	}
+
+	public static function post_fleet_clear() {
+		self::guard( 'wp2ss_fleet_clear' );
+		WP2SS_Fleet::clear();
+		self::back( 'fleet', array( 'done' => 'cleared' ) );
 	}
 
 	public static function post_fleet_csv() {
