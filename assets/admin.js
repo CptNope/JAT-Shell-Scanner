@@ -65,6 +65,11 @@
 			post( 'wp2ss_step' )
 				.then( function ( d ) {
 					failures = 0;
+					if ( d.busy ) {
+						// Another tab or a scheduled scan is mid-slice: wait our turn.
+						setTimeout( loop, 1500 );
+						return;
+					}
 					if ( d.done ) {
 						show( 100, cfg.i18n.done );
 						window.location.reload();

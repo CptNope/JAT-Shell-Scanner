@@ -20,6 +20,10 @@ class WP2SS_Updater {
 	const TRANSIENT = 'wp2ss_release';
 
 	public static function init() {
+		// Agencies that manage plugin versions themselves can switch this off in wp-config.php.
+		if ( defined( 'WP2SS_DISABLE_UPDATER' ) && WP2SS_DISABLE_UPDATER ) {
+			return;
+		}
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'inject' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'info' ), 20, 3 );
 		add_filter( 'upgrader_source_selection', array( __CLASS__, 'fix_folder' ), 10, 4 );

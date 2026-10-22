@@ -56,10 +56,14 @@ return array(
 	'code'          => array(
 		array( 'critical', '/eval\s*\(\s*\$_(POST|GET|REQUEST|COOKIE|SERVER)\s*\[[^\]]+\]\s*\?\?\s*[\'"]http_response_code\(\s*404\s*\)/i', 'Webshell one-liner that hides behind a 404 (seen with wp2shell)' ),
 		array( 'critical', '/\b(eval|assert)\s*\(\s*(stripslashes\s*\(\s*)?\$_(POST|GET|REQUEST|COOKIE)\b/i', 'Executes code straight from a web request' ),
-		array( 'critical', '/\b(passthru|shell_exec|system|exec|popen|proc_open)\s*\(\s*base64_decode\s*\(\s*\$(request|req|r|_POST|_GET|_REQUEST)\b/i', 'Runs base64-encoded shell commands from a request' ),
+		array( 'critical', '/(?<![\w>:$])(passthru|shell_exec|system|exec|popen|proc_open)\s*\(\s*base64_decode\s*\(\s*\$(request|req|r|_POST|_GET|_REQUEST)\b/i', 'Runs base64-encoded shell commands from a request' ),
 		array( 'high', '/\beval\s*\(\s*(gzuncompress|gzinflate|gzdecode|str_rot13)\s*\(\s*base64_decode\s*\(/i', 'Packed/obfuscated eval payload (CMSmap-style webshell)' ),
 		array( 'high', '/\b(include|require)(_once)?\s*\(?\s*\$_(GET|POST|REQUEST|COOKIE)\b/i', 'Includes a file named by a web request' ),
 		array( 'high', '/\bfile_put_contents\s*\([^;]{0,200}\$_(POST|GET|REQUEST)\b/i', 'Writes attacker-supplied content to disk' ),
+		array( 'high', '/\b(eval|assert)\s*\([^;]{0,80}base64_decode\s*\(\s*[\'"][A-Za-z0-9+\/=\s]{400,}/i', 'Evaluates a large hidden (base64) payload' ),
+		array( 'high', '/\bcreate_function\s*\([^;]{0,120}\$_(POST|GET|REQUEST|COOKIE)\b/i', 'Builds a function from web-request input' ),
+		array( 'high', '/\$\{\s*[\'"]_(P|G|R|C)[\'"]\s*\.\s*[\'"]/', 'Hides a $_POST/$_GET reference by splitting its name' ),
+		array( 'medium', '/\$[a-z_]\w*\s*\(\s*\$_(POST|GET|REQUEST|COOKIE)\s*\[\s*[\'"][^\'"]+[\'"]\s*\]\s*\)\s*;/i', 'Calls a function named by a variable with web-request input' ),
 	),
 
 	// PHP-executable extensions.
@@ -70,6 +74,9 @@ return array(
 
 	// Legit PHP that cache plugins keep under wp-content/cache/.
 	'cache_engines' => '#^cache/(object|db|page_enhanced|wp-rocket|min|autoptimize|litespeed|w3tc-config|minify|busting|wpfc-minified|breeze|swift-performance|comet-cache)/#i',
+
+	// Must-use plugins that hosts install and update themselves.
+	'host_mu_plugins' => '/^(mu-plugin|wpengine-common|wpe-|slt-force-strong|force-strong-passwords|kinsta-mu-plugins|gd-system-plugin|sso|endurance-|bluehost|wpcomsh|wpcom|pantheon|object-cache|redis-cache|batcache|wp-cache-memcached|siteground|sg-|hostinger|flywheel|wpaas|pressable|nexcess|cloudways|breeze|godaddy|onecom|dreamhost|ionos|liquidweb)[\w.-]*\.php$/i',
 
 	// Non-core PHP commonly found in the site root.
 	'root_allow'    => array( 'wordfence-waf.php', 'wp-config.php', 'wp-cli.php', 'local-config.php', 'wp-config-local.php' ),

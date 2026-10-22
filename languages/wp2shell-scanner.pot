@@ -1,0 +1,409 @@
+# Copyright (C) 2026 Jeremy Anderson
+# This file is distributed under the MIT.
+msgid ""
+msgstr ""
+"Project-Id-Version: wp2shell Scanner 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wp2shell-scanner\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-10-22T11:26:11+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: wp2shell-scanner\n"
+
+#. Plugin Name of the plugin
+#: wp2shell-scanner.php
+#: includes/class-admin.php:70
+#: includes/class-admin.php:71
+#: includes/class-admin.php:127
+msgid "wp2shell Scanner"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: wp2shell-scanner.php
+msgid "https://github.com/CptNope/PHP2Shell-WP-scanner"
+msgstr ""
+
+#. Description of the plugin
+#: wp2shell-scanner.php
+msgid "Checks your site for signs of the wp2shell attack on WordPress core (CVE-2026-63030 / CVE-2026-60137): vulnerable versions, webshell plugins and files, rogue admins, modified core files and exploit traffic. Read-only — it never changes or deletes anything."
+msgstr ""
+
+#. Author of the plugin
+#: wp2shell-scanner.php
+msgid "Jeremy Anderson"
+msgstr ""
+
+#. Author URI of the plugin
+#: wp2shell-scanner.php
+msgid "https://jeremyanderson.tech"
+msgstr ""
+
+#: includes/class-admin.php:46
+msgid "You are not allowed to do that."
+msgstr ""
+
+#: includes/class-admin.php:53
+msgid "Your session expired. Reload the page and try again."
+msgstr ""
+
+#: includes/class-admin.php:79
+msgid "Scan"
+msgstr ""
+
+#: includes/class-admin.php:97
+msgid "Starting scan…"
+msgstr ""
+
+#: includes/class-admin.php:98
+msgid "Checking version, plugins and users…"
+msgstr ""
+
+#: includes/class-admin.php:99
+msgid "Scanning files…"
+msgstr ""
+
+#: includes/class-admin.php:100
+msgid "Verifying WordPress core files…"
+msgstr ""
+
+#: includes/class-admin.php:101
+msgid "Reading the access log…"
+msgstr ""
+
+#: includes/class-admin.php:102
+msgid "Done. Loading results…"
+msgstr ""
+
+#: includes/class-admin.php:103
+msgid "The scan stopped:"
+msgstr ""
+
+#: includes/class-admin.php:104
+msgid "Retrying…"
+msgstr ""
+
+#: includes/class-admin.php:105
+#: includes/class-admin.php:315
+msgid "Ignore"
+msgstr ""
+
+#: includes/class-admin.php:106
+#: includes/class-admin.php:315
+msgid "Restore"
+msgstr ""
+
+#: includes/class-admin.php:129
+msgid "Checks this site for signs of the wp2shell attack on WordPress core (CVE-2026-63030 and CVE-2026-60137). The scan only reads files — it never changes or deletes anything."
+msgstr ""
+
+#: includes/class-admin.php:133
+msgid "Settings saved."
+msgstr ""
+
+#: includes/class-admin.php:143
+msgid "Go to WordPress updates"
+msgstr ""
+
+#. translators: 1: time ago, 2: WordPress version, 3: PHP file count, 4: seconds
+#: includes/class-admin.php:150
+#, php-format
+msgid "Last scan %1$s ago · WordPress %2$s · %3$s PHP files checked · %4$ss"
+msgstr ""
+
+#: includes/class-admin.php:160
+msgid "Not scanned yet"
+msgstr ""
+
+#: includes/class-admin.php:161
+msgid "Run your first scan — it usually takes under a minute."
+msgstr ""
+
+#: includes/class-admin.php:169
+msgid "Scan again"
+msgstr ""
+
+#: includes/class-admin.php:169
+msgid "Scan now"
+msgstr ""
+
+#: includes/class-admin.php:172
+msgid "Download report (JSON)"
+msgstr ""
+
+#: includes/class-admin.php:179
+msgid "Cancel"
+msgstr ""
+
+#: includes/class-admin.php:200
+msgid "Off"
+msgstr ""
+
+#: includes/class-admin.php:201
+msgid "Daily"
+msgstr ""
+
+#: includes/class-admin.php:202
+msgid "Weekly"
+msgstr ""
+
+#: includes/class-admin.php:207
+msgid "Settings"
+msgstr ""
+
+#: includes/class-admin.php:213
+msgid "Automatic scans"
+msgstr ""
+
+#. translators: %s: time until next scan
+#: includes/class-admin.php:223
+#, php-format
+msgid "Next in %s"
+msgstr ""
+
+#: includes/class-admin.php:230
+msgid "Email me when an automatic scan finds something new"
+msgstr ""
+
+#: includes/class-admin.php:231
+msgid "Alert email address"
+msgstr ""
+
+#: includes/class-admin.php:235
+msgid "Verify core files against wordpress.org"
+msgstr ""
+
+#: includes/class-admin.php:239
+msgid "Web server access log"
+msgstr ""
+
+#: includes/class-admin.php:239
+msgid "optional"
+msgstr ""
+
+#: includes/class-admin.php:241
+msgid "If PHP can read it, scans also look for exploit traffic. Ask your host if you’re not sure where it is. .gz files work."
+msgstr ""
+
+#: includes/class-admin.php:244
+msgid "Save settings"
+msgstr ""
+
+#: includes/class-admin.php:262
+msgid "Findings"
+msgstr ""
+
+#. translators: %d: number of ignored findings
+#: includes/class-admin.php:277
+#, php-format
+msgid "%d ignored finding"
+msgid_plural "%d ignored findings"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-admin.php:288
+msgid "Nothing to show."
+msgstr ""
+
+#: includes/class-admin.php:294
+msgid "Severity"
+msgstr ""
+
+#: includes/class-admin.php:295
+msgid "Finding"
+msgstr ""
+
+#: includes/class-admin.php:296
+msgid "What to do"
+msgstr ""
+
+#: includes/class-admin.php:297
+msgid "Actions"
+msgstr ""
+
+#: includes/class-admin.php:308
+msgid "View user"
+msgstr ""
+
+#: includes/class-admin.php:329
+msgid "If this site has been compromised"
+msgstr ""
+
+#: includes/class-admin.php:331
+msgid "Take a full backup of files and database first. It’s your evidence, and lets you undo mistakes."
+msgstr ""
+
+#: includes/class-admin.php:332
+msgid "Update WordPress to 6.8.6, 6.9.5, 7.0.2 or later."
+msgstr ""
+
+#: includes/class-admin.php:333
+msgid "Remove the flagged files, plugins and administrator accounts."
+msgstr ""
+
+#: includes/class-admin.php:334
+msgid "Reset every administrator password, change the database password, and replace the security keys (salts) in wp-config.php."
+msgstr ""
+
+#: includes/class-admin.php:335
+msgid "Check for other ways back in: must-use plugins, .htaccess files, scheduled tasks and server cron jobs. Then scan again."
+msgstr ""
+
+#: includes/class-admin.php:337
+msgid "If you’re not comfortable doing this, ask your host or a WordPress security service — many will clean a site for a fee."
+msgstr ""
+
+#: includes/class-admin.php:344
+msgid "Critical"
+msgstr ""
+
+#: includes/class-admin.php:345
+msgid "High"
+msgstr ""
+
+#: includes/class-admin.php:346
+msgid "Medium"
+msgstr ""
+
+#: includes/class-admin.php:347
+msgid "Low"
+msgstr ""
+
+#: includes/class-admin.php:348
+msgid "Info"
+msgstr ""
+
+#: includes/class-admin.php:355
+msgid "Compromised"
+msgstr ""
+
+#: includes/class-admin.php:356
+msgid "Suspicious"
+msgstr ""
+
+#: includes/class-admin.php:357
+msgid "Vulnerable — update WordPress"
+msgstr ""
+
+#: includes/class-admin.php:358
+msgid "Needs review"
+msgstr ""
+
+#: includes/class-admin.php:359
+msgid "No signs of wp2shell"
+msgstr ""
+
+#: includes/class-admin.php:366
+msgid "Strong evidence of an attack. Follow the steps at the bottom of this page."
+msgstr ""
+
+#: includes/class-admin.php:367
+msgid "Something here needs a closer look today."
+msgstr ""
+
+#: includes/class-admin.php:368
+msgid "No signs of an attack, but this WordPress version can be hacked with wp2shell. Update it now."
+msgstr ""
+
+#: includes/class-admin.php:369
+msgid "A few things to confirm, nothing alarming on its own."
+msgstr ""
+
+#: includes/class-admin.php:370
+msgid "No known indicators found. Keep WordPress updated."
+msgstr ""
+
+#. translators: %s: verdict
+#: includes/class-admin.php:405
+#, php-format
+msgid "wp2shell Scanner: %s"
+msgstr ""
+
+#: includes/class-admin.php:407
+msgid "See findings"
+msgstr ""
+
+#: includes/class-cron.php:33
+msgid "Once Weekly"
+msgstr ""
+
+#. translators: 1: verdict, 2: site name
+#: includes/class-cron.php:116
+#, php-format
+msgid "[%2$s] wp2shell Scanner: %1$s"
+msgstr ""
+
+#. translators: %s: site URL
+#: includes/class-cron.php:119
+#, php-format
+msgid "A scheduled scan of %s found new problems:"
+msgstr ""
+
+#. translators: %d: count
+#: includes/class-cron.php:128
+#, php-format
+msgid "…and %d more."
+msgstr ""
+
+#: includes/class-cron.php:131
+msgid "See the full report:"
+msgstr ""
+
+#: includes/class-cron.php:133
+msgid "You get this email because automatic scans and alerts are on. Change that on the scanner page."
+msgstr ""
+
+#: includes/class-site-health.php:20
+msgid "wp2shell scan"
+msgstr ""
+
+#: includes/class-site-health.php:28
+msgid "Open wp2shell Scanner"
+msgstr ""
+
+#: includes/class-site-health.php:30
+msgid "No signs of the wp2shell attack"
+msgstr ""
+
+#: includes/class-site-health.php:32
+msgid "Security"
+msgstr ""
+
+#: includes/class-site-health.php:33
+msgid "The last scan found no known indicators of wp2shell (CVE-2026-63030 / CVE-2026-60137)."
+msgstr ""
+
+#: includes/class-site-health.php:39
+msgid "This site hasn’t been scanned for wp2shell"
+msgstr ""
+
+#: includes/class-site-health.php:41
+msgid "Run a scan to check for signs of the wp2shell attack on WordPress core."
+msgstr ""
+
+#: includes/class-site-health.php:48
+msgid "The wp2shell scan found signs of compromise"
+msgstr ""
+
+#: includes/class-site-health.php:49
+msgid "The wp2shell scan found something suspicious"
+msgstr ""
+
+#: includes/class-site-health.php:50
+msgid "WordPress is vulnerable to wp2shell"
+msgstr ""
+
+#: includes/class-site-health.php:57
+msgid "The wp2shell scan has items to review"
+msgstr ""
+
+#: includes/class-updater.php:115
+msgid "Read-only scan for signs of wp2shell (CVE-2026-63030 / CVE-2026-60137) exploitation."
+msgstr ""
+
+#: includes/class-updater.php:137
+msgid "Could not prepare the update folder."
+msgstr ""

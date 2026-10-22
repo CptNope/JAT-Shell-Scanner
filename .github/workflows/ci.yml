@@ -26,6 +26,36 @@ jobs:
       - name: Lint every PHP file
         run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
 
+  docs:
+    name: README diagrams parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-audit --no-fund mermaid@11 jsdom
+      - run: node tests/check-mermaid.mjs README.md
+
+  false-positives:
+    name: No false alarms on popular plugins
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Fetch WordPress core and popular plugins
+        run: |
+          mkdir corpus && cd corpus
+          for r in WordPress/WordPress Yoast/wordpress-seo elementor/elementor takayukister/contact-form-7 woocommerce/woocommerce Automattic/wp-super-cache Automattic/jetpack; do
+            git clone --quiet --depth 1 "https://github.com/$r" "$(basename "$r")"
+          done
+      - name: Run the code signatures over them
+        run: php tests/false-positives.php corpus
+
   integration:
     name: WP ${{ matrix.wp }} · PHP ${{ matrix.php }}
     needs: lint

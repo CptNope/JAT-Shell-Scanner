@@ -116,7 +116,69 @@ hasnt "$R2" "[.findings[] | select(.id==\"$ID\")] | length > 0" "ignored finding
 $WP wp2shell ignore "$ID" --undo >/dev/null
 has "$($WP wp2shell status --format=json 2>/dev/null)" '.verdict' "status command works"
 
-echo "== 6. Cleanup → clean again =="
+echo "== 6. Evasion & blind spots =="
+SELF=$($WP eval 'echo untrailingslashit( WP2SS_DIR );' 2>/dev/null)
+OUTSIDE=$(mktemp -d)
+printf "<?php @eval(\$_REQUEST['z']);\n" > "$SELF/includes/class-helper.php"                                  # hidden in the scanner itself
+mkdir -p "$OUTSIDE/linked-plugin" && printf "<?php eval(\$_POST['q']);\n" > "$OUTSIDE/linked-plugin/x.php"
+ln -s "$OUTSIDE/linked-plugin" "$C/plugins/linked-plugin"                                                       # symlinked plugin folder
+ln -s "$C/plugins" "$C/plugins/linked-plugin-loop" 2>/dev/null                                                  # symlink loop
+mkdir -p "$C/plugins/padded"
+{ printf '<?php\n/* Plugin Name: padded */\n'; head -c 6000000 /dev/zero | tr '\0' ' '; printf "\neval(\$_POST['p']);\n"; } > "$C/plugins/padded/padded.php"  # >5 MB, payload at the end
+printf "<?php \$f=\${'_P'.'OST'}; \$f['a'](\$f['b']);\n" > "$C/plugins/padded/split.php"
+printf "<?php eval(base64_decode('%s'));\n" "$(head -c 900 /dev/urandom | base64 -w0)" > "$C/plugins/padded/blob.php"
+R=$(scan)
+has "$R" "$(msg 'own folder: includes/class-helper.php')" "PHP planted inside the scanner's own folder"
+has "$R" "$(msg 'linked-plugin/x.php')"            "webshell in a symlinked plugin folder"
+has "$R" '.stats.links >= 1'                        "symlink loop not followed"
+has "$R" "$(msg 'padded/padded.php')"              "payload at the end of a >5 MB file"
+has "$R" "$(msg 'splitting its name.*split.php')"  "split \$_POST name"
+has "$R" "$(msg 'hidden .base64. payload.*blob.php')" "large base64 eval payload"
+rm -f "$SELF/includes/class-helper.php" "$C/plugins/linked-plugin" "$C/plugins/linked-plugin-loop"; rm -rf "$OUTSIDE" "$C/plugins/padded"
+
+echo "== 7. Host files & stable IDs =="
+mkdir -p "$C/mu-plugins"
+printf '<?php // host\n' > "$C/mu-plugins/kinsta-mu-plugins.php"
+printf '<?php // ?\n' > "$C/mu-plugins/zz-unknown.php"
+R=$(scan)
+has "$R" '[.findings[] | select(.type=="mu-plugin" and .severity=="low" and (.message|test("kinsta")))] | length > 0' "known host mu-plugin is only low"
+has "$R" '[.findings[] | select(.type=="mu-plugin" and .severity=="medium" and (.message|test("zz-unknown")))] | length > 0' "unknown mu-plugin is medium"
+ID=$(echo "$R" | jq -r '[.findings[] | select(.message|test("zz-unknown"))][0].id')
+$WP wp2shell ignore "$ID" >/dev/null
+touch -d '2026-09-01 12:00' "$C/mu-plugins/zz-unknown.php"     # date in the message changes…
+R=$(scan)
+hasnt "$R" "$(msg 'zz-unknown')" "…but the ignored finding stays ignored"
+$WP wp2shell ignore "$ID" --undo >/dev/null
+rm -f "$C/mu-plugins/kinsta-mu-plugins.php" "$C/mu-plugins/zz-unknown.php"
+
+echo "== 8. Locking & long pauses =="
+OUT=$($WP eval '
+	global $wpdb;
+	WP2SS_Scanner::start( array( "core" => false ), "test", true );
+	$t = is_multisite() ? $wpdb->get_blog_prefix( get_main_site_id() ) . "options" : $wpdb->options;
+	$wpdb->query( $wpdb->prepare( "INSERT INTO `$t` (option_name, option_value, autoload) VALUES (%s, %s, %s)", "wp2ss_lock", time() . "|other", "no" ) );
+	$a = WP2SS_Scanner::step( 1 );
+	echo empty( $a["busy"] ) ? "nobusy" : "busy", " ";
+	$wpdb->query( $wpdb->prepare( "UPDATE `$t` SET option_value = %s WHERE option_name = %s", ( time() - 3600 ) . "|dead", "wp2ss_lock" ) );
+	$job = get_site_option( "wp2ss_job" ); $job["updated"] = time() - 3 * HOUR_IN_SECONDS; update_site_option( "wp2ss_job", $job );
+	do { $b = WP2SS_Scanner::step( 5 ); } while ( is_array( $b ) && empty( $b["verdict"] ) && empty( $b["busy"] ) );
+	echo empty( $b["verdict"] ) ? "unfinished" : "finished", " ";
+	echo $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$t` WHERE option_name = %s", "wp2ss_lock" ) );
+' 2>&1)
+[ "${OUT%% *}" = "busy" ] && ok "a second request waits while another holds the lock" || bad "lock not respected ($OUT)"
+echo "$OUT" | grep -q "finished 0$" && ok "stale lock recovered, paused scan resumed and finished, lock released" || bad "stale lock / resume failed ($OUT)"
+
+echo "== 9. Error isolation =="
+cat > "$C/mu-plugins/wp2ss-test-break.php" <<'EOF'
+<?php
+add_action( 'rest_api_init', function () { throw new RuntimeException( 'simulated crash' ); } );
+EOF
+R=$(scan)
+has "$R" '.verdict' "scan still completes when a check crashes"
+has "$R" "$(msg 'stopped early')" "the crash is reported as a finding"
+rm -f "$C/mu-plugins/wp2ss-test-break.php"
+
+echo "== 10. Cleanup → clean again =="
 rm -rf "$C/plugins/wp2shell_6a5566a6" "$C/plugins/cmsmap" "$C/upgrade/wp2shell_79b06a80" \
 	"$C/cache/x.php" "$C/uploads/2026/07/img.php" "$C/uploads/.htaccess" "$C/themes/.hidden.php" \
 	"$C/temp-write-test-123" "$C/uploads/wp2shell_6a5566a6.zip"

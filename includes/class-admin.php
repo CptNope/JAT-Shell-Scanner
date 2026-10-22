@@ -466,6 +466,7 @@ class WP2SS_Admin {
 		}
 		return array(
 			'done'     => false,
+			'busy'     => ! empty( $s['busy'] ),
 			'phase'    => $s['phase'],
 			'progress' => (int) $s['progress'],
 			'files'    => (int) $s['stats']['php_files'],

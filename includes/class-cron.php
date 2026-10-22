@@ -40,6 +40,11 @@ class WP2SS_Cron {
 		if ( 'off' !== $s['schedule'] && ! wp_next_scheduled( self::HOOK ) ) {
 			self::reschedule( $s['schedule'] );
 		}
+		// A scheduled scan whose next slice went missing (cron event lost, site migrated…): queue it again.
+		$job = WP2SS_Scanner::current();
+		if ( $job && 'cron' === $job['source'] && time() - (int) $job['updated'] > 5 * MINUTE_IN_SECONDS && ! wp_next_scheduled( self::STEP_HOOK ) ) {
+			wp_schedule_single_event( time() + 5, self::STEP_HOOK );
+		}
 	}
 
 	public static function reschedule( $schedule ) {
@@ -57,19 +62,28 @@ class WP2SS_Cron {
 
 	public static function run() {
 		if ( WP2SS_Scanner::current() ) {
-			return; // Something is already scanning.
+			self::step(); // A scan is already in progress: help it along instead of starting over.
+			return;
 		}
 		WP2SS_Scanner::start( WP2SS_Settings::scan_args(), 'cron' );
 		self::step();
 	}
 
+	/** Time to spend per cron request: generous when there's no limit (real server cron, CLI). */
+	public static function budget() {
+		$max = (int) ini_get( 'max_execution_time' );
+		if ( 0 === $max || 'cli' === PHP_SAPI ) {
+			return 120;
+		}
+		return max( 5, min( 20, $max / 2 ) );
+	}
+
 	public static function step() {
-		$max    = (int) ini_get( 'max_execution_time' );
-		$budget = $max > 0 ? max( 5, min( 20, $max / 2 ) ) : 20;
-		$r      = WP2SS_Scanner::step( $budget );
+		$r = WP2SS_Scanner::step( self::budget() );
 		if ( is_array( $r ) && empty( $r['verdict'] ) && ! wp_next_scheduled( self::STEP_HOOK ) ) {
-			wp_schedule_single_event( time() + 5, self::STEP_HOOK );
-			if ( function_exists( 'spawn_cron' ) ) {
+			// Busy means another request is mid-slice; check back a little later.
+			wp_schedule_single_event( time() + ( empty( $r['busy'] ) ? 5 : 30 ), self::STEP_HOOK );
+			if ( function_exists( 'spawn_cron' ) && ! ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) ) {
 				spawn_cron();
 			}
 		}
