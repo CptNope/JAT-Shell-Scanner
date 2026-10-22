@@ -5,8 +5,8 @@
 **Find out in two minutes whether your WordPress site is exposed to — or has already been broken into through — the October 2026 PHP2Shell attack on PHP, and the July 2026 wp2shell attack on WordPress.**
 
 [![CI](https://github.com/CptNope/PHP2Shell-WP-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/CptNope/PHP2Shell-WP-scanner/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/CptNope/PHP2Shell-WP-scanner)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/CptNope/PHP2Shell-WP-scanner/total)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases)
+[![Latest release](https://img.shields.io/github/v/release/CptNope/PHP2Shell-WP-scanner?cacheSeconds=300)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/CptNope/PHP2Shell-WP-scanner/total?cacheSeconds=3600)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases)
 ![PHP 7.0–8.5](https://img.shields.io/badge/PHP-7.0%E2%80%938.5-777bb4)
 ![WordPress 6.0+](https://img.shields.io/badge/WordPress-6.0%2B-21759b)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
