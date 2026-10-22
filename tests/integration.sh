@@ -366,13 +366,13 @@ printf '<?php echo 1;\n' > "$TMPD/wp2ss-staged-$$.php"
 R=$(scan)
 has "$R" "$(sev medium "PHP file in the temporary folder.*wp2ss-staged-$$.php")" "PHP written to the temp folder since the attacks began"
 SP=$($WP eval '$p = (string) ini_get( "session.save_path" ); $p = false !== strpos( $p, ";" ) ? substr( $p, strrpos( $p, ";" ) + 1 ) : $p; echo "" !== $p ? $p : sys_get_temp_dir();' 2>/dev/null)
-if [ -w "$SP" ]; then
+if [ -w "$SP" ] && [ -r "$SP" ] && ls "$SP" >/dev/null 2>&1; then
 	printf 'a|s:20:"<?php system($_GET[1]);";' > "$SP/sess_wp2sstest$$"
 	R=$(scan)
 	has "$R" "$(sev high 'session file.s. contain PHP code')" "PHP code planted in a session file"
 	rm -f "$SP/sess_wp2sstest$$"
 else
-	ok "session-file check skipped (session folder not writable here)"
+	ok "session-file check skipped (session folder not listable here, as on Debian/Ubuntu)"
 fi
 rm -f "$TO" "$TMPD/wp2ss-staged-$$.php"
 rm -f "$TMPD/nfs" "$C/mu-plugins/wp2ss-test-hash.php" "$P2S" "$SES"
