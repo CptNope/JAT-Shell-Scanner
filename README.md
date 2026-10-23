@@ -32,7 +32,7 @@ By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](htt
 
 | Version | Highlights |
 |---|---|
-| **1.4.0** | **WordPress.org edition**, listed as *PHP2Shell Scanner* (WordPress.org allows no "wp" in plugin names) (updates through WordPress.org, self-check against WordPress.org checksums); links to docs, support and the author; the GitHub update check no longer sends the site address |
+| **1.4.0** | **WordPress.org edition**, listed as *Anderson Shell Scanner* (WordPress.org allows no "wp" in plugin names) (updates through WordPress.org, self-check against WordPress.org checksums); links to docs, support and the author; the GitHub update check no longer sends the site address |
 | **1.3.2** | Recognises the **Installatron Worker** (`it-api.php`, used by IONOS and other hosts for one-click installs) by its signature check, and hidden **data files** that can only answer "404 Not Found" (a plugin's stored key or settings) — no more false "backdoor" alarms for either |
 | **1.3.1** | No false alarms for WordPress's own leftover `temp-write-test-…` files (dated from their names) or for WordPress 7.0 files left behind after updating (checked against official fingerprints) |
 | **1.3.0** | Security fixes from an independent review (per-site fleet identities, safer quarantine), **fleet alerts** by email/Slack/Discord, **Scan again** for member sites, new PHP2Shell intel, screenshots and demo |
@@ -512,7 +512,7 @@ There are two editions, built from the same code:
 
 | Edition | Install from | Updates from | Self-check against |
 |---|---|---|---|
-| **WordPress.org** — *PHP2Shell Scanner* | Plugins → Add New Plugin, search "PHP2Shell" | WordPress.org, like any directory plugin | WordPress.org's published checksums |
+| **WordPress.org** — *Anderson Shell Scanner* | Plugins → Add New Plugin, search "Anderson Shell Scanner" | WordPress.org, like any directory plugin | WordPress.org's published checksums |
 | **GitHub** | The zip on the [releases page](https://github.com/CptNope/PHP2Shell-WP-scanner/releases) | This repository's releases (below) | The release's `manifest.json` |
 
 The WordPress.org edition is the same plugin without `includes/class-updater.php` (WordPress.org plugins may only update through WordPress.org). To switch from GitHub to WordPress.org, delete the GitHub copy and install from the directory — deleting removes settings and quarantine, so restore anything you need first.
@@ -1103,7 +1103,7 @@ flowchart LR
     D -- any red --> H["Nothing is released"]
 ```
 
-**WordPress.org build.** `bash .github/scripts/build-wporg.sh` writes `build/php2shell-scanner/` and a zip of it: the same files minus the GitHub updater and the `Update URI` header. CI runs the official [Plugin Check](https://wordpress.org/plugins/plugin-check/) on that build. Once the plugin is approved on WordPress.org and the `SVN_USERNAME` / `SVN_PASSWORD` repository secrets are set, each GitHub release is also committed to WordPress.org SVN (trunk and tag), with the banner, icon and screenshots from `.wordpress-org/`.
+**WordPress.org build.** `bash .github/scripts/build-wporg.sh` writes `build/anderson-shell-scanner/` and a zip of it: the same files minus the GitHub updater and the `Update URI` header. CI runs the official [Plugin Check](https://wordpress.org/plugins/plugin-check/) on that build. Once the plugin is approved on WordPress.org and the `SVN_USERNAME` / `SVN_PASSWORD` repository secrets are set, each GitHub release is also committed to WordPress.org SVN (trunk and tag), with the banner, icon and screenshots from `.wordpress-org/`.
 
 Workflow actions are pinned to exact commits. Detection rules live in [`includes/signatures.php`](includes/signatures.php) — **new indicators are very welcome**: open an issue or pull request with a link to the source.
 
@@ -1118,7 +1118,7 @@ Workflow actions are pinned to exact commits. Detection rules live in [`includes
 - **Known indicators only.** Attackers can rename files and rewrite code, so "no signs" means no *known* indicators — not a guarantee.
 - **An attacker with full control of the server** could tamper with any tool running on it, including this one. The self-check against GitHub or WordPress.org makes that harder, not impossible. For certainty, have your host check from outside.
 - It looks for these two attacks specifically. It isn't a general antivirus — keep your usual security plugin or host scanner.
-- Finding texts are in English; the interface is translation-ready (`languages/php2shell-scanner.pot`, text domain `php2shell-scanner`).
+- Finding texts are in English; the interface is translation-ready (`languages/anderson-shell-scanner.pot`, text domain `anderson-shell-scanner`).
 
 ## 23. Security
 

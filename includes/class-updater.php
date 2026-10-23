@@ -108,7 +108,7 @@ class WP2SS_Updater {
 		}
 		$r = self::release();
 		return (object) array(
-			'name'          => 'PHP2Shell Scanner',
+			'name'          => 'Anderson Shell Scanner',
 			'slug'          => 'wp2shell-scanner',
 			'version'       => $r ? $r['version'] : WP2SS_VERSION,
 			'author'        => 'Jeremy Anderson',
@@ -118,7 +118,7 @@ class WP2SS_Updater {
 			'requires_php'  => '7.0',
 			'last_updated'  => $r ? $r['published'] : '',
 			'sections'      => array(
-				'description' => esc_html__( 'Checks whether a site is exposed to, or was broken into through, PHP2Shell (CVE-2026-109618 / CVE-2026-109619) and wp2shell (CVE-2026-63030 / CVE-2026-60137). Read-only.', 'php2shell-scanner' ),
+				'description' => esc_html__( 'Checks whether a site is exposed to, or was broken into through, PHP2Shell (CVE-2026-109618 / CVE-2026-109619) and wp2shell (CVE-2026-63030 / CVE-2026-60137). Read-only.', 'anderson-shell-scanner' ),
 				'changelog'   => $r ? '<pre>' . esc_html( $r['notes'] ) . '</pre>' : '',
 			),
 		);
@@ -140,7 +140,7 @@ class WP2SS_Updater {
 		if ( $wp_filesystem->move( $source, $want, true ) ) {
 			return $want;
 		}
-		return new WP_Error( 'wp2ss_rename', __( 'Could not prepare the update folder.', 'php2shell-scanner' ) );
+		return new WP_Error( 'wp2ss_rename', __( 'Could not prepare the update folder.', 'anderson-shell-scanner' ) );
 	}
 
 	public static function flush( $upgrader, $extra ) {

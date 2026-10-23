@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       PHP2Shell Scanner
+ * Plugin Name:       Anderson Shell Scanner
  * Plugin URI:        https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/
  * Description:       Checks whether your site is exposed to — or was broken into through — PHP2Shell (CVE-2026-109618 / CVE-2026-109619, critical bugs in PHP itself) and wp2shell (CVE-2026-63030 / CVE-2026-60137, a WordPress core bug). Looks at your PHP and WordPress versions, webshells, rogue admins, changed files and server logs. Scans only read; one-click fixes (quarantine, removing admin rights) are optional and can be undone. Includes a self-hosted fleet dashboard for many sites, with alerts.
  * Version:           1.4.0
@@ -10,7 +10,7 @@
  * Author URI:        https://jeremyanderson.tech
  * License:           MIT
  * License URI:       https://opensource.org/licenses/MIT
- * Text Domain:       php2shell-scanner
+ * Text Domain:       anderson-shell-scanner
  * Domain Path:       /languages
  * Network:           true
  * Update URI:        https://github.com/CptNope/PHP2Shell-WP-scanner
@@ -32,7 +32,7 @@ define( 'WP2SS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WP2SS_URL', plugin_dir_url( __FILE__ ) );
 define( 'WP2SS_BASENAME', plugin_basename( __FILE__ ) );
 define( 'WP2SS_REPO', 'CptNope/PHP2Shell-WP-scanner' );
-define( 'WP2SS_WPORG_SLUG', 'php2shell-scanner' );
+define( 'WP2SS_WPORG_SLUG', 'anderson-shell-scanner' );
 define( 'WP2SS_AUTHOR_URL', 'https://jeremyanderson.tech/' );
 define( 'WP2SS_DOCS_URL', WP2SS_AUTHOR_URL . 'project/php2shell-wp2shell-scanner/' );
 
@@ -62,7 +62,7 @@ add_action(
 	function () {
 		if ( 'github' === WP2SS_CHANNEL ) {
 			// WordPress.org loads translations for directory plugins by itself.
-			load_plugin_textdomain( 'php2shell-scanner', false, dirname( WP2SS_BASENAME ) . '/languages' ); // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- GitHub edition only.
+			load_plugin_textdomain( 'anderson-shell-scanner', false, dirname( WP2SS_BASENAME ) . '/languages' ); // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- GitHub edition only.
 		}
 
 		WP2SS_Env::init();

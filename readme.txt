@@ -1,4 +1,4 @@
-=== PHP2Shell Scanner ===
+=== Anderson Shell Scanner ===
 Contributors: cptnope
 Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.0
@@ -61,7 +61,7 @@ The plugin only contacts outside servers in the cases below. It sends no analyti
 
 == Installation ==
 
-1. Install from Plugins → Add New Plugin (search for "PHP2Shell"), or upload the zip, and activate.
+1. Install from Plugins → Add New Plugin (search for "Anderson Shell Scanner"), or upload the zip, and activate.
 2. Go to Tools → PHP2Shell Scanner and click Scan now.
 
 On multisite, network-activate and use Network Admin → Settings → PHP2Shell Scanner.
@@ -90,7 +90,7 @@ The GitHub edition updates itself from GitHub releases. To switch to this WordPr
 
 = Where do I report a bug or a new attack indicator? =
 
-Use the [support forum](https://wordpress.org/support/plugin/php2shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner/security/advisories/new).
+Use the [support forum](https://wordpress.org/support/plugin/anderson-shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner/security/advisories/new).
 
 == Screenshots ==
 

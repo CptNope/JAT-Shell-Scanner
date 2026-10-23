@@ -3,8 +3,8 @@
 #
 #   bash .github/scripts/build-wporg.sh [output-dir]
 #
-# Writes <output-dir>/php2shell-scanner/ (the folder that goes into
-# SVN trunk) and <output-dir>/php2shell-scanner.zip (for the first
+# Writes <output-dir>/anderson-shell-scanner/ (the folder that goes into
+# SVN trunk) and <output-dir>/anderson-shell-scanner.zip (for the first
 # submission at wordpress.org/plugins/developers/add/).
 #
 # Differences from the GitHub release zip:
@@ -15,7 +15,7 @@
 #   * no manifest.json.
 set -euo pipefail
 
-SLUG=php2shell-scanner
+SLUG=anderson-shell-scanner
 ROOT=$(git rev-parse --show-toplevel)
 OUT=$(realpath -m "${1:-$ROOT/build}")
 DEST="$OUT/$SLUG"
