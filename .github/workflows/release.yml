@@ -119,7 +119,7 @@ jobs:
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-          SLUG: php2shell-wp2shell-scanner
+          SLUG: php2shell-scanner
           VERSION: ${{ needs.release.outputs.version }}
-          BUILD_DIR: build/php2shell-wp2shell-scanner
+          BUILD_DIR: build/php2shell-scanner
           ASSETS_DIR: .wordpress-org

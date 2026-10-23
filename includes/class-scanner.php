@@ -456,12 +456,12 @@ class WP2SS_Scanner {
 		$token = time() . '|' . wp_generate_password( 8, false );
 
 		for ( $try = 0; $try < 2; $try++ ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$ok = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO `$table` (option_name, option_value, autoload) VALUES (%s, %s, 'no')", self::LOCK_NAME, $token ) );
 			if ( $ok ) {
 				return $token;
 			}
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$held = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM `$table` WHERE option_name = %s", self::LOCK_NAME ) );
 			if ( null === $held ) {
 				continue; // Released between our two queries.
@@ -470,7 +470,7 @@ class WP2SS_Scanner {
 				return false;
 			}
 			// Stale lock from a request that died: remove exactly that one, then retry.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s AND option_value = %s", self::LOCK_NAME, $held ) );
 		}
 		return false;
@@ -480,10 +480,10 @@ class WP2SS_Scanner {
 		global $wpdb;
 		$table = self::lock_table();
 		if ( null === $token ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s", self::LOCK_NAME ) );
 		} elseif ( $token ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s AND option_value = %s", self::LOCK_NAME, $token ) );
 		}
 	}
@@ -1529,10 +1529,10 @@ class WP2SS_Scanner {
 		if ( ! $fh ) {
 			return false;
 		}
-		$head = (string) fread( $fh, self::EDGE_READ );
+		$head = (string) fread( $fh, self::EDGE_READ ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		fseek( $fh, max( 0, $size - self::EDGE_READ ) );
-		$tail = (string) fread( $fh, self::EDGE_READ );
-		fclose( $fh );
+		$tail = (string) fread( $fh, self::EDGE_READ ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
+		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		return $head . "\n" . $tail;
 	}
 
@@ -1856,7 +1856,7 @@ class WP2SS_Scanner {
 			}
 		}
 		$L['pos'] = $gz ? 0 : ftell( $fh );
-		$gz ? gzclose( $fh ) : fclose( $fh );
+		$gz ? gzclose( $fh ) : fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		return $eof;
 	}
 

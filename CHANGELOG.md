@@ -4,7 +4,7 @@
 
 ### Available on WordPress.org
 - **WordPress.org edition**, built from the same code by `.github/scripts/build-wporg.sh`: it leaves out the GitHub updater and the `Update URI` header (WordPress.org plugins may only update through WordPress.org) and checks its own files against the checksums WordPress.org publishes for each version. The GitHub release zip is unchanged and still updates itself from GitHub.
-- Text domain is now `php2shell-wp2shell-scanner`, matching the WordPress.org slug (translation template renamed to match).
+- Listed as **PHP2Shell Scanner** (slug and text domain `php2shell-scanner`): WordPress.org doesn't allow "wp" anywhere in a plugin's name or slug. It still checks for both PHP2Shell and wp2shell; the scanner page keeps its full title. The translation template is renamed to match.
 - `readme.txt` rewritten for the directory: short description, an **External services** section listing every outside request, screenshots, upgrade notice.
 - CI runs WordPress's **Plugin Check** on the WordPress.org build; a deploy workflow commits each release to WordPress.org SVN once the plugin is approved and SVN secrets are set.
 

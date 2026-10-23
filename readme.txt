@@ -1,4 +1,4 @@
-=== PHP2Shell & wp2shell Scanner ===
+=== PHP2Shell Scanner ===
 Contributors: cptnope
 Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.0
@@ -90,7 +90,7 @@ The GitHub edition updates itself from GitHub releases. To switch to this WordPr
 
 = Where do I report a bug or a new attack indicator? =
 
-Use the [support forum](https://wordpress.org/support/plugin/php2shell-wp2shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner/security/advisories/new).
+Use the [support forum](https://wordpress.org/support/plugin/php2shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner/security/advisories/new).
 
 == Screenshots ==
 

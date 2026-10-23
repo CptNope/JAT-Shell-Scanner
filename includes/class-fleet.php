@@ -103,7 +103,7 @@ class WP2SS_Fleet {
 	public static function save( $mode, $hub = '', $key = '' ) {
 		$s = self::settings();
 		if ( ! in_array( $mode, array( 'off', 'hub', 'member' ), true ) ) {
-			return new WP_Error( 'wp2ss_mode', __( 'Unknown fleet mode.', 'php2shell-wp2shell-scanner' ) );
+			return new WP_Error( 'wp2ss_mode', __( 'Unknown fleet mode.', 'php2shell-scanner' ) );
 		}
 		$s['mode'] = $mode;
 		if ( 'hub' === $mode && strlen( $s['key'] ) < 32 ) {
@@ -117,10 +117,10 @@ class WP2SS_Fleet {
 			}
 			// Plain URL check: wp_http_validate_url() would refuse hubs on a private network or a non-standard port.
 			if ( ! $hub || ! filter_var( $hub, FILTER_VALIDATE_URL ) || ! preg_match( '#^https?://#i', $hub ) ) {
-				return new WP_Error( 'wp2ss_hub', __( 'Enter the hub site’s address, e.g. https://hub.example.com', 'php2shell-wp2shell-scanner' ) );
+				return new WP_Error( 'wp2ss_hub', __( 'Enter the hub site’s address, e.g. https://hub.example.com', 'php2shell-scanner' ) );
 			}
 			if ( strlen( $key ) < 32 ) {
-				return new WP_Error( 'wp2ss_key', __( 'Paste the fleet key shown on the hub site (it’s 48 characters long).', 'php2shell-wp2shell-scanner' ) );
+				return new WP_Error( 'wp2ss_key', __( 'Paste the fleet key shown on the hub site (it’s 48 characters long).', 'php2shell-scanner' ) );
 			}
 			if ( untrailingslashit( $hub ) !== $s['hub'] ) {
 				$s['enrolled'] = false;
@@ -144,10 +144,10 @@ class WP2SS_Fleet {
 		$to      = trim( (string) $to );
 		$webhook = trim( (string) $webhook );
 		if ( '' !== $to && ! is_email( $to ) ) {
-			return new WP_Error( 'wp2ss_alert_to', __( 'That email address doesn’t look right.', 'php2shell-wp2shell-scanner' ) );
+			return new WP_Error( 'wp2ss_alert_to', __( 'That email address doesn’t look right.', 'php2shell-scanner' ) );
 		}
 		if ( '' !== $webhook && ( ! filter_var( $webhook, FILTER_VALIDATE_URL ) || 0 !== stripos( $webhook, 'https://' ) ) ) {
-			return new WP_Error( 'wp2ss_webhook', __( 'The webhook address must start with https:// — copy it from Slack or Discord.', 'php2shell-wp2shell-scanner' ) );
+			return new WP_Error( 'wp2ss_webhook', __( 'The webhook address must start with https:// — copy it from Slack or Discord.', 'php2shell-scanner' ) );
 		}
 		$s['alert_email']   = (bool) $email;
 		$s['alert_to']      = $to;
@@ -231,10 +231,10 @@ class WP2SS_Fleet {
 		$s      = self::settings();
 		$report = $report ? $report : WP2SS_Scanner::last_report();
 		if ( 'member' !== $s['mode'] || ! $s['hub'] || ! $s['key'] ) {
-			return new WP_Error( 'wp2ss_not_member', __( 'This site isn’t set up to report to a hub.', 'php2shell-wp2shell-scanner' ) );
+			return new WP_Error( 'wp2ss_not_member', __( 'This site isn’t set up to report to a hub.', 'php2shell-scanner' ) );
 		}
 		if ( ! $report ) {
-			return new WP_Error( 'wp2ss_no_report', __( 'Run a scan first.', 'php2shell-wp2shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_report', __( 'Run a scan first.', 'php2shell-scanner' ) );
 		}
 		$data = self::summary( $report );
 		if ( ! $s['enrolled'] ) {
@@ -266,7 +266,7 @@ class WP2SS_Fleet {
 			)
 		);
 		if ( ! $ok ) {
-			return new WP_Error( 'wp2ss_send_failed', sprintf( /* translators: 1: HTTP code, 2: detail */ __( 'The hub didn’t accept the report (HTTP %1$s): %2$s', 'php2shell-wp2shell-scanner' ), $code ? $code : '—', substr( wp_strip_all_tags( (string) $detail ), 0, 200 ) ) );
+			return new WP_Error( 'wp2ss_send_failed', sprintf( /* translators: 1: HTTP code, 2: detail */ __( 'The hub didn’t accept the report (HTTP %1$s): %2$s', 'php2shell-scanner' ), $code ? $code : '—', substr( wp_strip_all_tags( (string) $detail ), 0, 200 ) ) );
 		}
 		return true;
 	}
@@ -617,26 +617,26 @@ class WP2SS_Fleet {
 			switch ( $e['event'] ) {
 				case 'worse':
 					/* translators: 1: site, 2: new result, 3: old result */
-					$lines[] = sprintf( __( '%1$s is now “%2$s” (was “%3$s”).', 'php2shell-wp2shell-scanner' ), $host( $e ), $label, WP2SS_Admin::verdict_label( $e['was'] ) );
+					$lines[] = sprintf( __( '%1$s is now “%2$s” (was “%3$s”).', 'php2shell-scanner' ), $host( $e ), $label, WP2SS_Admin::verdict_label( $e['was'] ) );
 					break;
 				case 'new':
 					/* translators: 1: site, 2: result */
-					$lines[] = sprintf( __( '%1$s joined the fleet: “%2$s”.', 'php2shell-wp2shell-scanner' ), $host( $e ), $label );
+					$lines[] = sprintf( __( '%1$s joined the fleet: “%2$s”.', 'php2shell-scanner' ), $host( $e ), $label );
 					break;
 				case 'findings':
 					/* translators: 1: site, 2: result */
-					$lines[] = sprintf( __( '%1$s has new serious findings (“%2$s”).', 'php2shell-wp2shell-scanner' ), $host( $e ), $label );
+					$lines[] = sprintf( __( '%1$s has new serious findings (“%2$s”).', 'php2shell-scanner' ), $host( $e ), $label );
 					break;
 				case 'stale':
 					/* translators: 1: site, 2: time ago */
-					$lines[] = sprintf( __( '%1$s hasn’t reported for %2$s. Its scans may have stopped — or someone switched the scanner off.', 'php2shell-wp2shell-scanner' ), $host( $e ), human_time_diff( (int) $e['last'] ) );
+					$lines[] = sprintf( __( '%1$s hasn’t reported for %2$s. Its scans may have stopped — or someone switched the scanner off.', 'php2shell-scanner' ), $host( $e ), human_time_diff( (int) $e['last'] ) );
 					break;
 				case 'back':
 					/* translators: 1: site, 2: result */
-					$lines[] = sprintf( __( '%1$s is reporting again: “%2$s”.', 'php2shell-wp2shell-scanner' ), $host( $e ), $label );
+					$lines[] = sprintf( __( '%1$s is reporting again: “%2$s”.', 'php2shell-scanner' ), $host( $e ), $label );
 					break;
 				case 'test':
-					$lines[] = __( 'This is a test alert from your PHP2Shell Scanner fleet hub. Alerts work.', 'php2shell-wp2shell-scanner' );
+					$lines[] = __( 'This is a test alert from your PHP2Shell Scanner fleet hub. Alerts work.', 'php2shell-scanner' );
 					break;
 			}
 			foreach ( array_slice( isset( $e['fresh'] ) ? $e['fresh'] : array(), 0, 5 ) as $m ) {
@@ -671,7 +671,7 @@ class WP2SS_Fleet {
 		$url   = add_query_arg( 'tab', 'fleet', WP2SS_Admin::url() );
 		$count = count( $events );
 		/* translators: %d: number of sites */
-		$subject = 1 === $count && 'test' === $events[0]['event'] ? __( 'PHP2Shell fleet: test alert', 'php2shell-wp2shell-scanner' ) : sprintf( _n( 'PHP2Shell fleet: %d site needs a look', 'PHP2Shell fleet: %d sites need a look', $count, 'php2shell-wp2shell-scanner' ), $count );
+		$subject = 1 === $count && 'test' === $events[0]['event'] ? __( 'PHP2Shell fleet: test alert', 'php2shell-scanner' ) : sprintf( _n( 'PHP2Shell fleet: %d site needs a look', 'PHP2Shell fleet: %d sites need a look', $count, 'php2shell-scanner' ), $count );
 
 		$sent = false;
 		if ( $s['alert_email'] ) {
@@ -679,7 +679,7 @@ class WP2SS_Fleet {
 				return 'text/plain'; // Site names and findings come from other sites: never HTML.
 			};
 			add_filter( 'wp_mail_content_type', $plain, 999 );
-			$body = implode( "\n", $lines ) . "\n\n" . __( 'Fleet dashboard:', 'php2shell-wp2shell-scanner' ) . ' ' . $url . "\n\n" . __( 'You get this because fleet alerts are on. Change that on the hub’s Fleet tab.', 'php2shell-wp2shell-scanner' );
+			$body = implode( "\n", $lines ) . "\n\n" . __( 'Fleet dashboard:', 'php2shell-scanner' ) . ' ' . $url . "\n\n" . __( 'You get this because fleet alerts are on. Change that on the hub’s Fleet tab.', 'php2shell-scanner' );
 			$sent = wp_mail( $s['alert_to'] ? $s['alert_to'] : WP2SS_Settings::alert_email(), $subject, $body ) || $sent;
 			remove_filter( 'wp_mail_content_type', $plain, 999 );
 		}
@@ -716,12 +716,12 @@ class WP2SS_Fleet {
 	public static function test_alert() {
 		$s = self::settings();
 		if ( ! $s['alert_email'] && ! $s['alert_webhook'] ) {
-			return new WP_Error( 'wp2ss_no_alerts', __( 'Turn on email alerts or add a webhook first.', 'php2shell-wp2shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_alerts', __( 'Turn on email alerts or add a webhook first.', 'php2shell-scanner' ) );
 		}
 		delete_site_option( self::QUEUE );
 		self::queue( 'test', array( 'site' => self::own_url(), 'name' => '', 'verdict' => 'CLEAN', 'label' => '' ) );
 		wp_clear_scheduled_hook( self::ALERT_HOOK );
-		return self::send_digest() ? true : new WP_Error( 'wp2ss_alert_failed', __( 'The test alert couldn’t be sent. Check the email address or webhook, and that this site can send email.', 'php2shell-wp2shell-scanner' ) );
+		return self::send_digest() ? true : new WP_Error( 'wp2ss_alert_failed', __( 'The test alert couldn’t be sent. Check the email address or webhook, and that this site can send email.', 'php2shell-scanner' ) );
 	}
 
 	/** Ask one site (by key) or every site to scan at its next check-in. @return int sites asked */
