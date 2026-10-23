@@ -1,14 +1,14 @@
 === PHP2Shell & wp2shell Scanner ===
 Contributors: cptnope
-Tags: security, php2shell, malware, scanner, webshell
+Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.3.2
+Stable tag: 1.4.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
-Checks whether your site is exposed to — or was broken into through — PHP2Shell (a critical PHP bug, October 2026) and wp2shell (a WordPress bug, July 2026). Optional one-click fixes and a fleet dashboard.
+Checks if your site is exposed to, or was hacked through, PHP2Shell (critical PHP bug) and wp2shell (WordPress bug). Optional fixes you can undo.
 
 == Description ==
 
@@ -18,7 +18,7 @@ Checks whether your site is exposed to — or was broken into through — PHP2Sh
 
 This plugin tells you whether your site is exposed to either, and looks for signs that an attacker already got in. Scans only read. If something is found, optional one-click fixes can quarantine files or remove admin rights — and every fix can be undone.
 
-It checks:
+= What it checks =
 
 * The PHP your website runs, including Debian/Ubuntu package versions and build dates (patched without a version change), and the temporary php.ini protections
 * Whether the site ran an unpatched PHP during the attack window
@@ -27,9 +27,9 @@ It checks:
 * Webshell code anywhere in the site, PHP hidden in uploads, images and the site root, and PHP auto-loaded via .user.ini / .htaccess
 * New or promoted administrators, roles given admin powers, application passwords
 * WordPress core files against official checksums
-* Its own files, against the official release
+* Its own files, against the checksums WordPress.org publishes for this plugin
 
-Features:
+= Features =
 
 * Works on shared hosting with short time limits — scans run in slices with a progress bar
 * A ready-to-send message for your host when PHP needs updating
@@ -40,11 +40,28 @@ Features:
 * Site Health integration
 * WP-CLI: `wp php2shell scan`, `status`, `ignore`, `fix`, `quarantine`, `fleet`
 * Multisite aware
-* Updates automatically from GitHub releases
+
+= Free, open source, no account =
+
+Everything in the plugin is free. There is no paid version, no sign-up and no tracking. Development happens in the open on [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner).
+
+= Need hands-on help? =
+
+The plugin is made by [Jeremy Anderson](https://jeremyanderson.tech/), who builds and looks after WordPress sites. If you'd rather have someone deal with a vulnerable or hacked site for you, [book a call](https://jeremyanderson.tech/book-a-call/) or see the [services](https://jeremyanderson.tech/services/). Full documentation is on the [plugin's page](https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/).
+
+== External services ==
+
+The plugin only contacts outside servers in the cases below. It sends no analytics or personal data, and never sends your site's files or scan results anywhere you didn't set up.
+
+* **WordPress.org core checksums** (api.wordpress.org) — during a scan, to compare your WordPress core files with the official ones. Sends your WordPress version and locale, the same request WordPress itself makes. [Terms](https://wordpress.org/about/privacy/)
+* **WordPress.org plugin checksums** (downloads.wordpress.org) — during a scan, to check this plugin's own files haven't been tampered with. Sends only this plugin's name and version. [Terms](https://wordpress.org/about/privacy/)
+* **Your own fleet hub** — only if you turn on the fleet dashboard and connect a site to a hub you run. After each scan the member site sends a summary to that hub, signed with a per-site key: site name and address, verdict, WordPress, PHP and plugin versions, finding counts, and the text of serious findings (email addresses removed).
+* **Slack or Discord** — only if you paste a webhook address into the fleet alert settings. The hub sends alert messages (site address and what was found) to that webhook. [Slack terms](https://slack.com/terms-of-service), [Discord terms](https://discord.com/terms)
+* **Email alerts** use your site's normal WordPress mail.
 
 == Installation ==
 
-1. Upload the zip under Plugins → Add New Plugin → Upload Plugin, and activate.
+1. Install from Plugins → Add New Plugin (search for "PHP2Shell"), or upload the zip, and activate.
 2. Go to Tools → PHP2Shell Scanner and click Scan now.
 
 On multisite, network-activate and use Network Admin → Settings → PHP2Shell Scanner.
@@ -65,32 +82,37 @@ Some hosts fix PHP without changing its version number. If your host confirms bo
 
 = Does it send my data anywhere? =
 
-No. The only outside requests are core checksums from wordpress.org and update/self-check requests to GitHub. If you set up a fleet, member sites send a short summary to your own hub site.
+No. See "External services" above for the only outside requests it makes.
+
+= I installed an earlier version from GitHub. =
+
+The GitHub edition updates itself from GitHub releases. To switch to this WordPress.org edition, deactivate and delete the GitHub copy, then install this one. Deleting a plugin removes its settings, scan history and quarantine, so restore anything you need from the Quarantine tab and note your fleet settings first.
+
+= Where do I report a bug or a new attack indicator? =
+
+Use the [support forum](https://wordpress.org/support/plugin/php2shell-wp2shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner/security/advisories/new).
+
+== Screenshots ==
+
+1. The verdict: whether PHP and WordPress are exposed, and whether there are signs of a break-in.
+2. Findings, with what each one means and what to do.
+3. The fleet dashboard for many sites.
+4. Quarantine: every fix can be undone.
 
 == Changelog ==
 
+= 1.4.0 =
+* Now available on WordPress.org. The WordPress.org edition updates through WordPress.org and checks its own files against WordPress.org's checksums.
+* Links to documentation, support and the author on the Plugins screen and the scanner page.
+* The update check no longer sends the site address to GitHub.
+
 = 1.3.2 =
-* Recognises the Installatron Worker (it-api.php), the temporary script IONOS and other hosts use for one-click installs, by its signature check.
-* Hidden "data" files that can only answer 404 (a plugin's stored key or settings) are no longer reported as backdoors.
+* Recognises the Installatron Worker (it-api.php), the temporary script IONOS and other hosts use for one-click installs.
+* Hidden "data" files that can only answer 404 are no longer reported as backdoors.
 
-= 1.3.1 =
-* Fewer false alarms: WordPress's own leftover write-test files, and WordPress 7.0 files left behind after updating, are no longer reported as attacks.
+The full history is in [CHANGELOG.md](https://github.com/CptNope/PHP2Shell-WP-scanner/blob/main/CHANGELOG.md).
 
-= 1.3.0 =
-* Security fixes from an independent review: per-site fleet identities, safer quarantine and restore (no links, contents must match the scan), last admin never demoted.
-* Fleet alerts (email, Slack, Discord) and "Scan again" for member sites.
-* New PHP2Shell intel: Ubuntu ESM packages, more log, temp-folder, session and server checks.
-* The page keeps your place after a fix.
+== Upgrade Notice ==
 
-= 1.2.0 =
-* One-click fixes with undo: quarantine files and plugins, remove admin rights.
-* Fleet dashboard for many sites.
-* Latest PHP2Shell intel: Ubuntu/Debian package and build-date checks, exploit-tool and attacker-address detection, /tmp/nfs, fewer false alarms on patched PHP.
-* Redesigned scanner page.
-
-= 1.1.0 =
-* PHP2Shell (CVE-2026-109618 / CVE-2026-109619) detection: PHP version and stopgaps, version history, error-log and access-log evidence, ready-made message for your host.
-* Many new checks, fewer false alarms, and a much more robust scan engine. See CHANGELOG.md.
-
-= 1.0.0 =
-* First public release.
+= 1.4.0 =
+First WordPress.org release. Adds documentation and support links.
