@@ -555,7 +555,7 @@ class WP2SS_Scanner {
 
 	private function work( $budget ) {
 		if ( function_exists( 'set_time_limit' ) && false === strpos( (string) ini_get( 'disable_functions' ), 'set_time_limit' ) ) {
-			@set_time_limit( (int) max( 60, $budget * 3 ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			@set_time_limit( (int) max( 60, $budget * 3 ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- Scans run in short slices; only raised when the host allows it.
 		}
 		$this->deadline = microtime( true ) + max( 0.0005, (float) $budget );
 
