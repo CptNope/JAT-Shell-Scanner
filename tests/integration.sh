@@ -429,6 +429,52 @@ rm -f "$TMPD/nfs" "$C/mu-plugins/wp2ss-test-hash.php" "$P2S" "$SES"
 rm -f "$ERR" "$ERR.gz" "$ACC"
 set_php 8.3.36
 
+section "13b. PHP2Shell: October 22–24 intel"
+set_php 8.3.36
+TMPD=$($WP eval 'echo untrailingslashit( sys_get_temp_dir() );' 2>/dev/null)
+# Payload markers, botnet downloads and newly reported addresses in the access log.
+P2S=$(mktemp)
+echo '8.8.4.4 - - [22/Oct/2026:10:00:00 +0000] "GET /?r=P2S_OK HTTP/1.1" 200 10 "-" "Mozilla/5.0"' >> "$P2S"
+echo '8.8.4.5 - - [22/Oct/2026:10:01:00 +0000] "GET /x?u=http://92.118.112.100/mountpoint HTTP/1.1" 404 10 "-" "Mozilla/5.0"' >> "$P2S"
+echo '87.121.84.174 - - [22/Oct/2026:11:00:00 +0000] "POST / HTTP/1.1" 403 10 "-" "Mozilla/5.0"' >> "$P2S"
+R=$(scan --log="$P2S")
+has "$R" "$(sev high '^2 log lines show PHP2Shell exploit tools or their payload')" "payload marker and botnet download in the access log"
+has "$R" "$(sev medium '^1 requests since October 17, 2026 from addresses seen attempting PHP2Shell')" "address from Wordfence's list"
+# Worker aborts (AH00052 … Abort (6)).
+AB=$(mktemp)
+echo "[Wed Oct 22 09:00:00.123456 2026] [core:notice] [pid 100] AH00052: child pid 123 exit signal Abort (6)" > "$AB"
+R=$(scan --error-log="$AB")
+has "$R" "$(sev high 'PHP worker crashes')" "Apache worker aborts (signal 6)"
+# Second stage saved under its other names; PHP named like a kit's webshell in the temp folder.
+printf 'not really malware\n' > "$TMPD/cCmono"
+printf '<?php echo 1;\n' > "$TMPD/wp2s.php"
+R=$(scan)
+has "$R" "$(sev high 'Suspicious file named .cCmono.')" "second stage saved as cCmono"
+has "$R" "$(sev high 'PHP file in the temporary folder.*wp2s.php')" "kit-named PHP in the temp folder is high"
+# Kit file names and botnet infrastructure in site files.
+mkdir -p "$C/uploads/2026/10"
+printf '<?php echo 1;\n' > "$C/uploads/2026/10/axiom_x1.php"
+printf '<?php echo "P2S_OK";\n' > "$C/uploads/2026/10/p.php"
+printf '<?php // update\n$u = "http://thunder.godofthunder.st/a";\n' > "$C/mu-plugins/wp2ss-t-c2.php"
+R=$(scan)
+has "$R" "$(sev high 'Named like a webshell PHP2Shell attackers drop.*axiom_x1.php')" "axiom_*.php webshell name"
+has "$R" "$(sev high 'success marker PHP2Shell exploit kits check for.*p.php')" "P2S_OK success marker in code"
+has "$R" "$(sev critical 'botnet behind PHP2Shell attacks.*wp2ss-t-c2.php')" "botnet C2 address in a must-use plugin"
+# Session files planted by exploit kits.
+SP=$($WP eval '$p = (string) ini_get( "session.save_path" ); $p = false !== strpos( $p, ";" ) ? substr( $p, strrpos( $p, ";" ) + 1 ) : $p; echo "" !== $p ? $p : sys_get_temp_dir();' 2>/dev/null)
+if [ -w "$SP" ] && [ -r "$SP" ] && ls "$SP" >/dev/null 2>&1; then
+	printf 'a|s:6:"NxSP42";' > "$SP/sess_wp2sskit$$"
+	R=$(scan)
+	has "$R" "$(sev high 'session file.s. left by PHP2Shell exploit kits')" "exploit-kit marker in a session file"
+	rm -f "$SP/sess_wp2sskit$$"
+else
+	ok "kit session-file check skipped (session folder not listable here)"
+fi
+# CVE-2026-115560: reported even on patched PHP while upload progress is on.
+R=$(scan)
+has "$R" "$(sev info 'CVE-2026-115560')" "CVE-2026-115560 advice on patched PHP with upload progress on"
+rm -f "$P2S" "$AB" "$TMPD/cCmono" "$TMPD/wp2s.php" "$C/uploads/2026/10/axiom_x1.php" "$C/uploads/2026/10/p.php" "$C/mu-plugins/wp2ss-t-c2.php"
+
 section "14. Own-file integrity (release manifest)"
 php "$(dirname "$0")/../.github/scripts/make-manifest.php" "$SELF" 9.9.9 2>/dev/null
 # Test the local manifest only: once this version is released, GitHub's real one would (rightly) disagree.

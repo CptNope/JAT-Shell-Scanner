@@ -809,6 +809,11 @@ class WP2SS_Scanner {
 			$this->add( 'info', 'php', 'Temporary PHP2Shell protections: ' . ( $on ? 'in place — ' . implode( ', ', $on ) . '. ' : '' ) . ( $off ? 'missing — ' . implode( ', ', $off ) . '.' : '' ), 'None of these is a complete fix — only updating PHP is. Your host must set them in php.ini or the PHP-FPM pool (php_admin_value, not .user.ini or ini_set), then fully restart PHP. PHP’s advisory also suggests pm.max_requests = 1 for PHP-FPM, and no operating-system memory limits (RLIMIT_AS / RLIMIT_DATA) on PHP.', '', 'php-mitigations' );
 		}
 
+		// CVE-2026-115560 (PHP advisory, 2026-10-23): no fix in any version yet, so this applies to patched PHP too.
+		if ( $this->truthy( $e['upload_progress'] ) ) {
+			$this->add( 'info', 'php', 'Session upload progress is on. PHP’s advisory for CVE-2026-115560 (October 23, 2026, not fixed yet in any version) asks for it to be turned off.', 'The flaw needs code that switches session.serialize_handler while the site runs. WordPress doesn’t, but a plugin might. WordPress doesn’t use upload progress, so ask your host to set session.upload_progress.enabled = 0 in php.ini or the PHP-FPM pool and restart PHP.', '', 'php-115560' );
+		}
+
 		// Did this site run an unpatched PHP during the attack window, even if it's fixed now?
 		if ( in_array( $status, array( 'fixed', 'newer' ), true ) && ! empty( $e['history'] ) ) {
 			foreach ( $e['history'] as $h ) {
@@ -841,7 +846,7 @@ class WP2SS_Scanner {
 				if ( '.' === $name || '..' === $name || ! @is_file( $p ) || @is_link( $p ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 					continue;
 				}
-				if ( 'nfs' !== strtolower( $name ) && 0 !== stripos( $name, 'nfs.' ) ) {
+				if ( ! preg_match( $this->sig['php2shell_tmp_names'], $name ) ) {
 					$this->check_tmp_file( $d, $p, $name );
 					continue;
 				}
@@ -849,7 +854,7 @@ class WP2SS_Scanner {
 				if ( $hash && isset( $this->sig['php2shell_files'][ $hash ] ) ) {
 					$this->add( 'critical', 'file', "PHP2Shell malware found: $p", 'This is the program attackers install after exploiting PHP2Shell (' . $this->sig['php2shell_files'][ $hash ] . '). Tell your host immediately: the whole server is compromised, not just this site.', $p, '', '' );
 				} else {
-					$this->add( 'high', 'file', "Suspicious file named \"nfs\" in $d", 'PHP2Shell attacks download a program called nfs into the temporary folder. Ask your host to check it.', $p );
+					$this->add( 'high', 'file', 'Suspicious file named "' . self::clean_text( $name ) . "\" in $d", 'PHP2Shell attacks download their botnet program into the temporary folder under names like nfs, nfs-setup, mountpoint or cCmono. Ask your host to check it.', $p );
 				}
 			}
 		}
@@ -864,12 +869,21 @@ class WP2SS_Scanner {
 		if ( '/dev/shm' === $dir || $recent ) {
 			$head = (string) @file_get_contents( $p, false, null, 0, 4 ); // phpcs:ignore
 			if ( "\x7fELF" === $head ) {
+				$hash = @filesize( $p ) < 50 * MB_IN_BYTES ? (string) @hash_file( 'sha256', $p ) : ''; // phpcs:ignore WordPress.PHP.NoSilencedErrors
+				if ( $hash && isset( $this->sig['php2shell_files'][ $hash ] ) ) {
+					$this->add( 'critical', 'file', "PHP2Shell malware found: $p", 'This is the program attackers install after exploiting PHP2Shell (' . $this->sig['php2shell_files'][ $hash ] . '). Tell your host immediately: the whole server is compromised, not just this site.', $p, '', '' );
+					return;
+				}
 				$this->add( '/dev/shm' === $dir ? 'high' : 'medium', 'file', "Program file in the temporary folder $dir: $name", 'Attackers stage their tools in temporary folders and shared memory after breaking in through PHP. Ask your host what it is.', $p );
 				return;
 			}
 		}
 		if ( $recent && preg_match( $this->sig['php_ext'], $name ) ) {
-			$this->add( 'medium', 'file', "PHP file in the temporary folder $dir: $name", 'Webshells are often written to temporary folders first. Ask your host what it is.', $p );
+			$kit = false;
+			foreach ( $this->sig['php2shell_names'] as $nm ) {
+				$kit = $kit || ( 'high' === $nm[0] && preg_match( $nm[1], $name ) );
+			}
+			$this->add( $kit ? 'high' : 'medium', 'file', "PHP file in the temporary folder $dir: " . self::clean_text( $name ), ( $kit ? 'Its name matches a webshell PHP2Shell attackers drop. ' : '' ) . 'Webshells are often written to temporary folders first. Ask your host what it is.', $p );
 		}
 	}
 
@@ -893,9 +907,11 @@ class WP2SS_Scanner {
 		if ( ! $list ) {
 			return;
 		}
-		$found = 0;
-		$first = '';
-		$seen  = 0;
+		$found     = 0;
+		$first     = '';
+		$seen      = 0;
+		$kit       = 0;
+		$kit_first = '';
 		foreach ( $list as $name ) {
 			if ( 0 !== strpos( $name, 'sess_' ) || ++$seen > 3000 ) {
 				continue;
@@ -908,7 +924,13 @@ class WP2SS_Scanner {
 			if ( preg_match( '/<\?php|<\?=\s*\$|\beval\s*\(\s*\$_(POST|GET|REQUEST|COOKIE)/i', $data ) ) {
 				$found++;
 				$first = $first ? $first : $name;
+			} elseif ( preg_match( $this->sig['php2shell_sess_names'], $name ) || preg_match( $this->sig['php2shell_sess_data'], $data ) ) {
+				$kit++;
+				$kit_first = $kit_first ? $kit_first : $name;
 			}
+		}
+		if ( $kit ) {
+			$this->add( 'high', 'file', sprintf( '%d PHP session file(s) left by PHP2Shell exploit kits (e.g. %s).', $kit, self::clean_text( $kit_first ) ), 'The session IDs or markers match published PHP2Shell tools that plant data in session files and then try to include it. Someone targeted this server: make sure PHP is patched and ask your host to check the server.', $path, 'sess-kit' );
 		}
 		if ( $found ) {
 			$this->add( 'high', 'file', sprintf( '%d PHP session file(s) contain PHP code (e.g. %s).', $found, self::clean_text( $first ) ), 'Attackers write code into session files and then make PHP include them. Ask your host to inspect the session folder.', $path, 'sess-code' );
@@ -1666,6 +1688,13 @@ class WP2SS_Scanner {
 		}
 		$this->s['stats']['php_files']++;
 
+		foreach ( $this->sig['php2shell_names'] as $nm ) {
+			if ( preg_match( $nm[1], $name ) ) {
+				$this->add( $nm[0], 'file', "{$nm[2]}: $show", 'Open it and confirm what it is. If it’s a webshell: keep a copy as evidence, remove it, make sure PHP is patched, then change passwords, keys and salts.', $path, '', (string) @sha1_file( $path ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+				break;
+			}
+		}
+
 		$size = (int) @filesize( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		$code = false;
 		if ( $size > 0 && $size <= self::MAX_READ ) {
@@ -2224,7 +2253,7 @@ class WP2SS_Scanner {
 					$c['sample'][] = self::clean_text( trim( substr( $line, 0, 240 ) ) );
 				}
 			} else {
-				if ( false !== stripos( $line, 'Allowed memory size' ) || false !== stripos( $line, 'session object' ) || false !== stripos( $line, 'signal 11' ) || false !== stripos( $line, 'SIGSEGV' ) || false !== stripos( $line, 'segfault' ) || false !== stripos( $line, 'heap corrupted' ) || false !== stripos( $line, 'Maximum execution time' ) ) {
+				if ( false !== stripos( $line, 'Allowed memory size' ) || false !== stripos( $line, 'session object' ) || false !== stripos( $line, 'signal 11' ) || false !== stripos( $line, 'SIGSEGV' ) || false !== stripos( $line, 'segfault' ) || false !== stripos( $line, 'heap corrupted' ) || false !== stripos( $line, 'Maximum execution time' ) || false !== stripos( $line, 'exit signal' ) || false !== stripos( $line, 'signal 6' ) || false !== stripos( $line, 'SIGABRT' ) ) {
 					$t = $this->line_time( $line );
 					if ( $t >= $cut || ( 0 === $t && $mt >= $cut ) ) {
 						if ( false !== stripos( $line, 'Allowed memory size' ) ) {
@@ -2300,7 +2329,7 @@ class WP2SS_Scanner {
 
 		$this->report_p2s( $c, $path, $sample );
 		if ( $c['p2s_ip'] ) {
-			$this->add( 'medium', 'log', "{$c['p2s_ip']} requests since October 17, 2026 from addresses seen attempting PHP2Shell.", 'These are anonymising services also used by ordinary people, so check what the requests did rather than assuming the worst.', $path, 'p2s-ip' );
+			$this->add( 'medium', 'log', "{$c['p2s_ip']} requests since October 17, 2026 from addresses seen attempting PHP2Shell.", 'Reported by honeypots and firewall vendors. Many are anonymising services or rented servers also used for ordinary traffic, so check what the requests did rather than assuming the worst.', $path, 'p2s-ip' );
 		}
 
 		if ( ! $c['batch_ok'] && ! $c['ua'] && ! $c['ip'] && ! $burst && ! $c['p2s'] && ! $c['p2s_ip'] ) {
@@ -2310,7 +2339,7 @@ class WP2SS_Scanner {
 
 	private function report_p2s( $c, $path, $sample ) {
 		if ( ! empty( $c['p2s'] ) ) {
-			$this->add( 'high', 'log', "{$c['p2s']} log lines show PHP2Shell exploit tools or their payload (scanner user agents, the JACKALPOC test, or the /tmp/nfs download).", 'Someone ran a PHP2Shell exploit against this server. If PHP wasn’t patched at the time, treat the server as compromised: tell your host, update PHP, and change every password and key.' . $sample, $path, 'p2s-tools' );
+			$this->add( 'high', 'log', "{$c['p2s']} log lines show PHP2Shell exploit tools or their payload (scanner user agents, test markers like P2S_OK, the botnet's downloads or servers).", 'Someone ran a PHP2Shell exploit against this server. If PHP wasn’t patched at the time, treat the server as compromised: tell your host, update PHP, and change every password and key.' . $sample, $path, 'p2s-tools' );
 		}
 	}
 

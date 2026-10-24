@@ -4,7 +4,7 @@ Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.5.0
+Stable tag: 1.5.1
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -102,6 +102,10 @@ Use the [support forum](https://wordpress.org/support/plugin/anderson-shell-scan
 
 == Changelog ==
 
+= 1.5.1 =
+* Latest PHP2Shell intel: the Potassium (Mirai) botnet's second stage, servers and download names; webshell names and markers from PHP2Shell exploit kits; poisoned session files; Apache worker aborts; 34 more attacker addresses.
+* Advice for CVE-2026-115560, a related PHP flaw with no fix yet: turn off session upload progress.
+
 = 1.5.0 =
 * Looks for backdoors in the database: code stored in settings, self-decoding scripts, invisible frames and hidden links in posts, and scheduled tasks that carry code or download scripts.
 * Checks plugins from WordPress.org against their official checksums, catching a backdoor written into a real plugin's file and stray PHP files in plugin folders.
@@ -119,6 +123,9 @@ Use the [support forum](https://wordpress.org/support/plugin/anderson-shell-scan
 The full history is in [CHANGELOG.md](https://github.com/CptNope/PHP2Shell-WP-scanner/blob/main/CHANGELOG.md).
 
 == Upgrade Notice ==
+
+= 1.5.1 =
+Detects the latest PHP2Shell attack tools and the botnet they install.
 
 = 1.5.0 =
 Finds backdoors that survive deleting the webshell: in the database, inside real plugin files, and in drop-ins.

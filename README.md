@@ -13,7 +13,7 @@
 
 ### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
 
-**Current version: 1.5.0** (October 24, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
+**Current version: 1.5.1** (October 24, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
@@ -32,6 +32,7 @@ By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](htt
 
 | Version | Highlights |
 |---|---|
+| **1.5.1** | Latest PHP2Shell intel (October 22–24): the Potassium/Mirai botnet's second stage, servers and download names, exploit-kit webshell names (`wp2s.php`, `axiom_*.php`…) and markers (`P2S_OK`, `NxSP…`), poisoned session files, Apache worker aborts, 34 more attacker addresses, and advice for the unpatched **CVE-2026-115560** |
 | **1.5.0** | Looks for backdoors in the **database** (code in settings, injected scripts and hidden links in posts, scheduled tasks that carry code), checks **plugin files against wordpress.org's checksums**, and flags unexplained **drop-ins** |
 | **1.4.0** | **WordPress.org edition**, listed as *Anderson Shell Scanner* (WordPress.org allows no "wp" in plugin names) (updates through WordPress.org, self-check against WordPress.org checksums); links to docs, support and the author; the GitHub update check no longer sends the site address |
 | **1.3.2** | Recognises the **Installatron Worker** (`it-api.php`, used by IONOS and other hosts for one-click installs) by its signature check, and hidden **data files** that can only answer "404 Not Found" (a plugin's stored key or settings) — no more false "backdoor" alarms for either |
@@ -145,7 +146,9 @@ sequenceDiagram
 | A backdoor inside a real plugin | A plugin file that no longer matches the official copy on wordpress.org, or an extra PHP file in its folder |
 | Stolen secrets (PHP2Shell) | Nothing visible — which is why you should change passwords and keys if you were exposed |
 | Traces in server logs (PHP2Shell) | "Allowed memory size … exhausted … in Unknown on line 0", PHP worker crashes, bursts of failed POSTs, the public scanner tools (`php2shell-scan`, `php2shell-verify`, `JACKALPOC`) in the access log |
-| A second-stage program (PHP2Shell) | A Linux program called `nfs` dropped in `/tmp` |
+| A second-stage program (PHP2Shell) | The **Potassium** botnet (a Mirai variant) downloaded into `/tmp` as `nfs`, `nfs-setup`, `mountpoint` or `cCmono` |
+| Webshells from PHP2Shell kits | PHP files named `wp2s.php`, `php2shell.php`, `axiom_*.php` or `autologin_fd.php`; code that prints `P2S_OK` or talks to the botnet's servers |
+| Poisoned PHP sessions (PHP2Shell) | Session files with the kits' fixed IDs (`sess_p2sopchain…`) or markers (`NxSP…`), planted to be included later |
 
 ## 2. Is my site affected?
 
@@ -338,15 +341,17 @@ These reduce the risk; they don't remove it — security firms have shown attack
 | **Riskiest setup** | Apache `mod_php`, which researchers rate highest-risk | Noted in the finding |
 | **Temporary protections** | `session.upload_progress.enabled`, `memory_limit`, `fatal_error_backtraces`, `post_max_size`, `max_input_nesting_level`. They make attacks **harder, not impossible** — only a patched PHP fixes it | Info |
 | **PHP history** | Whether this site ran an unpatched PHP **after October 17, 2026**, even if it's patched now | Medium — change your passwords and keys |
-| **PHP error log** | `Allowed memory size … exhausted … in Unknown on line 0` (out-of-memory before any script ran — the tell-tale sign), `Maximum execution time … exceeded in Unknown on line 0`, `Failed to decode session object`, worker crashes (`SIGSEGV`, heap corruption) since October 17 | Medium; **High** for bursts or crashes |
+| **CVE-2026-115560** | Session upload progress turned on. PHP's October 23 advisory for this related flaw (no fix in any version yet) asks for it to be off — shown even on patched PHP | Info |
+| **PHP error log** | `Allowed memory size … exhausted … in Unknown on line 0` (out-of-memory before any script ran — the tell-tale sign), `Maximum execution time … exceeded in Unknown on line 0`, `Failed to decode session object`, worker crashes (`SIGSEGV`, Apache `AH00052 … exit signal Segmentation fault (11)` or `Abort (6)`, heap corruption) since October 17 | Medium; **High** for bursts or crashes |
 | | Out-of-memory errors even though `memory_limit = -1` (they should be impossible) | High |
 | **Access log** | Bursts of POST requests answered with HTTP 500/502 from one address since October 17 | Medium (a lead, not proof) |
-| | The public exploit and scanner tools (`php2shell-scan`, `php2shell-verify`, `JACKALPOC`) or their payload server | High |
-| | Addresses publicly reported attacking PHP2Shell | Medium |
-| **Temp folders** | A file called `nfs` in `/tmp` (the reported second stage); critical if it matches a known malware hash | High / Critical |
-| | Programs (ELF files) in `/dev/shm`, or in `/tmp` since October 17; PHP files written to `/tmp` since October 17 | High / Medium |
+| | The public exploit and scanner tools (`php2shell-scan`, `php2shell-verify`, `php2shell-109618`, `JACKALPOC`), the kits' markers (`P2S_OK`, `SHL_OK`, `NxSP…`, `ADV618BOUNDARY`), the botnet's download URLs and servers, and `PHPSESSID` cookies carrying leaked memory (where cookies are logged) | High |
+| | Addresses publicly reported attacking PHP2Shell (Amazon, Hunt.io, Arctic Wolf, and Wordfence's 20 busiest sources) | Medium |
+| **Temp folders** | The botnet's second stage saved as `nfs`, `nfs-setup`, `mountpoint` or `cCmono`; **critical** for any program matching a published Potassium hash | High / Critical |
+| | Programs (ELF files) in `/dev/shm`, or in `/tmp` since October 17; PHP files written to `/tmp` since October 17 (High when named like a kit's webshell) | High / Medium |
+| **Kit webshells** | PHP files named `wp2s.php`, `php2shell.php`, `php-to-shell…`, `autologin_fd.php`, `axiom_*.php` (High) or `tebaran_*.php` (Medium); code printing `P2S_OK`/`SHL_OK` (High) or contacting the botnet's servers (Critical) | Critical / High / Medium |
 | **Server persistence** | `/etc/ld.so.preload` loading a library into every program (a rootkit favourite) | High |
-| **PHP sessions** | Session files containing PHP code (written by an attack, then included) | High |
+| **PHP sessions** | Session files containing PHP code (written by an attack, then included), or the kits' fixed session IDs and markers | High |
 
 > [!NOTE]
 > Patched PHP 8.4.27 and 8.5.12 log **"Failed to decode session object"** more often than before ([php-src #24493](https://github.com/php/php-src/issues/24493)). On a patched PHP the scanner treats that message as information only, not as a sign of attack.
@@ -1147,6 +1152,13 @@ Found a security problem **in this plugin**? Please report it privately via **Se
 - [Patchstack — PHP major vulnerability alert](https://patchstack.com/articles/php-major-vulnerability-alert-10-2026/)
 - [PHP2Shell detection opportunities (community gist)](https://gist.github.com/Blevene/472692937d05145d29d17dc3c6edc2a0)
 - [AlmaLinux — patched PHP packages](https://almalinux.org/blog/2026-10-21-php2shell-cve-2026-109618-cve-2026-109619/)
+- [Wordfence — Attacks on PHP2Shell continue (payload markers, kit file names, top sources)](https://malware.news/t/attacks-on-php2shell-continue-but-no-known-compromises-as-a-result-yet/126664)
+- [Arctic Wolf — PHP2Shell (Potassium botnet hashes, servers, download names)](https://arcticwolf.com/resources/blog/php2shell-critical-php-vulnerabilities-enable-unauthenticated-remote-code-execution/)
+- [Hunt.io — Hunting leaked PHP2Shell RCE across open directories](https://hunt.io/blog/php2shell-cve-2026-109618-109619-open-directories)
+- [SOCRadar — PHP2Shell (leaked attacker server)](https://socradar.io/blog/php2shell-cve-2026-109618-cve-2026-109619/)
+- [ReliaQuest — Responding to PHP2Shell (log artifacts)](https://reliaquest.com/blog/threat-spotlight-php2shell-responding-to-critical-php-vulnerabilities/)
+- [Datadog Security Labs — PHP2Shell detection](https://securitylabs.datadoghq.com/articles/php2shell-critical-vulnerabilities-in-php/)
+- [The Hacker News — CVE-2026-115560](https://thehackernews.com/2026/10/urgent-php-warns-of-another-unpatched.html)
 
 **wp2shell**
 - [Wiz Research — Exploitation in the Wild of wp2shell](https://www.wiz.io/blog/wp2shell-cve-2026-63030-cve-2026-60137)

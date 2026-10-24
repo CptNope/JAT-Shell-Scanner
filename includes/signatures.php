@@ -68,18 +68,47 @@ return array(
 		array( 'session_decode', 'medium', '/Failed to decode session object/i', '"Failed to decode session object" errors' ),
 		// Time limits hit before any script ran (CVE-2026-109619 advisory).
 		array( 'timeout_unknown', 'medium', '/Maximum execution time of \d+ seconds? exceeded in (<b>)?Unknown(<\/b>)? on line (<b>)?0\b/i', '"Maximum execution time exceeded" errors raised before any script ran' ),
-		array( 'segfault', 'high', '/exited on signal 11|\bSIGSEGV\b|segfault at [0-9a-f]+ .*php|zend_mm_heap corrupted/i', 'PHP worker crashes (segmentation faults / heap corruption)' ),
+		// Apache's AH00052 "exit signal Segmentation fault (11)" / "exit signal Abort(ed) (6)" too (ReliaQuest, Datadog, 2026-10-22).
+		array( 'segfault', 'high', '/exited on signal (11|6)\b|\bSIGSEGV\b|\bSIGABRT\b|segfault at [0-9a-f]+ .*php|zend_mm_heap corrupted|exit signal (Segmentation fault|Abort(ed)?) \((11|6)\)/i', 'PHP worker crashes (segmentation faults, aborts, heap corruption)' ),
 	),
 
-	// Exploit tools and payloads reported for PHP2Shell (ELLIO; Amazon): user agents, canary, download URL.
-	'php2shell_log'     => '/php2shell-(scan|verify|109618)|JACKALPOC|92\.118\.112\.100|\/tmp\/nfs\b/i',
+	// Exploit tools and payloads reported for PHP2Shell, matched in any log line: scanner user agents
+	// (ELLIO, Hunt.io), test canaries and payload markers (Wordfence, 2026-10-22), second-stage downloads
+	// and the Potassium (Mirai) botnet's hosts (Arctic Wolf, Hunt.io, 2026-10-22), the session file the
+	// published session-poisoning chain includes, and a PHPSESSID cookie carrying percent-encoded bytes
+	// (leaked memory, Wiz) where cookies are logged.
+	'php2shell_log'     => '/php2shell-(scan|verify|109618)|JACKALPOC|\bP2S_OK\b|\bSHL_OK\b|\bNxSP\d+|ADV618BOUNDARY|p2s0adf525faa|sess_p2sopchain|92\.118\.112\.100|45\.115\.26\.26|\/tmp\/nfs\b|\/nfs-setup\b|\/mountpoint\b|\/cCmono\b|botlesscucks\.st|godofthunder\.st|gettingheadfromduckysmom\.st|maste\.mangsud\.org|PHPSESSID=[^;"\s]*%[0-9A-Fa-f]{2}[^;"\s]*%[0-9A-Fa-f]{2}/i',
 
-	// Addresses Amazon saw attempting PHP2Shell (anonymisation services: investigate, don't just block).
-	'php2shell_ips'     => array( '103.216.220.92', '31.223.184.166', '37.19.200.5', '134.209.159.64', '103.114.163.188', '95.217.98.37' ),
+	// Addresses seen attempting PHP2Shell. Many are anonymisation services or rented servers: investigate, don't just block.
+	'php2shell_ips'     => array(
+		// Amazon MadPot (2026-10-17 to 21).
+		'103.216.220.92', '31.223.184.166', '37.19.200.5', '134.209.159.64', '103.114.163.188', '95.217.98.37',
+		// Hunt.io (2026-10-21/22): scanners, the mass-exploitation server, operators with custom tooling, public-PoC reuse.
+		'45.198.224.169', '85.11.167.243', '206.188.197.105', '102.210.149.166', '122.10.110.72', '122.10.17.49', '58.221.60.160', '41.223.30.7', '157.230.117.70', '104.219.251.31', '107.150.31.151', '217.160.132.82',
+		// Arctic Wolf (2026-10-22): Potassium botnet hosts.
+		'45.115.26.26', '5.175.189.76',
+		// Wordfence (2026-10-22): the 20 busiest sources of blocked PHP2Shell attempts.
+		'87.121.84.174', '181.215.186.252', '185.196.220.132', '185.161.210.29', '152.233.51.69', '45.134.225.16', '107.189.14.87', '193.47.62.24', '2409:40d2:204e:4be:2a1f:f9c9:a055:e00b', '103.147.220.17', '143.246.223.124', '52.74.54.75', '65.49.200.56', '193.142.147.111', '85.137.56.188', '85.137.53.26', '167.254.242.130', '217.112.152.168', '203.78.119.133', '140.245.32.169',
+	),
 
-	// Second-stage malware dropped in /tmp as "nfs" (ELLIO).
+	// Second-stage malware (SHA-256): the Potassium Mirai variant, fetched into /tmp (ELLIO; Arctic Wolf, 2026-10-22).
 	'php2shell_files'   => array(
-		'0c5486f06620e26e316f4b33f318b0d646d5e1133789331aa2fed012360d1486' => 'PHP2Shell second-stage ELF (ELLIO)',
+		'0c5486f06620e26e316f4b33f318b0d646d5e1133789331aa2fed012360d1486' => 'PHP2Shell second-stage ELF, Potassium botnet (ELLIO, Arctic Wolf)',
+		'e2529d4afa39ae4db2eb05d5176317c906289abf09660c75bdeec43e54c55aa3' => 'PHP2Shell second-stage ELF, Potassium botnet (Arctic Wolf)',
+	),
+
+	// Names the second stage is saved under in temporary folders (wget -O): nfs, nfs-setup, mountpoint, cCmono.
+	'php2shell_tmp_names' => '/^(nfs(\..*)?|nfs-setup|mountpoint|ccmono)$/i',
+
+	// Session files: the session-poisoning chain's fixed IDs and markers (Arctic Wolf, Wordfence, SOCRadar).
+	'php2shell_sess_names' => '/^sess_(p2sopchain|fprint)/i',
+	'php2shell_sess_data'  => '/\bNxSP\d+|\bP2S_OK\b|\bSHL_OK\b|MARKER_[0-9a-f]{8}\.txt/i',
+
+	// PHP file names reported as PHP2Shell drops: [ severity, regex on the file name, description ].
+	'php2shell_names'   => array(
+		array( 'high', '/^(wp2s|php2shell|php-to-shell[\w-]*|autologin_fd)\.php$/i', 'Named like a webshell PHP2Shell attackers drop (Wordfence, Hunt.io)' ),
+		array( 'high', '/^axiom_\w*\.php$/i', 'Named like a webshell PHP2Shell attackers drop (axiom_*.php, Wordfence)' ),
+		array( 'medium', '/^tebaran_\w*\.php$/i', 'Named like the mass-deployment scripts on a PHP2Shell attacker server (Hunt.io)' ),
 	),
 
 	// Thresholds (count since php2shell_ts) at which an error-log pattern escalates to high.
@@ -149,6 +178,8 @@ return array(
 
 	// Code signatures: [ severity, regex, description ]. The most severe match per file is reported.
 	'code'              => array(
+		array( 'critical', '/\b(botlesscucks|godofthunder|gettingheadfromduckysmom)\.st\b|maste\.mangsud\.org|92\.118\.112\.100\/(nfs|mountpoint)|45\.115\.26\.26:8000/i', 'Contacts infrastructure of the botnet behind PHP2Shell attacks (Potassium / Mirai)' ),
+		array( 'high', '/\becho\s*\(?\s*[\'"](P2S_OK|SHL_OK)[\'"]/', 'Prints the success marker PHP2Shell exploit kits check for' ),
 		array( 'critical', '/eval\s*\(\s*\$_(POST|GET|REQUEST|COOKIE|SERVER)\s*\[[^\]]+\]\s*\?\?\s*[\'"]http_response_code\(\s*404\s*\)/i', 'Webshell one-liner that hides behind a 404 (seen with wp2shell)' ),
 		array( 'critical', '/\b(eval|assert)\s*\(\s*(stripslashes\s*\(\s*)?\$_(POST|GET|REQUEST|COOKIE)\b/i', 'Executes code straight from a web request' ),
 		array( 'critical', '/(?<![\w>:$])(system|passthru|shell_exec|exec|popen|proc_open|pcntl_exec)\s*\(\s*(base64_decode\s*\(\s*)?\$(_GET|_POST|_REQUEST|_COOKIE|_SERVER|request|req|r)\b/i', 'Runs shell commands taken from a web request' ),
