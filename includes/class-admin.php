@@ -153,9 +153,10 @@ class WP2SS_Admin {
 				'nonce' => wp_create_nonce( 'wp2ss' ),
 				'i18n'  => array(
 					'starting' => __( 'Starting scan…', 'anderson-shell-scanner' ),
-					'quick'    => __( 'Checking PHP, WordPress, plugins and users…', 'anderson-shell-scanner' ),
+					'quick'    => __( 'Checking PHP, WordPress, plugins, users and the database…', 'anderson-shell-scanner' ),
 					'files'    => __( 'Scanning files…', 'anderson-shell-scanner' ),
 					'core'     => __( 'Verifying WordPress core files…', 'anderson-shell-scanner' ),
+					'plugins'  => __( 'Verifying plugin files…', 'anderson-shell-scanner' ),
 					'logs'     => __( 'Reading the server logs…', 'anderson-shell-scanner' ),
 					'done'     => __( 'Done. Loading results…', 'anderson-shell-scanner' ),
 					'error'    => __( 'The scan stopped:', 'anderson-shell-scanner' ),
@@ -605,6 +606,7 @@ class WP2SS_Admin {
 			'mu-plugin' => __( 'Plugins', 'anderson-shell-scanner' ),
 			'rest'      => __( 'Plugins', 'anderson-shell-scanner' ),
 			'core'      => __( 'WordPress core files', 'anderson-shell-scanner' ),
+			'database'  => __( 'Database', 'anderson-shell-scanner' ),
 			'log'       => __( 'Server logs', 'anderson-shell-scanner' ),
 			'scan'      => __( 'About this scan', 'anderson-shell-scanner' ),
 		);
@@ -623,7 +625,7 @@ class WP2SS_Admin {
 			$count['action'] += $needs ? 1 : 0;
 			$count['ignored'] += $is_ign ? 1 : 0;
 		}
-		$order = array( 'PHP (PHP2Shell)', 'WordPress (wp2shell)', 'Files and code', 'Accounts', 'Plugins', 'WordPress core files', 'Server logs', 'About this scan' );
+		$order = array( 'PHP (PHP2Shell)', 'WordPress (wp2shell)', 'Files and code', 'Database', 'Accounts', 'Plugins', 'WordPress core files', 'Server logs', 'About this scan' );
 		uksort(
 			$groups,
 			function ( $a, $b ) use ( $order ) {
@@ -1017,8 +1019,8 @@ class WP2SS_Admin {
 					</td>
 				</tr>
 				<tr>
-					<th scope="row"><?php esc_html_e( 'Core files', 'anderson-shell-scanner' ); ?></th>
-					<td><label><input type="checkbox" name="core" value="1" <?php checked( $s['core'] ); ?>> <?php esc_html_e( 'Compare WordPress’s own files with the official copies from wordpress.org', 'anderson-shell-scanner' ); ?></label></td>
+					<th scope="row"><?php esc_html_e( 'Core and plugin files', 'anderson-shell-scanner' ); ?></th>
+					<td><label><input type="checkbox" name="core" value="1" <?php checked( $s['core'] ); ?>> <?php esc_html_e( 'Compare WordPress’s own files, and plugins from wordpress.org, with the official copies', 'anderson-shell-scanner' ); ?></label></td>
 				</tr>
 				<tr>
 					<th scope="row"><label for="wp2ss-errlog"><?php esc_html_e( 'PHP error log', 'anderson-shell-scanner' ); ?></label></th>

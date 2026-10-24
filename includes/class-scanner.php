@@ -33,7 +33,7 @@ class WP2SS_Scanner {
 	const IGNORE_OPTION   = 'wp2ss_ignored';
 	const BASELINE_OPTION = 'wp2ss_admins';
 	const LOCK_NAME       = 'wp2ss_lock';
-	const STATE_VERSION   = 3;
+	const STATE_VERSION   = 4;
 
 	const MAX_READ     = 5242880;        // Read whole files up to 5 MB for code signatures…
 	const EDGE_READ    = 1048576;        // …and the first + last 1 MB of anything bigger.
@@ -44,7 +44,7 @@ class WP2SS_Scanner {
 	const MAX_LINKS    = 200;            // Symlinked folders followed per scan.
 	const MAX_TRIES    = 2;              // Attempts at a risky step before skipping it.
 
-	const PHASES = array( 'quick', 'files', 'core', 'logs', 'done' );
+	const PHASES = array( 'quick', 'files', 'core', 'plugins', 'logs', 'done' );
 
 	/** Types of finding that describe a weakness, not evidence of an attack. */
 	const VULN_TYPES = array( 'version', 'php' );
@@ -124,6 +124,7 @@ class WP2SS_Scanner {
 			'followed'  => array(),
 			'themes'    => array(),
 			'core'      => null,
+			'plug'      => null,
 			'logs'      => null,
 		);
 		self::save_state( $state );
@@ -562,7 +563,7 @@ class WP2SS_Scanner {
 		while ( 'done' !== $this->s['phase'] && ! $this->out_of_time() ) {
 			switch ( $this->s['phase'] ) {
 				case 'quick':
-					$checks = array( 'check_php', 'check_tmp', 'check_server', 'check_version', 'check_plugins', 'check_mu_plugins', 'check_admins', 'check_admin_baseline', 'check_app_passwords', 'check_roles', 'check_rest_routes', 'check_root_files', 'check_own_folder' );
+					$checks = array( 'check_php', 'check_tmp', 'check_server', 'check_version', 'check_plugins', 'check_mu_plugins', 'check_admins', 'check_admin_baseline', 'check_app_passwords', 'check_roles', 'check_rest_routes', 'check_root_files', 'check_own_folder', 'check_dropins', 'check_cron', 'check_options', 'check_posts' );
 					foreach ( $checks as $check ) {
 						$this->guarded( array( $this, $check ), $check );
 					}
@@ -578,6 +579,12 @@ class WP2SS_Scanner {
 
 				case 'core':
 					if ( empty( $this->s['args']['core'] ) || $this->guarded( array( $this, 'check_core' ), 'core check', true ) ) {
+						$this->next_phase();
+					}
+					break;
+
+				case 'plugins':
+					if ( empty( $this->s['args']['core'] ) || $this->guarded( array( $this, 'check_plugin_files' ), 'plugin file check', true ) ) {
 						$this->next_phase();
 					}
 					break;
@@ -662,7 +669,10 @@ class WP2SS_Scanner {
 				return 5 + (int) floor( 78 * ( ( $done + $frac ) / max( 1, $roots_total ) ) );
 			case 'core':
 				$c = $this->s['core'];
-				return 85 + ( $c && ! empty( $c['total'] ) ? (int) floor( 7 * $c['pos'] / $c['total'] ) : 0 );
+				return 85 + ( $c && ! empty( $c['total'] ) ? (int) floor( 4 * $c['pos'] / $c['total'] ) : 0 );
+			case 'plugins':
+				$p = $this->s['plug'];
+				return 89 + ( $p && ! empty( $p['list'] ) ? (int) floor( 4 * $p['i'] / count( $p['list'] ) ) : 0 );
 			case 'logs':
 				return 94;
 		}
@@ -685,8 +695,8 @@ class WP2SS_Scanner {
 			$findings[]  = $this->make(
 				$setting_off ? 'low' : 'info',
 				'scan',
-				$setting_off ? 'Core files weren’t verified: that check is turned off in the settings.' : 'Core files weren’t verified in this scan (skipped on request).',
-				$setting_off ? 'Turn “Verify core files” back on unless your server can’t reach wordpress.org. If you didn’t turn it off, someone else may have.' : '',
+				$setting_off ? 'Core and plugin files weren’t verified: that check is turned off in the settings.' : 'Core and plugin files weren’t verified in this scan (skipped on request).',
+				$setting_off ? 'Turn “Core and plugin files” back on unless your server can’t reach wordpress.org. If you didn’t turn it off, someone else may have.' : '',
 				'',
 				'core-off'
 			);
@@ -1132,6 +1142,200 @@ class WP2SS_Scanner {
 			if ( in_array( $ns, $namespaces, true ) ) {
 				$this->add( 'critical', 'rest', "REST namespace \"$ns\" is registered.", 'Used by a webshell plugin seen after wp2shell exploitation. Find the plugin that registers it (see the code findings).', 'rest:' . $ns );
 			}
+		}
+	}
+
+	/**
+	 * 9b. Drop-ins (advanced-cache.php, object-cache.php, db.php, sunrise.php…)
+	 * load before any plugin, on every request, and don't appear as plugins —
+	 * an ideal hiding place. Their code is checked by the file scan; this flags
+	 * any that changed since the attacks began.
+	 */
+	private function check_dropins() {
+		if ( ! function_exists( '_get_dropins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		$dir = wp_normalize_path( untrailingslashit( WP_CONTENT_DIR ) );
+		foreach ( array_keys( _get_dropins() ) as $name ) {
+			$f = "$dir/$name";
+			if ( ! is_file( $f ) || is_link( $f ) ) {
+				continue;
+			}
+			$m = (int) @filemtime( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			if ( $m < $this->sig['disclosure_ts'] ) {
+				continue;
+			}
+			$code = (string) @file_get_contents( $f, false, null, 0, self::MAX_READ ); // phpcs:ignore
+			if ( preg_match( $this->sig['dropin_known'], $code ) ) {
+				continue; // Cache and database plugins rewrite their drop-ins all the time.
+			}
+			$this->add(
+				'medium',
+				'file',
+				sprintf( 'Drop-in %s was added or changed on %s%s, and doesn’t say which plugin made it.', $name, gmdate( 'Y-m-d', $m ), $m >= $this->sig['php2shell_ts'] ? ', after PHP2Shell attacks began' : '' ),
+				'Drop-ins run before every page and aren’t listed as plugins, so attackers use them to hide. If no cache, object-cache or database plugin you use made it, open it and check.',
+				$f,
+				'',
+				sha1( $code )
+			);
+		}
+	}
+
+	/* ================================================================== */
+	/* Checks: the database                                                */
+	/* ================================================================== */
+
+	/**
+	 * Table prefixes to check: the site, or on a network up to 100 sites.
+	 *
+	 * @return array[] [ prefix, label for messages ].
+	 */
+	private function site_tables() {
+		global $wpdb;
+		if ( ! is_multisite() ) {
+			return array( array( $wpdb->prefix, '' ) );
+		}
+		$out = array();
+		foreach ( get_sites( array( 'number' => 100, 'fields' => 'ids' ) ) as $id ) {
+			$out[] = array( $wpdb->get_blog_prefix( $id ), " (site #$id)" );
+		}
+		return $out;
+	}
+
+	/**
+	 * Placeholders "col LIKE %s OR col LIKE %s …" and their values, for a list of substrings.
+	 *
+	 * @return array [ SQL with placeholders, values ].
+	 */
+	private function like_any( $col, $needles ) {
+		global $wpdb;
+		$sql    = array();
+		$values = array();
+		foreach ( $needles as $n ) {
+			$sql[]    = "$col LIKE %s";
+			$values[] = '%' . $wpdb->esc_like( $n ) . '%';
+		}
+		return array( '(' . implode( ' OR ', $sql ) . ')', $values );
+	}
+
+	/** Most severe stored-content pattern in $text: [ severity, description ] or null. */
+	private function match_stored( $text ) {
+		$best = null;
+		foreach ( $this->sig['db_code'] as $s ) {
+			if ( ( ! $best || self::sev_rank( $s[0] ) > self::sev_rank( $best[0] ) ) && preg_match( $s[1], $text ) ) {
+				$best = array( $s[0], $s[2] );
+			}
+		}
+		$php = self::match_code( $text );
+		if ( $php && ( ! $best || self::sev_rank( $php[0] ) > self::sev_rank( $best[0] ) ) ) {
+			$best = array( $php[0], $php[1] );
+		}
+		return $best;
+	}
+
+	/**
+	 * 10a. Options holding code. Once an attacker can run PHP they can read the
+	 * database password from wp-config.php, and code stored in the database
+	 * survives cleaning the files: a payload a small loader eval()s, or a
+	 * script injected into every page through a theme or widget setting.
+	 */
+	private function check_options() {
+		global $wpdb;
+		foreach ( $this->site_tables() as $t ) {
+			$table = $t[0] . 'options';
+			list( $match, $values ) = $this->like_any( 'option_value', $this->sig['db_needles'] );
+			// WP-Cron's own option is checked by check_cron(); transients are caches; wp2ss_ is this plugin.
+			$values = array_merge( $values, array( $wpdb->esc_like( '_transient_' ) . '%', $wpdb->esc_like( '_site_transient_' ) . '%', $wpdb->esc_like( 'wp2ss_' ) . '%' ) );
+			// $table is a WordPress table name and $match only placeholders, both built above; $values fills them all.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT option_name, option_value FROM `$table` WHERE $match AND option_name <> 'cron' AND option_name NOT LIKE %s AND option_name NOT LIKE %s AND option_name NOT LIKE %s LIMIT 200", $values ), ARRAY_N );
+			foreach ( (array) $rows as $row ) {
+				$value = substr( (string) $row[1], 0, self::MAX_READ );
+				$hit   = $this->match_stored( $value );
+				if ( $hit ) {
+					$name = self::clean_text( substr( (string) $row[0], 0, 191 ) );
+					$this->add( $hit[0], 'database', "{$hit[1]}: stored in the setting \"$name\"{$t[1]}", 'Code stored in the database survives cleaning the files. If no plugin you trust put it there, keep a copy as evidence, remove that part of the setting (or the setting), then look for the file that loads it.', "option:{$t[0]}$name", '', sha1( $value ) );
+				}
+			}
+		}
+	}
+
+	/**
+	 * 10b. Posts and pages changed since July 17 with hidden scripts, invisible
+	 * frames or hidden links (the redirects and SEO spam attackers inject).
+	 */
+	private function check_posts() {
+		global $wpdb;
+		$since = gmdate( 'Y-m-d H:i:s', $this->sig['disclosure_ts'] );
+		foreach ( $this->site_tables() as $t ) {
+			$table = $t[0] . 'posts';
+			list( $match, $values ) = $this->like_any( 'post_content', $this->sig['post_needles'] );
+			array_unshift( $values, $since );
+			// $table is a WordPress table name and $match only placeholders, both built above.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_type, post_title, post_content FROM `$table` WHERE post_modified_gmt >= %s AND post_type NOT IN ('revision', 'customize_changeset', 'oembed_cache') AND $match ORDER BY post_modified_gmt DESC LIMIT 300", $values ), ARRAY_A );
+			$shown = 0;
+			$more  = 0;
+			foreach ( (array) $rows as $p ) {
+				$text = substr( (string) $p['post_content'], 0, self::MAX_READ );
+				$hit  = $this->match_stored( $text );
+				if ( ! $hit && preg_match( $this->sig['hidden_iframe'], $text ) ) {
+					$hit = array( 'high', 'Invisible frame' );
+				}
+				if ( ! $hit && preg_match_all( $this->sig['hidden_block'], $text, $blocks ) ) {
+					foreach ( $blocks[1] as $inner ) {
+						if ( preg_match_all( '/<a\s[^>]*href\s*=/i', $inner ) >= 3 ) {
+							$hit = array( 'medium', 'Block of links hidden from visitors (SEO spam)' );
+							break;
+						}
+					}
+				}
+				if ( ! $hit ) {
+					continue;
+				}
+				if ( $shown >= 20 ) {
+					$more++;
+					continue;
+				}
+				$shown++;
+				$title = self::clean_text( wp_html_excerpt( (string) $p['post_title'], 60, '…' ) );
+				$this->add( $hit[0], 'database', sprintf( '%s in %s #%d "%s"%s', $hit[1], self::clean_text( $p['post_type'] ), $p['ID'], '' !== $title ? $title : '(no title)', $t[1] ), 'Attackers inject redirects and spam links into posts. Open it in the editor (Code editor view) and remove anything you didn’t add; check its revisions to see when it appeared.', "post:{$t[0]}{$p['ID']}", '', sha1( $text ) );
+			}
+			if ( $more ) {
+				$this->add( 'high', 'database', sprintf( '%d more posts with injected code%s.', $more, $t[1] ), 'Many infected posts usually means an automated injection. Restoring the database from a backup taken before it started may be quicker than cleaning each one.', "posts-more:{$t[0]}" );
+			}
+		}
+	}
+
+	/**
+	 * 10c. Scheduled tasks (WP-Cron). Attackers schedule a task that re-installs
+	 * their webshell after it's deleted. Only checks the current site.
+	 */
+	private function check_cron() {
+		if ( ! function_exists( '_get_cron_array' ) ) {
+			return;
+		}
+		$random = array();
+		foreach ( (array) _get_cron_array() as $events ) {
+			foreach ( (array) $events as $hook => $instances ) {
+				$hook = (string) $hook;
+				foreach ( (array) $instances as $e ) {
+					$args = isset( $e['args'] ) ? wp_json_encode( $e['args'] ) : '';
+					$args = is_string( $args ) ? $args : '';
+					if ( preg_match( $this->sig['cron_code'], $args ) ) {
+						$this->add( 'high', 'database', 'Scheduled task "' . self::clean_text( $hook ) . '" carries code in its arguments.', 'Legitimate tasks pass IDs and settings, not code. If you don’t recognise it, remove it (a cron manager plugin or `wp cron event delete`) and look for the file that handles it.', 'cron:' . $hook, '', sha1( $hook . $args ) );
+					} elseif ( preg_match( $this->sig['cron_fetch'], $args ) ) {
+						$this->add( 'medium', 'database', 'Scheduled task "' . self::clean_text( $hook ) . '" downloads a script.', 'Attackers schedule downloads to reinstall their tools. Confirm a plugin you trust set this up.', 'cron:' . $hook, '', sha1( $hook . $args ) );
+					}
+				}
+				if ( preg_match( $this->sig['cron_random_hook'], $hook ) && ! has_action( $hook ) ) {
+					$random[ $hook ] = true;
+				}
+			}
+		}
+		if ( $random ) {
+			$names = array_map( array( __CLASS__, 'clean_text' ), array_slice( array_keys( $random ), 0, 10 ) );
+			$this->add( 'low', 'database', sprintf( '%d scheduled task(s) with random-looking names and nothing set up to run them: %s', count( $random ), implode( ', ', $names ) ), 'Often leftovers from removed plugins. A backdoor can also hide its trigger this way, with the code that handles it loaded only when the task runs.', 'cron-random', '', sha1( implode( ',', array_keys( $random ) ) ) );
 		}
 	}
 
@@ -1675,6 +1879,193 @@ class WP2SS_Scanner {
 		}
 		$mem = $sums;
 		return $mem;
+	}
+
+	/**
+	 * 14. Plugin files vs wordpress.org checksums. Code signatures miss a
+	 * backdoor written into a real plugin's file; checksums don't. Only
+	 * plugins hosted on wordpress.org can be checked. Resumable.
+	 *
+	 * @return bool True when finished.
+	 */
+	private function check_plugin_files() {
+		if ( null === $this->s['plug'] ) {
+			$this->s['plug'] = array( 'list' => $this->wporg_plugins(), 'i' => 0, 'pos' => 0, 'bad' => array(), 'ok' => array(), 'skipped' => array(), 'other' => array(), 'offline' => false );
+		}
+		$p   = &$this->s['plug'];
+		$dir = wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) );
+
+		while ( $p['i'] < count( $p['list'] ) ) {
+			list( $slug, $version, $name ) = $p['list'][ $p['i'] ];
+			$sums = $p['offline'] ? null : $this->plugin_sums( $slug, $version );
+			if ( ! is_array( $sums ) ) {
+				if ( false === $sums ) {
+					$p['offline'] = true; // Don't wait on wordpress.org once per plugin.
+				}
+				$p['skipped'][] = $name;
+				$this->next_plugin();
+				continue;
+			}
+
+			$files = array_keys( $sums );
+			while ( $p['pos'] < count( $files ) ) {
+				$file = $files[ $p['pos'] ];
+				$p['pos']++;
+				$path = "$dir/$slug/$file";
+				if ( is_file( $path ) && ! in_array( (string) @md5_file( $path ), $sums[ $file ], true ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+					$p['bad'][] = $file;
+				}
+				if ( 0 === $p['pos'] % 100 && $this->out_of_time() ) {
+					return false;
+				}
+			}
+
+			// Mostly different: usually another edition (a "Pro" build in the same folder) — but
+			// malware that infects every PHP file looks the same, so it's reported, not dropped.
+			if ( count( $p['bad'] ) > 5 && count( $p['bad'] ) * 2 > count( $files ) ) {
+				$p['other'][] = "$name $version";
+				$this->add( 'medium', 'plugin', sprintf( 'Most of %s %s’s PHP files (%d of %d) differ from the wordpress.org release.', $name, $version, count( $p['bad'] ), count( $files ) ), 'Usually a different edition installed in the same folder (for example a Pro version), which is fine. But malware that infects every PHP file looks the same. If you only ever installed it from wordpress.org, reinstall it.', "$dir/$slug", 'plugin-other:' . $slug );
+				$this->next_plugin();
+				continue;
+			}
+
+			foreach ( array_slice( $p['bad'], 0, 10 ) as $file ) {
+				$this->add( 'high', 'plugin', sprintf( 'Plugin file differs from the official copy on wordpress.org: %s/%s (%s %s)', $slug, self::clean_text( $file ), $name, $version ), 'Plugin files shouldn’t change after they’re installed. Keep a copy as evidence, then reinstall the plugin: delete it and install it again, or run `wp plugin install ' . $slug . ' --force`. Your settings are kept.', "$dir/$slug/$file", '', (string) @sha1_file( "$dir/$slug/$file" ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			}
+			if ( count( $p['bad'] ) > 10 ) {
+				$this->add( 'high', 'plugin', sprintf( '%d more modified files in %s.', count( $p['bad'] ) - 10, $name ), 'Reinstall the plugin.', "$dir/$slug", 'plugin-more:' . $slug );
+			}
+
+			// PHP files the official release doesn't have.
+			$extra = array();
+			$it    = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( "$dir/$slug", FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::LEAVES_ONLY, RecursiveIteratorIterator::CATCH_GET_CHILD );
+			foreach ( $it as $f ) {
+				if ( preg_match( $this->sig['php_ext'], $f->getFilename() ) ) {
+					$rel = substr( wp_normalize_path( $f->getPathname() ), strlen( "$dir/$slug/" ) );
+					if ( ! isset( $sums[ $rel ] ) ) {
+						$extra[] = $rel;
+					}
+				}
+				if ( count( $extra ) > 25 ) {
+					break;
+				}
+			}
+			foreach ( array_slice( $extra, 0, 10 ) as $rel ) {
+				$this->add( 'medium', 'plugin', sprintf( 'PHP file that isn’t part of %s %s: %s/%s', $name, $version, $slug, self::clean_text( $rel ) ), 'Not in the official release. A few plugins write their own PHP files, but a stray file in a plugin folder is a common way to hide a backdoor. Open it and check.', "$dir/$slug/$rel", '', (string) @sha1_file( "$dir/$slug/$rel" ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			}
+			if ( count( $extra ) > 10 ) {
+				$this->add( 'medium', 'plugin', sprintf( 'More PHP files that aren’t part of %s.', $name ), 'Reinstall the plugin.', "$dir/$slug", 'plugin-extra:' . $slug );
+			}
+			if ( ! $p['bad'] && ! $extra ) {
+				$p['ok'][] = $name;
+			}
+			$this->next_plugin();
+		}
+
+		$checked = count( $p['list'] ) - count( $p['skipped'] ) - count( $p['other'] );
+		if ( $p['offline'] ) {
+			$this->add( 'info', 'plugin', 'Couldn’t reach wordpress.org, so plugin files weren’t all verified.', 'Your server may block outbound requests. Your host can run `wp plugin verify-checksums --all` for you.', '', 'plugins-unverified' );
+		}
+		if ( $p['list'] ) {
+			$notes = array();
+			if ( $p['skipped'] && ! $p['offline'] ) {
+				$notes[] = 'No checksums published for: ' . implode( ', ', $p['skipped'] ) . '.';
+			}
+			if ( $checked > 0 || $notes ) {
+				$this->add( 'info', 'plugin', $checked > 0 ? sprintf( 'Checked %d plugin(s) against wordpress.org: %d match the official files exactly.', $checked, count( $p['ok'] ) ) : 'No plugin could be checked against wordpress.org.', implode( ' ', $notes ), '', 'plugins-verified' );
+			}
+		}
+		return true;
+	}
+
+	/** Move on to the next plugin in check_plugin_files(). */
+	private function next_plugin() {
+		$this->s['plug']['i']++;
+		$this->s['plug']['pos'] = 0;
+		$this->s['plug']['bad'] = array();
+	}
+
+	/**
+	 * Active and inactive plugins that come from wordpress.org.
+	 *
+	 * @return array[] [ slug, version, name ].
+	 */
+	private function wporg_plugins() {
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		$self    = wp_normalize_path( untrailingslashit( WP2SS_DIR ) );
+		$dir     = wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) );
+		$updates = get_site_transient( 'update_plugins' );
+		$known   = array();
+		foreach ( array( 'response', 'no_update' ) as $k ) {
+			if ( is_object( $updates ) && ! empty( $updates->$k ) ) {
+				foreach ( (array) $updates->$k as $file => $info ) {
+					$known[ $file ] = isset( $info->id ) ? (string) $info->id : '';
+				}
+			}
+		}
+		$out = array();
+		foreach ( get_plugins() as $file => $data ) {
+			$slug = dirname( $file );
+			if ( '.' === $slug || empty( $data['Version'] ) || "$dir/$slug" === $self || ! preg_match( '/^[a-z0-9][a-z0-9_.-]*$/i', $slug ) ) {
+				continue;
+			}
+			// Plugins that update from somewhere else aren't on wordpress.org (or not this copy).
+			$uri = isset( $data['UpdateURI'] ) ? (string) $data['UpdateURI'] : '';
+			if ( '' !== $uri && ! preg_match( '#^(https?://)?(w\.org|wordpress\.org)(/|$)#i', $uri ) ) {
+				continue;
+			}
+			if ( isset( $known[ $file ] ) && '' !== $known[ $file ] && 0 !== strpos( $known[ $file ], 'w.org/' ) ) {
+				continue;
+			}
+			$out[ $slug ] = array( $slug, (string) $data['Version'], trim( (string) $data['Name'] ) ? trim( (string) $data['Name'] ) : $slug );
+		}
+		return array_values( $out );
+	}
+
+	/**
+	 * A plugin version's PHP file checksums from wordpress.org: path => [ md5… ].
+	 * Cached for a day. Null when there are none (not on wordpress.org), false
+	 * when wordpress.org couldn't be reached.
+	 */
+	private function plugin_sums( $slug, $version ) {
+		static $mem = array();
+		$key = 'wp2ss_pl_' . md5( $slug . '|' . $version );
+		if ( isset( $mem[ $key ] ) ) {
+			return $mem[ $key ];
+		}
+		$sums = get_site_transient( $key );
+		if ( 'none' === $sums ) {
+			return null;
+		}
+		if ( ! is_array( $sums ) ) {
+			if ( ! $this->attempt( 'plug_' . $slug ) ) {
+				return false; // Fetching hung or crashed this request before.
+			}
+			$res = wp_safe_remote_get( 'https://downloads.wordpress.org/plugin-checksums/' . rawurlencode( $slug ) . '/' . rawurlencode( $version ) . '.json', array( 'timeout' => 10, 'redirection' => 2 ) );
+			if ( is_wp_error( $res ) ) {
+				return false;
+			}
+			$code = (int) wp_remote_retrieve_response_code( $res );
+			$json = 200 === $code ? json_decode( wp_remote_retrieve_body( $res ), true ) : null;
+			if ( 200 !== $code && 404 !== $code ) {
+				return false;
+			}
+			$sums = array();
+			foreach ( ( is_array( $json ) && ! empty( $json['files'] ) && is_array( $json['files'] ) ) ? $json['files'] : array() as $file => $h ) {
+				if ( preg_match( $this->sig['php_ext'], (string) $file ) && isset( $h['md5'] ) && false === strpos( (string) $file, '..' ) ) {
+					$sums[ (string) $file ] = array_values( array_map( 'strval', (array) $h['md5'] ) );
+				}
+			}
+			if ( ! $sums ) {
+				set_site_transient( $key, 'none', DAY_IN_SECONDS );
+				return null;
+			}
+			set_site_transient( $key, $sums, DAY_IN_SECONDS );
+		}
+		$mem[ $key ] = $sums;
+		return $sums;
 	}
 
 	/* ================================================================== */

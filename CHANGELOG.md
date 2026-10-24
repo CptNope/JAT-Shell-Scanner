@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0] — 2026-10-24
+
+### Backdoors that survive cleaning the files
+Code execution through PHP2Shell or wp2shell lets an attacker read the database password from `wp-config.php`. Backdoors kept in the database, or written into a real plugin's file, outlive deleting the webshell. New checks:
+
+- **Settings (options table):** PHP that decodes or runs other code, scripts that decode and run hidden JavaScript, scripts built from long runs of character codes, `document.write(unescape(…))`, and scripts loaded from a bare IP address — High, or Medium for the last. Ordinary analytics and tag-manager snippets aren't flagged. Transients and WP-Cron's own setting are skipped. On multisite, up to 100 sites are checked.
+- **Posts and pages changed since July 17:** the same script patterns, invisible iframes (High), and blocks of three or more links hidden from visitors with `display:none` and similar (SEO spam, Medium). Embeds like tweets are fine. At most 20 listed per site, then a count.
+- **Scheduled tasks (WP-Cron):** arguments carrying code (High) or a script download (Medium); random-looking task names nothing handles (Low).
+- **Plugin files against wordpress.org:** each plugin from wordpress.org is compared with the official checksums for its version (`downloads.wordpress.org/plugin-checksums`, cached a day). A changed PHP file is High, a PHP file the release doesn't have is Medium. A plugin where most files differ is reported as Medium rather than one finding per file: that's usually a Pro edition in the same folder, but also what malware that infects every file looks like. Plugins with an Update URI elsewhere, or that WordPress updates from somewhere else, are skipped. Resumable like the core check, its own scan phase, and covered by the same setting as core files (now labelled "Core and plugin files") and by `--skip-core`.
+- **Drop-ins:** `advanced-cache.php`, `object-cache.php`, `db.php`, `sunrise.php` and the rest, added or changed since July 17, that don't name the plugin that wrote them (Medium). Cache, object-cache and database plugins are recognised.
+
+New findings appear under a **Database** heading on the scanner page.
+
 ## [1.4.0] — 2026-10-23
 
 ### Available on WordPress.org

@@ -27,7 +27,7 @@ class WP2SS_CLI {
 	 * : PHP error log to check for PHP2Shell attempts. Defaults to the setting, then the log PHP reports.
 	 *
 	 * [--skip-core]
-	 * : Skip verifying core files against wordpress.org.
+	 * : Skip verifying core and plugin files against wordpress.org.
 	 *
 	 * [--min=<severity>]
 	 * : Only show findings at or above this level.
