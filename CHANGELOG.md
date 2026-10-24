@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.1] — 2026-10-24
+
+### Latest PHP2Shell intel (October 22–24)
+From Wordfence, Arctic Wolf, Hunt.io, SOCRadar, ReliaQuest, Datadog and PHP's October 23 advisory:
+
+- **Second stage:** the Potassium botnet (a Mirai variant) is fetched into `/tmp` as `nfs`, `nfs-setup`, `mountpoint` or `cCmono`. Those names are flagged (High), and any program in a temporary folder matching either published Potassium hash is Critical (one new SHA-256 from Arctic Wolf).
+- **Kit webshells:** PHP files named `wp2s.php`, `php2shell.php`, `php-to-shell…`, `autologin_fd.php` or `axiom_*.php` (High), `tebaran_*.php` (Medium), anywhere the file scan or the temp-folder check looks. New code signatures: printing the kits' `P2S_OK`/`SHL_OK` success markers (High), and addresses of the botnet's servers and C2 domains (Critical).
+- **Poisoned sessions:** session files with the kits' fixed IDs (`sess_p2sopchain…`, `sess_fprint…`) or markers (`NxSP…`, `P2S_OK`, `MARKER_….txt`) — High.
+- **Logs:** the kits' payload markers (`P2S_OK`, `SHL_OK`, `NxSP…`, `ADV618BOUNDARY`, the `p2s0adf525faa` boundary), the botnet's download URLs and domains, and `PHPSESSID` cookies carrying percent-encoded bytes (leaked memory) where cookies are logged. Apache `AH00052 … exit signal Abort (6)` worker aborts now count as crashes alongside segfaults.
+- **Addresses:** 34 more addresses seen attempting PHP2Shell (Hunt.io, Arctic Wolf, and the 20 busiest sources Wordfence blocked), reported like the Amazon ones (Medium, a lead to check).
+- **CVE-2026-115560:** a related flaw PHP announced on October 23 with no fix in any version yet. While session upload progress is on, the scanner now says so, even on patched PHP, with PHP's advice to turn it off (Info).
+
 ## [1.5.0] — 2026-10-24
 
 ### Backdoors that survive cleaning the files
