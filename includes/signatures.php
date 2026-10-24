@@ -191,6 +191,38 @@ return array(
 	// Non-core PHP commonly found in the site root.
 	'root_allow'        => array( 'wordfence-waf.php', 'wp-config.php', 'wp-cli.php', 'local-config.php', 'wp-config-local.php' ),
 
+	/* ------------------------------------------------------------------ */
+	/* The database (where backdoors hide once files are cleaned)          */
+	/* ------------------------------------------------------------------ */
+
+	// Cheap substring filters for the SQL query; rows that match are then checked with the patterns below.
+	'db_needles'        => array( 'eval(', 'base64_decode', 'gzinflate', 'gzuncompress', 'str_rot13', '<?php', 'fromCharCode', 'atob(', 'unescape(' ),
+	'post_needles'      => array( '<script', '<iframe', 'display:none', 'display: none', 'visibility:hidden', 'visibility: hidden', '<?php' ),
+
+	// Stored content patterns: [ severity, regex, description ]. Plain <script> tags are fine
+	// (analytics snippets live in options and widgets); only hidden or self-decoding code is flagged.
+	'db_code'           => array(
+		array( 'high', '/<\?php[\s\S]{0,4000}?\b(eval|assert|system|shell_exec|passthru|proc_open|popen|base64_decode|gzinflate|gzuncompress|str_rot13)\s*\(/i', 'PHP code that decodes or runs other code' ),
+		array( 'high', '/<script\b[^>]*>[\s\S]{0,4000}?\beval\s*\(\s*(atob|unescape|decodeURIComponent|String\.fromCharCode|function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k)\b/i', 'Script that decodes hidden JavaScript and runs it' ),
+		array( 'high', '/String\.fromCharCode\s*\(\s*\d+\s*(,\s*\d+\s*){24,}\)/i', 'Script built from character codes (a common way to hide a malicious redirect)' ),
+		array( 'high', '/document\.write\s*\(\s*(unescape|atob|decodeURIComponent)\s*\(/i', 'Writes hidden (encoded) HTML into the page' ),
+		array( 'medium', '/<script\b[^>]*\bsrc\s*=\s*[\'"]?(https?:)?\/\/\d{1,3}(\.\d{1,3}){3}[\/:\'"]/i', 'Loads a script from a bare IP address' ),
+	),
+
+	// Posts only: links hidden from visitors (SEO spam) and invisible frames.
+	'hidden_block'      => '/style\s*=\s*["\'][^"\']*(?:display\s*:\s*none|visibility\s*:\s*hidden|(?:left|top)\s*:\s*-\d{3,}px)[^"\']*["\'][^>]*>([\s\S]{0,6000}?)<\/(?:div|span|p)>/i',
+	'hidden_iframe'     => '/<iframe\b[^>]*(?:\b(?:width|height)\s*=\s*["\']?[01]["\'\s>\/]|display\s*:\s*none|visibility\s*:\s*hidden)/i',
+
+	// WP-Cron: scheduled events whose arguments carry code or fetch a script.
+	'cron_code'         => '/<\?php|\b(eval|assert|base64_decode|gzinflate|system|shell_exec|passthru|proc_open|popen|create_function)\s*\(/i',
+	'cron_fetch'        => '/\b(wget|curl)\s+(-\S+\s+)*https?:|https?:\/\/[^\s"\']+\.(sh|txt|bin)\b|pastebin\.com\/raw|raw\.githubusercontent\.com/i',
+
+	// Hook names that look generated rather than chosen by a developer.
+	'cron_random_hook'  => '/^(?=[a-z0-9]*\d)(?=[a-z0-9]*[a-z])[a-z0-9]{16,}$/i',
+
+	// Drop-ins (advanced-cache.php, object-cache.php, db.php…) written by well-known plugins and hosts.
+	'dropin_known'      => '/\b(WP Rocket|W3 Total Cache|W3TC|LiteSpeed|WP Super Cache|WP-Cache|Redis Object Cache|Object Cache Pro|Memcached|Docket Cache|Query Monitor|HyperDB|LudicrousDB|SQLite (?:Database )?Integration|WP Fastest Cache|Breeze|SiteGround|Cache Enabler|Comet Cache|Swift Performance|WP-Optimize|Powered Cache|Hummingbird|WP Engine|Kinsta|Pantheon|Pressable|Batcache|Atomic)\b/i',
+
 	// Capabilities that only administrators should have.
 	'admin_caps'        => array( 'install_plugins', 'edit_plugins', 'activate_plugins', 'edit_users', 'promote_users', 'create_users', 'unfiltered_upload', 'edit_files', 'update_core' ),
 );

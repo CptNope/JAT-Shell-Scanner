@@ -13,7 +13,7 @@
 
 ### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
 
-**Current version: 1.4.0** (October 23, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
+**Current version: 1.5.0** (October 24, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
@@ -32,6 +32,7 @@ By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](htt
 
 | Version | Highlights |
 |---|---|
+| **1.5.0** | Looks for backdoors in the **database** (code in settings, injected scripts and hidden links in posts, scheduled tasks that carry code), checks **plugin files against wordpress.org's checksums**, and flags unexplained **drop-ins** |
 | **1.4.0** | **WordPress.org edition**, listed as *Anderson Shell Scanner* (WordPress.org allows no "wp" in plugin names) (updates through WordPress.org, self-check against WordPress.org checksums); links to docs, support and the author; the GitHub update check no longer sends the site address |
 | **1.3.2** | Recognises the **Installatron Worker** (`it-api.php`, used by IONOS and other hosts for one-click installs) by its signature check, and hidden **data files** that can only answer "404 Not Found" (a plugin's stored key or settings) — no more false "backdoor" alarms for either |
 | **1.3.1** | No false alarms for WordPress's own leftover `temp-write-test-…` files (dated from their names) or for WordPress 7.0 files left behind after updating (checked against official fingerprints) |
@@ -140,6 +141,8 @@ sequenceDiagram
 | A webshell dropped straight onto disk | A small PHP file in `wp-content/cache/`, `uploads/`, `wp-content/` itself or the site root |
 | A hidden REST backdoor | A plugin that registers `/wp-json/morning/v1/…` and runs any command sent to it |
 | New or promoted admin accounts | Administrators you don't recognise |
+| Backdoors kept in the database | Code in a setting that a small loader runs, scripts or hidden links injected into posts, a scheduled task that reinstalls the webshell |
+| A backdoor inside a real plugin | A plugin file that no longer matches the official copy on wordpress.org, or an extra PHP file in its folder |
 | Stolen secrets (PHP2Shell) | Nothing visible — which is why you should change passwords and keys if you were exposed |
 | Traces in server logs (PHP2Shell) | "Allowed memory size … exhausted … in Unknown on line 0", PHP worker crashes, bursts of failed POSTs, the public scanner tools (`php2shell-scan`, `php2shell-verify`, `JACKALPOC`) in the access log |
 | A second-stage program (PHP2Shell) | A Linux program called `nfs` dropped in `/tmp` |
@@ -378,6 +381,11 @@ These reduce the risk; they don't remove it — security firms have shown attack
 | **Roles** | Non-admin roles given admin powers (`install_plugins`, `edit_plugins`, `promote_users`…) | Medium |
 | **Must-use plugins** | Added or changed since July 17 (known host files only *Low*) | Medium / Low |
 | **Plugins** | Folders of PHP hidden from the Plugins screen; loose single-file plugins; plugins updated since July 17 | Medium / Low |
+| **Plugin files** | Files of plugins from wordpress.org that differ from the official release's checksums (*High*); PHP files the release doesn't have (*Medium*); a plugin where most files differ — usually a Pro edition, but also what mass infection looks like (*Medium*). Plugins from elsewhere are skipped | High / Medium |
+| **Drop-ins** | `advanced-cache.php`, `object-cache.php`, `db.php`, `sunrise.php`… added or changed since July 17 that don't name the plugin that made them (cache and database plugins are recognised) | Medium |
+| **Settings in the database** | Code a backdoor can load: PHP that decodes or runs other code, scripts that decode and run hidden JavaScript, scripts built from character codes, scripts loaded from a bare IP address. Ordinary analytics snippets are fine | High / Medium |
+| **Posts and pages** | Changed since July 17 with self-decoding scripts, invisible iframes, or blocks of links hidden from visitors (SEO spam). Embeds are fine | High / Medium |
+| **Scheduled tasks (WP-Cron)** | Tasks whose arguments carry code (*High*) or download a script (*Medium*); random-looking task names nothing handles (*Low*) | High / Medium / Low |
 | **WordPress core** | Files that differ from wordpress.org's checksums; unknown PHP in `wp-admin/`, `wp-includes/` or the site root (old leftovers from manual updates are only *Low*) | High / Medium / Low |
 | **This scanner itself** | Every file checked against the official release's fingerprints — attackers like to blind security tools | Critical / High |
 
@@ -392,7 +400,7 @@ All settings are on the scanner page (**Tools → PHP2Shell Scanner**, right-han
 | **Automatic scans** | Weekly | Off, Daily or Weekly. The first run happens within an hour of activating. |
 | **Email me when an automatic scan finds something new** | On | Emails only when a scheduled scan finds a **new** High/Critical problem, or the site becomes vulnerable. You won't get the same alert twice. |
 | **Alert email address** | Site admin email | Where alerts go. |
-| **Verify core files against wordpress.org** | On | Downloads the official checksums for your version (cached for a day). |
+| **Core and plugin files** | On | Downloads the official checksums for your WordPress version and for each plugin from wordpress.org (cached for a day). |
 | **PHP error log** *(Server logs)* | Detected automatically | Where PHP2Shell attempts show up. Leave empty to use the log PHP reports, plus WordPress's `debug.log`. |
 | **Web server access log** *(Server logs)* | *(empty)* | Optional. Lets scans spot attack traffic. See [Finding your logs](#15-finding-your-logs). |
 
@@ -637,7 +645,7 @@ Everything the dashboard does is available from the command line. The command is
 |---|---|---|
 | `--log=<path>` | The path saved in settings | Access log to check (`.gz` works) |
 | `--error-log=<path>` | The setting, then the log PHP reports | PHP error log to check for PHP2Shell traces (`.gz` works) |
-| `--skip-core` | off | Don't verify core files against wordpress.org |
+| `--skip-core` | off | Don't verify core and plugin files against wordpress.org |
 | `--min=<severity>` | `low` | Hide findings below `info`, `low`, `medium`, `high` or `critical` |
 | `--format=<format>` | `table` | `table`, `json`, `csv`, `yaml` or `summary` (one line) |
 | `--include-ignored` | off | Also list findings marked as ignored |
@@ -890,7 +898,7 @@ flowchart TB
     UI -.->|"records on every admin page"| ENV
     subgraph ENGINE["Scan engine — class-scanner.php"]
         LOCK["Database lock<br/>one worker at a time"] --> JOB["Job state<br/>wp2ss_job option"]
-        JOB --> PH["Phases: quick → files → core → logs"]
+        JOB --> PH["Phases: quick → files → core → plugins → logs"]
         SIG["signatures.php<br/>+ wp2ss_signatures filter"] --> PH
     end
     ENV --> PH
@@ -906,15 +914,18 @@ flowchart TB
 ```mermaid
 stateDiagram-v2
     [*] --> quick : start()
-    quick : quick — PHP, WordPress, plugins, users, roles, site root, own files
+    quick : quick — PHP, WordPress, plugins, users, roles, site root, own files, drop-ins, database
     files : files — walk wp-content (and outside plugin/upload folders) depth-first
     core : core — compare core files with wordpress.org checksums
+    plugins : plugins — compare wordpress.org plugins with their checksums
     logs : logs — PHP error log, debug.log, access log
     quick --> files
     files --> files : out of time, save place and resume
     files --> core
     core --> core : out of time, resume
-    core --> logs
+    core --> plugins
+    plugins --> plugins : out of time, resume
+    plugins --> logs
     logs --> logs : out of time, resume at byte offset
     logs --> done
     done : done — sort findings, save report, fire wp2ss_scan_complete
@@ -963,6 +974,7 @@ sequenceDiagram
 | Request | When | Why |
 |---|---|---|
 | `api.wordpress.org` — core checksums | During a scan, at most once a day (cached) | To check core files are untouched. Turn off in settings. |
+| `downloads.wordpress.org` — plugin checksums | During a scan, once a day per plugin version (cached); only the plugin's folder name and version are sent | To check plugin files are untouched. Same setting as core checksums. |
 | `downloads.wordpress.org` — this plugin's checksums | *WordPress.org edition:* at most weekly (cached) | To check this plugin's own files weren't tampered with |
 | `api.github.com` — latest release | *GitHub edition:* at most twice a day | To offer plugin updates |
 | `github.com` — the release's `manifest.json` | *GitHub edition:* at most weekly (cached) | To check this plugin's own files weren't tampered with |

@@ -4,7 +4,7 @@ Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.4.0
+Stable tag: 1.5.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -26,7 +26,8 @@ This plugin tells you whether your site is exposed to either, and looks for sign
 * Your WordPress version, and wp2shell exploit plugins, files and traffic
 * Webshell code anywhere in the site, PHP hidden in uploads, images and the site root, and PHP auto-loaded via .user.ini / .htaccess
 * New or promoted administrators, roles given admin powers, application passwords
-* WordPress core files against official checksums
+* Backdoors kept in the database: code in settings, scripts and hidden links injected into posts, scheduled tasks that carry code
+* WordPress core files, and plugins from WordPress.org, against official checksums; unexplained drop-ins
 * Its own files, against the checksums WordPress.org publishes for this plugin
 
 = Features =
@@ -54,7 +55,7 @@ The plugin is made by [Jeremy Anderson](https://jeremyanderson.tech/), who build
 The plugin only contacts outside servers in the cases below. It sends no analytics or personal data, and never sends your site's files or scan results anywhere you didn't set up.
 
 * **WordPress.org core checksums** (api.wordpress.org) — during a scan, to compare your WordPress core files with the official ones. Sends your WordPress version and locale, the same request WordPress itself makes. [Terms](https://wordpress.org/about/privacy/)
-* **WordPress.org plugin checksums** (downloads.wordpress.org) — during a scan, to check this plugin's own files haven't been tampered with. Sends only this plugin's name and version. [Terms](https://wordpress.org/about/privacy/)
+* **WordPress.org plugin checksums** (downloads.wordpress.org) — during a scan, to check that this plugin's files, and those of your other plugins from WordPress.org, haven't been tampered with. Sends only each plugin's folder name and version. Turned off with the "Core and plugin files" setting (except this plugin's own self-check). [Terms](https://wordpress.org/about/privacy/)
 * **Your own fleet hub** — only if you turn on the fleet dashboard and connect a site to a hub you run. After each scan the member site sends a summary to that hub, signed with a per-site key: site name and address, verdict, WordPress, PHP and plugin versions, finding counts, and the text of serious findings (email addresses removed).
 * **Slack or Discord** — only if you paste a webhook address into the fleet alert settings. The hub sends alert messages (site address and what was found) to that webhook. [Slack terms](https://slack.com/terms-of-service), [Discord terms](https://discord.com/terms)
 * **Email alerts** use your site's normal WordPress mail.
@@ -101,6 +102,11 @@ Use the [support forum](https://wordpress.org/support/plugin/anderson-shell-scan
 
 == Changelog ==
 
+= 1.5.0 =
+* Looks for backdoors in the database: code stored in settings, self-decoding scripts, invisible frames and hidden links in posts, and scheduled tasks that carry code or download scripts.
+* Checks plugins from WordPress.org against their official checksums, catching a backdoor written into a real plugin's file and stray PHP files in plugin folders.
+* Flags drop-ins (advanced-cache.php, object-cache.php, db.php…) changed since the attacks that don't say which plugin made them.
+
 = 1.4.0 =
 * Now available on WordPress.org. The WordPress.org edition updates through WordPress.org and checks its own files against WordPress.org's checksums.
 * Links to documentation, support and the author on the Plugins screen and the scanner page.
@@ -113,6 +119,9 @@ Use the [support forum](https://wordpress.org/support/plugin/anderson-shell-scan
 The full history is in [CHANGELOG.md](https://github.com/CptNope/PHP2Shell-WP-scanner/blob/main/CHANGELOG.md).
 
 == Upgrade Notice ==
+
+= 1.5.0 =
+Finds backdoors that survive deleting the webshell: in the database, inside real plugin files, and in drop-ins.
 
 = 1.4.0 =
 First WordPress.org release. Adds documentation and support links.
