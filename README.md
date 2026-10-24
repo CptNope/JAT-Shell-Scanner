@@ -13,9 +13,11 @@
 
 ### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
 
-**Current version: 1.3.2** (October 22, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
+**Current version: 1.4.0** (October 23, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
+
+By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/) · [Need hands-on help? Book a call](https://jeremyanderson.tech/book-a-call/)
 
 <img src="docs/images/demo.gif" alt="A scan of a demo site finding a webshell, then quarantining it with one click" width="800">
 
@@ -30,12 +32,13 @@ Free · scans only read · optional one-click fixes you can undo · self-hosted 
 
 | Version | Highlights |
 |---|---|
+| **1.4.0** | **WordPress.org edition**, listed as *Anderson Shell Scanner* (WordPress.org allows no "wp" in plugin names) (updates through WordPress.org, self-check against WordPress.org checksums); links to docs, support and the author; the GitHub update check no longer sends the site address |
 | **1.3.2** | Recognises the **Installatron Worker** (`it-api.php`, used by IONOS and other hosts for one-click installs) by its signature check, and hidden **data files** that can only answer "404 Not Found" (a plugin's stored key or settings) — no more false "backdoor" alarms for either |
 | **1.3.1** | No false alarms for WordPress's own leftover `temp-write-test-…` files (dated from their names) or for WordPress 7.0 files left behind after updating (checked against official fingerprints) |
 | **1.3.0** | Security fixes from an independent review (per-site fleet identities, safer quarantine), **fleet alerts** by email/Slack/Discord, **Scan again** for member sites, new PHP2Shell intel, screenshots and demo |
 | **1.2.0** | **One-click fixes** with undo, the **fleet dashboard**, redesigned scanner page |
 
-Update from **Dashboard → Updates** (the scanner updates itself from GitHub), or upload the new zip over the old one: **Plugins → Add New Plugin → Upload Plugin → Replace current with uploaded**.
+Update from **Dashboard → Updates** (the GitHub edition updates itself from GitHub; the WordPress.org edition through WordPress.org), or upload the new zip over the old one: **Plugins → Add New Plugin → Upload Plugin → Replace current with uploaded**.
 
 ## Contents
 
@@ -505,7 +508,16 @@ Safety rules:
 
 ## 10. Updating the plugin
 
-The plugin **updates itself** from this GitHub repository, through the normal WordPress update screen.
+There are two editions, built from the same code:
+
+| Edition | Install from | Updates from | Self-check against |
+|---|---|---|---|
+| **WordPress.org** — *Anderson Shell Scanner* | Plugins → Add New Plugin, search "Anderson Shell Scanner" | WordPress.org, like any directory plugin | WordPress.org's published checksums |
+| **GitHub** | The zip on the [releases page](https://github.com/CptNope/PHP2Shell-WP-scanner/releases) | This repository's releases (below) | The release's `manifest.json` |
+
+The WordPress.org edition is the same plugin without `includes/class-updater.php` (WordPress.org plugins may only update through WordPress.org). To switch from GitHub to WordPress.org, delete the GitHub copy and install from the directory — deleting removes settings and quarantine, so restore anything you need first.
+
+The GitHub edition **updates itself** from this repository, through the normal WordPress update screen.
 
 ```mermaid
 sequenceDiagram
@@ -942,7 +954,7 @@ sequenceDiagram
 | PHP warnings printed by the host | Can't corrupt the progress bar's replies |
 | A badly infected site | At most 1,000 findings stored, plus a count of the rest |
 | Database-only attacker | Ignore list and admin baseline are signed with `wp-config.php` secrets; tampering is reported |
-| Attacker edits this plugin | Files checked against the release fingerprints published on GitHub |
+| Attacker edits this plugin | Files checked against the release fingerprints published on GitHub (or WordPress.org's checksums for the WordPress.org edition) |
 
 ## 18. Privacy and stored data
 
@@ -951,14 +963,15 @@ sequenceDiagram
 | Request | When | Why |
 |---|---|---|
 | `api.wordpress.org` — core checksums | During a scan, at most once a day (cached) | To check core files are untouched. Turn off in settings. |
-| `api.github.com` — latest release | At most twice a day | To offer plugin updates |
-| `github.com` — the release's `manifest.json` | At most weekly (cached) | To check this plugin's own files weren't tampered with |
-| `github.com` — release zip | Only when you install an update | The update itself |
+| `downloads.wordpress.org` — this plugin's checksums | *WordPress.org edition:* at most weekly (cached) | To check this plugin's own files weren't tampered with |
+| `api.github.com` — latest release | *GitHub edition:* at most twice a day | To offer plugin updates |
+| `github.com` — the release's `manifest.json` | *GitHub edition:* at most weekly (cached) | To check this plugin's own files weren't tampered with |
+| `github.com` — release zip | *GitHub edition:* only when you install an update | The update itself |
 | **Your own hub site** — fleet report | After each scan, only if you set up fleet mode | See [the fleet dashboard](#the-fleet-dashboard-easiest) for exactly what's sent |
 | **Your own hub site** — check-in | Hourly, only on fleet members | Asks whether a new scan was requested; sends only the site address |
 | **Your Slack / Discord webhook** | Only on a hub with a webhook set | Fleet alert digests |
 
-`WP2SS_DISABLE_UPDATER` turns off all three GitHub requests.
+`WP2SS_DISABLE_UPDATER` turns off all three GitHub requests in the GitHub edition. The WordPress.org edition never contacts GitHub.
 
 **What it stores** (all removed when you delete the plugin):
 
@@ -1086,8 +1099,11 @@ flowchart LR
     D -- all green --> E["Release workflow:<br/>versions match? new version?"]
     E -- yes --> F["Zip + manifest.json + checksum<br/>tag vX.Y.Z, GitHub release"]
     F --> G["Every installed site<br/>sees the update within ~12h"]
+    F --> I["Deploy workflow:<br/>WordPress.org build → SVN trunk + tag"]
     D -- any red --> H["Nothing is released"]
 ```
+
+**WordPress.org build.** `bash .github/scripts/build-wporg.sh` writes `build/anderson-shell-scanner/` and a zip of it: the same files minus the GitHub updater and the `Update URI` header. CI runs the official [Plugin Check](https://wordpress.org/plugins/plugin-check/) on that build. Once the plugin is approved on WordPress.org and the `SVN_USERNAME` / `SVN_PASSWORD` repository secrets are set, each GitHub release is also committed to WordPress.org SVN (trunk and tag), with the banner, icon and screenshots from `.wordpress-org/`.
 
 Workflow actions are pinned to exact commits. Detection rules live in [`includes/signatures.php`](includes/signatures.php) — **new indicators are very welcome**: open an issue or pull request with a link to the source.
 
@@ -1100,9 +1116,9 @@ Workflow actions are pinned to exact commits. Detection rules live in [`includes
 - **The fleet hub trusts each member about itself.** A fully compromised member can send a fake "clean" report about *itself* (it can't touch other sites' rows). A site that stops reporting shows as overdue and triggers an alert.
 - **Session-file, `/tmp` and `/etc/ld.so.preload` checks** only work where PHP is allowed to look (many shared hosts block it with `open_basedir`); silence there isn't an all-clear.
 - **Known indicators only.** Attackers can rename files and rewrite code, so "no signs" means no *known* indicators — not a guarantee.
-- **An attacker with full control of the server** could tamper with any tool running on it, including this one. The self-check against GitHub makes that harder, not impossible. For certainty, have your host check from outside.
+- **An attacker with full control of the server** could tamper with any tool running on it, including this one. The self-check against GitHub or WordPress.org makes that harder, not impossible. For certainty, have your host check from outside.
 - It looks for these two attacks specifically. It isn't a general antivirus — keep your usual security plugin or host scanner.
-- Finding texts are in English; the interface is translation-ready (`languages/wp2shell-scanner.pot`).
+- Finding texts are in English; the interface is translation-ready (`languages/anderson-shell-scanner.pot`, text domain `anderson-shell-scanner`).
 
 ## 23. Security
 
@@ -1129,3 +1145,5 @@ Found a security problem **in this plugin**? Please report it privately via **Se
 ## 25. License
 
 MIT — see [LICENSE](LICENSE). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+Made by [Jeremy Anderson](https://jeremyanderson.tech/) — WordPress builds, custom platforms and AI tools. [Services](https://jeremyanderson.tech/services/) · [Book a call](https://jeremyanderson.tech/book-a-call/)

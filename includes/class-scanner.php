@@ -456,12 +456,12 @@ class WP2SS_Scanner {
 		$token = time() . '|' . wp_generate_password( 8, false );
 
 		for ( $try = 0; $try < 2; $try++ ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$ok = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO `$table` (option_name, option_value, autoload) VALUES (%s, %s, 'no')", self::LOCK_NAME, $token ) );
 			if ( $ok ) {
 				return $token;
 			}
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$held = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM `$table` WHERE option_name = %s", self::LOCK_NAME ) );
 			if ( null === $held ) {
 				continue; // Released between our two queries.
@@ -470,7 +470,7 @@ class WP2SS_Scanner {
 				return false;
 			}
 			// Stale lock from a request that died: remove exactly that one, then retry.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s AND option_value = %s", self::LOCK_NAME, $held ) );
 		}
 		return false;
@@ -480,10 +480,10 @@ class WP2SS_Scanner {
 		global $wpdb;
 		$table = self::lock_table();
 		if ( null === $token ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s", self::LOCK_NAME ) );
 		} elseif ( $token ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
 			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s AND option_value = %s", self::LOCK_NAME, $token ) );
 		}
 	}
@@ -555,7 +555,7 @@ class WP2SS_Scanner {
 
 	private function work( $budget ) {
 		if ( function_exists( 'set_time_limit' ) && false === strpos( (string) ini_get( 'disable_functions' ), 'set_time_limit' ) ) {
-			@set_time_limit( (int) max( 60, $budget * 3 ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			@set_time_limit( (int) max( 60, $budget * 3 ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- Scans run in short slices; only raised when the host allows it.
 		}
 		$this->deadline = microtime( true ) + max( 0.0005, (float) $budget );
 
@@ -1215,7 +1215,7 @@ class WP2SS_Scanner {
 			$seen[ $rel ] = true;
 			if ( $manifest ) {
 				if ( isset( $manifest['files'][ $rel ] ) ) {
-					if ( ! hash_equals( $manifest['files'][ $rel ], (string) @hash_file( 'sha256', $f->getPathname() ) ) ) { // phpcs:ignore
+					if ( ! self::hash_matches( $manifest['files'][ $rel ], (string) @hash_file( 'sha256', $f->getPathname() ) ) ) { // phpcs:ignore
 						$this->add( 'critical', 'file', "A file of this scanner plugin has been modified: $rel", 'Attackers sometimes edit security plugins to blind them. Delete this plugin and reinstall it from the official release, then scan again.', $self . '/' . $rel );
 					}
 				} elseif ( 'manifest.json' !== $rel && preg_match( $this->sig['php_ext'], $rel ) ) {
@@ -1234,8 +1234,17 @@ class WP2SS_Scanner {
 		}
 	}
 
-	/** The release manifest to trust: GitHub's copy when reachable (cached), else the local one. */
+	/**
+	 * The file list to trust, as array( 'files' => array( path => sha256 or list of sha256 ) ).
+	 *
+	 * GitHub build: GitHub's copy of the release manifest when reachable (cached), else the
+	 * shipped manifest.json. WordPress.org build: the checksums WordPress.org publishes for
+	 * this version, or null when they can't be fetched (then only unexpected PHP is flagged).
+	 */
 	private function own_manifest() {
+		if ( 'wporg' === WP2SS_CHANNEL ) {
+			return self::wporg_manifest();
+		}
 		$local_raw = @file_get_contents( WP2SS_DIR . 'manifest.json' ); // phpcs:ignore
 		$local     = $local_raw ? json_decode( $local_raw, true ) : null;
 		if ( ! is_array( $local ) || empty( $local['files'] ) ) {
@@ -1245,7 +1254,7 @@ class WP2SS_Scanner {
 			$key    = 'wp2ss_manifest_' . WP2SS_VERSION;
 			$remote = get_site_transient( $key );
 			if ( false === $remote ) {
-				$res    = wp_remote_get( 'https://github.com/' . WP2SS_Updater::REPO . '/releases/download/v' . WP2SS_VERSION . '/manifest.json', array( 'timeout' => 5 ) );
+				$res    = wp_remote_get( 'https://github.com/' . WP2SS_REPO . '/releases/download/v' . WP2SS_VERSION . '/manifest.json', array( 'timeout' => 5 ) );
 				$remote = ( ! is_wp_error( $res ) && 200 === wp_remote_retrieve_response_code( $res ) ) ? json_decode( wp_remote_retrieve_body( $res ), true ) : array();
 				set_site_transient( $key, is_array( $remote ) ? $remote : array(), is_array( $remote ) && $remote ? WEEK_IN_SECONDS : 6 * HOUR_IN_SECONDS );
 			}
@@ -1257,6 +1266,36 @@ class WP2SS_Scanner {
 			}
 		}
 		return $local;
+	}
+
+	/** WordPress.org's published checksums for this exact version (cached), or null. */
+	private static function wporg_manifest() {
+		$key    = 'wp2ss_manifest_wporg_' . WP2SS_VERSION;
+		$cached = get_site_transient( $key );
+		if ( false === $cached ) {
+			$res    = wp_safe_remote_get( 'https://downloads.wordpress.org/plugin-checksums/' . WP2SS_WPORG_SLUG . '/' . rawurlencode( WP2SS_VERSION ) . '.json', array( 'timeout' => 5 ) );
+			$json   = ( ! is_wp_error( $res ) && 200 === wp_remote_retrieve_response_code( $res ) ) ? json_decode( wp_remote_retrieve_body( $res ), true ) : null;
+			$cached = array();
+			if ( is_array( $json ) && isset( $json['version'], $json['files'] ) && WP2SS_VERSION === (string) $json['version'] && is_array( $json['files'] ) ) {
+				foreach ( $json['files'] as $rel => $h ) {
+					if ( isset( $h['sha256'] ) ) {
+						$cached[ str_replace( '\\', '/', (string) $rel ) ] = $h['sha256'];
+					}
+				}
+			}
+			set_site_transient( $key, $cached, $cached ? WEEK_IN_SECONDS : 6 * HOUR_IN_SECONDS );
+		}
+		return ( is_array( $cached ) && $cached ) ? array( 'files' => $cached ) : null;
+	}
+
+	/** A known hash may be a single SHA-256 or (on WordPress.org) a list of accepted ones. */
+	private static function hash_matches( $known, $actual ) {
+		foreach ( (array) $known as $h ) {
+			if ( is_string( $h ) && hash_equals( strtolower( $h ), $actual ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -1490,10 +1529,10 @@ class WP2SS_Scanner {
 		if ( ! $fh ) {
 			return false;
 		}
-		$head = (string) fread( $fh, self::EDGE_READ );
+		$head = (string) fread( $fh, self::EDGE_READ ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		fseek( $fh, max( 0, $size - self::EDGE_READ ) );
-		$tail = (string) fread( $fh, self::EDGE_READ );
-		fclose( $fh );
+		$tail = (string) fread( $fh, self::EDGE_READ ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
+		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		return $head . "\n" . $tail;
 	}
 
@@ -1817,7 +1856,7 @@ class WP2SS_Scanner {
 			}
 		}
 		$L['pos'] = $gz ? 0 : ftell( $fh );
-		$gz ? gzclose( $fh ) : fclose( $fh );
+		$gz ? gzclose( $fh ) : fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		return $eof;
 	}
 

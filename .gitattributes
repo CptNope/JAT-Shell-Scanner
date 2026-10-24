@@ -6,6 +6,8 @@
 /README.md      export-ignore
 /SECURITY.md    export-ignore
 /docs           export-ignore
+/.wordpress-org export-ignore
+/build          export-ignore
 
 * text=auto eol=lf
 *.php text eol=lf

@@ -231,3 +231,17 @@
 .wp2ss summary:focus-visible { outline: 2px solid #2271b1; outline-offset: 2px; }
 .wp2ss-flash { margin: 0 0 16px; }
 .wp2ss-legacy { display: block; color: var(--wp2ss-warn); font-size: 12px; }
+
+/* ---------------- About / help footer (scanner page only) ---------------- */
+
+.wp2ss-about {
+	margin: 24px 0 8px;
+	padding: 14px 18px;
+	border: 1px solid var(--wp2ss-line);
+	background: var(--wp2ss-panel);
+	color: var(--wp2ss-muted);
+	font-size: 13px;
+}
+.wp2ss-about p { margin: 0 0 8px; max-width: 80ch; }
+.wp2ss-about strong { color: var(--wp2ss-ink); }
+.wp2ss-about-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-bottom: 0 !important; }

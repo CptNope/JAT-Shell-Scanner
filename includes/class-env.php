@@ -84,7 +84,7 @@ class WP2SS_Env {
 				}
 			}
 		}
-		fclose( $fh );
+		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		return substr( $out, 0, 60 );
 	}
 
@@ -94,7 +94,7 @@ class WP2SS_Env {
 			return 0;
 		}
 		ob_start();
-		phpinfo( INFO_GENERAL );
+		phpinfo( INFO_GENERAL ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_phpinfo -- Output is captured, never shown; only PHP's build date is read from it.
 		$s = (string) ob_get_clean();
 		if ( preg_match( '/Build Date\s*(?:=>|<\/td><td[^>]*>)\s*([A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}(?:\s+\d{2}:\d{2}:\d{2})?)/', $s, $m ) ) {
 			$t = strtotime( preg_replace( '/\s+/', ' ', $m[1] ) . ' UTC' );

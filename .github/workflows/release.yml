@@ -6,6 +6,13 @@ name: Release
 #
 # To release: bump the version (plugin header, WP2SS_VERSION, readme.txt
 # Stable tag), add a CHANGELOG.md entry, and push to main.
+#
+# The WordPress.org edition (no GitHub updater) is then committed to
+# WordPress.org SVN — trunk and tags/X.Y.Z — plus .wordpress-org/ assets.
+# That job only runs once the SVN_USERNAME and SVN_PASSWORD repository
+# secrets exist (set them after WordPress.org approves the plugin).
+#
+# 10up/action-wordpress-plugin-deploy 2.3.0 = 54bd289…
 on:
   workflow_run:
     workflows: [CI]
@@ -23,6 +30,9 @@ jobs:
   release:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      skip: ${{ steps.v.outputs.skip }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09   # v5
         with:
@@ -79,3 +89,37 @@ jobs:
             --target "${{ github.event.workflow_run.head_sha }}" \
             --title "PHP2Shell & wp2shell Scanner v${{ steps.v.outputs.version }}" \
             --notes-file notes.md
+
+  wporg:
+    name: Deploy to WordPress.org
+    needs: release
+    if: needs.release.outputs.skip != '1'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Are WordPress.org SVN credentials set?
+        id: creds
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+        run: |
+          if [ -n "$SVN_USERNAME" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "::notice::SVN_USERNAME / SVN_PASSWORD not set — skipping the WordPress.org deploy."; fi
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        if: steps.creds.outputs.ok == '1'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Build the WordPress.org edition
+        if: steps.creds.outputs.ok == '1'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq subversion
+          bash .github/scripts/build-wporg.sh build
+
+      - uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2
+        if: steps.creds.outputs.ok == '1'
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: anderson-shell-scanner
+          VERSION: ${{ needs.release.outputs.version }}
+          BUILD_DIR: build/anderson-shell-scanner
+          ASSETS_DIR: .wordpress-org

@@ -39,7 +39,7 @@ class WP2SS_Cron {
 
 	public static function schedules( $s ) {
 		if ( ! isset( $s['weekly'] ) ) {
-			$s['weekly'] = array( 'interval' => WEEK_IN_SECONDS, 'display' => __( 'Once Weekly', 'wp2shell-scanner' ) );
+			$s['weekly'] = array( 'interval' => WEEK_IN_SECONDS, 'display' => __( 'Once Weekly', 'anderson-shell-scanner' ) );
 		}
 		return $s;
 	}
@@ -146,10 +146,10 @@ class WP2SS_Cron {
 		}
 
 		$site    = wp_specialchars_decode( get_site_option( 'site_name', get_bloginfo( 'name' ) ), ENT_QUOTES );
-		$subject = sprintf( /* translators: 1: verdict, 2: site name */ __( '[%2$s] PHP2Shell Scanner: %1$s', 'wp2shell-scanner' ), WP2SS_Admin::verdict_label( $verdict, $report['findings'] ), $site );
+		$subject = sprintf( /* translators: 1: verdict, 2: site name */ __( '[%2$s] PHP2Shell Scanner: %1$s', 'anderson-shell-scanner' ), WP2SS_Admin::verdict_label( $verdict, $report['findings'] ), $site );
 
 		$lines   = array();
-		$lines[] = sprintf( /* translators: %s: site URL */ __( 'A scheduled scan of %s found new problems:', 'wp2shell-scanner' ), $report['site'] );
+		$lines[] = sprintf( /* translators: %s: site URL */ __( 'A scheduled scan of %s found new problems:', 'anderson-shell-scanner' ), $report['site'] );
 		$lines[] = '';
 		foreach ( array_slice( $new, 0, 20 ) as $f ) {
 			$lines[] = '- [' . strtoupper( $f['severity'] ) . '] ' . wp_strip_all_tags( $f['message'] );
@@ -158,12 +158,12 @@ class WP2SS_Cron {
 			}
 		}
 		if ( count( $new ) > 20 ) {
-			$lines[] = sprintf( /* translators: %d: count */ __( '...and %d more.', 'wp2shell-scanner' ), count( $new ) - 20 );
+			$lines[] = sprintf( /* translators: %d: count */ __( '...and %d more.', 'anderson-shell-scanner' ), count( $new ) - 20 );
 		}
 		$lines[] = '';
-		$lines[] = __( 'See the full report:', 'wp2shell-scanner' ) . ' ' . WP2SS_Admin::url();
+		$lines[] = __( 'See the full report:', 'anderson-shell-scanner' ) . ' ' . WP2SS_Admin::url();
 		$lines[] = '';
-		$lines[] = __( 'You get this email because automatic scans and alerts are on. Change that on the scanner page.', 'wp2shell-scanner' );
+		$lines[] = __( 'You get this email because automatic scans and alerts are on. Change that on the scanner page.', 'anderson-shell-scanner' );
 
 		// Force plain text: file names and user names in findings come from the attacker.
 		$plain = function () {

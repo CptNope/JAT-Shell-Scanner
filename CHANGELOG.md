@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.4.0] — 2026-10-23
+
+### Available on WordPress.org
+- **WordPress.org edition**, built from the same code by `.github/scripts/build-wporg.sh`: it leaves out the GitHub updater and the `Update URI` header (WordPress.org plugins may only update through WordPress.org) and checks its own files against the checksums WordPress.org publishes for each version. The GitHub release zip is unchanged and still updates itself from GitHub.
+- Listed as **Anderson Shell Scanner** (slug and text domain `anderson-shell-scanner`): WordPress.org doesn't allow "wp" anywhere in a plugin's name or slug, and asks that names lead with the author's own brand rather than someone else's term ("PHP2Shell Scanner" is also already a commercial product's name). In WordPress the menu is still **Tools → PHP2Shell Scanner**. It still checks for both PHP2Shell and wp2shell; the scanner page keeps its full title. The translation template is renamed to match.
+- `readme.txt` rewritten for the directory: short description, an **External services** section listing every outside request, screenshots, upgrade notice.
+- CI runs WordPress's **Plugin Check** on the WordPress.org build; a deploy workflow commits each release to WordPress.org SVN once the plugin is approved and SVN secrets are set.
+
+### Links
+- Plugins screen: **Documentation**, **Support** and **Hire the author** links under the plugin's description.
+- A short "about" footer on the scanner page (only there) linking to the author's site, services and support. No dashboard-wide notices.
+- Plugin URI now points to the plugin's page on jeremyanderson.tech.
+
+### Privacy
+- The GitHub update check no longer sends the site's address in its User-Agent.
+- The GitHub updater now reports the real minimum PHP version (7.0, was 7.4).
+
 ## [1.3.2] — 2026-10-22
 
 ### Fewer false alarms on hosted sites
