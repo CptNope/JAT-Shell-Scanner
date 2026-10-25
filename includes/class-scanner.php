@@ -1269,7 +1269,7 @@ class WP2SS_Scanner {
 			// WP-Cron's own option is checked by check_cron(); transients are caches; wp2ss_ is this plugin.
 			$values = array_merge( $values, array( $wpdb->esc_like( '_transient_' ) . '%', $wpdb->esc_like( '_site_transient_' ) . '%', $wpdb->esc_like( 'wp2ss_' ) . '%' ) );
 			// $table is a WordPress table name and $match only placeholders, both built above; $values fills them all.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber,PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT option_name, option_value FROM `$table` WHERE $match AND option_name <> 'cron' AND option_name NOT LIKE %s AND option_name NOT LIKE %s AND option_name NOT LIKE %s LIMIT 200", $values ), ARRAY_N );
 			foreach ( (array) $rows as $row ) {
 				$value = substr( (string) $row[1], 0, self::MAX_READ );
@@ -1294,7 +1294,7 @@ class WP2SS_Scanner {
 			list( $match, $values ) = $this->like_any( 'post_content', $this->sig['post_needles'] );
 			array_unshift( $values, $since );
 			// $table is a WordPress table name and $match only placeholders, both built above.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_type, post_title, post_content FROM `$table` WHERE post_modified_gmt >= %s AND post_type NOT IN ('revision', 'customize_changeset', 'oembed_cache') AND $match ORDER BY post_modified_gmt DESC LIMIT 300", $values ), ARRAY_A );
 			$shown = 0;
 			$more  = 0;
