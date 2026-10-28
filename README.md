@@ -13,7 +13,7 @@
 
 ### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
 
-**Current version: 1.5.1** (October 24, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
+**Current version: 1.6.0** (October 28, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
