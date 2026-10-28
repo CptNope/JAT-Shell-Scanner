@@ -25,12 +25,10 @@ mkdir -p "$DEST"
 git -C "$ROOT" archive --format=tar HEAD | tar -x -C "$DEST"
 
 rm -f "$DEST/includes/class-updater.php" "$DEST/manifest.json"
-sed -i '/^ \* Update URI:/d' "$DEST/wp2shell-scanner.php"
+sed -i '/^ \* Update URI:/d' "$DEST/$SLUG.php"
 # Drop everything marked <github-only> (the self-updater and the GitHub
 # checksum download), so none of it is in the WordPress.org code at all.
 find "$DEST" -name '*.php' -print0 | xargs -0 sed -i '/\/\/ <github-only>/,/\/\/ <\/github-only>/d'
-# Name the main file after the slug.
-mv "$DEST/wp2shell-scanner.php" "$DEST/$SLUG.php"
 
 # Sanity checks: nothing that talks to GitHub or replaces WordPress updates may remain.
 if grep -rnE "Update URI|pre_set_site_transient_update_plugins|api\.github\.com|releases/download|class-updater|WP2SS_Updater|github-only" "$DEST" --include='*.php'; then

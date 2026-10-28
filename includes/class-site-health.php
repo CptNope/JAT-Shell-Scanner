@@ -25,7 +25,7 @@ class WP2SS_Site_Health {
 
 	public static function test() {
 		$r      = WP2SS_Scanner::last_report();
-		$link   = sprintf( '<p><a href="%s">%s</a></p>', esc_url( WP2SS_Admin::url() ), esc_html__( 'Open PHP2Shell Scanner', 'jat-shell-scanner' ) );
+		$link   = sprintf( '<p><a href="%s">%s</a></p>', esc_url( WP2SS_Admin::url() ), esc_html__( 'Open JAT Shell Scanner', 'jat-shell-scanner' ) );
 		$result = array(
 			'label'       => __( 'No signs of PHP2Shell or wp2shell', 'jat-shell-scanner' ),
 			'status'      => 'good',

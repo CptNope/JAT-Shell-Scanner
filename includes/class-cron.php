@@ -146,7 +146,7 @@ class WP2SS_Cron {
 		}
 
 		$site    = wp_specialchars_decode( get_site_option( 'site_name', get_bloginfo( 'name' ) ), ENT_QUOTES );
-		$subject = sprintf( /* translators: 1: verdict, 2: site name */ __( '[%2$s] PHP2Shell Scanner: %1$s', 'jat-shell-scanner' ), WP2SS_Admin::verdict_label( $verdict, $report['findings'] ), $site );
+		$subject = sprintf( /* translators: 1: verdict, 2: site name */ __( '[%2$s] JAT Shell Scanner: %1$s', 'jat-shell-scanner' ), WP2SS_Admin::verdict_label( $verdict, $report['findings'] ), $site );
 
 		$lines   = array();
 		$lines[] = sprintf( /* translators: %s: site URL */ __( 'A scheduled scan of %s found new problems:', 'jat-shell-scanner' ), $report['site'] );

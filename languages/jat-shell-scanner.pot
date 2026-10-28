@@ -9,392 +9,387 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-28T17:22:27+00:00\n"
+"POT-Creation-Date: 2026-10-28T18:14:47+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: jat-shell-scanner\n"
 
 #. Plugin Name of the plugin
-#: wp2shell-scanner.php
+#: jat-shell-scanner.php
+#: includes/class-admin.php:92
+#: includes/class-admin.php:93
+#: includes/class-admin.php:204
 msgid "JAT Shell Scanner"
 msgstr ""
 
 #. Plugin URI of the plugin
-#: wp2shell-scanner.php
+#: jat-shell-scanner.php
 msgid "https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/"
 msgstr ""
 
 #. Description of the plugin
-#: wp2shell-scanner.php
+#: jat-shell-scanner.php
 msgid "Checks whether your site is exposed to — or was broken into through — PHP2Shell (CVE-2026-109618 / CVE-2026-109619, critical bugs in PHP itself) and wp2shell (CVE-2026-63030 / CVE-2026-60137, a WordPress core bug). Looks at your PHP and WordPress versions, webshells, rogue admins, changed files and server logs. Scans only read; one-click fixes (quarantine, removing admin rights) are optional and can be undone. Includes a self-hosted fleet dashboard for many sites, with alerts."
 msgstr ""
 
 #. Author of the plugin
-#: wp2shell-scanner.php
+#: jat-shell-scanner.php
 msgid "Jeremy Anderson Tech"
 msgstr ""
 
 #. Author URI of the plugin
-#: wp2shell-scanner.php
+#: jat-shell-scanner.php
 msgid "https://jeremyanderson.tech"
 msgstr ""
 
-#: includes/class-admin.php:44
+#: includes/class-admin.php:45
+#: includes/class-admin.php:53
 msgid "You are not allowed to do that."
 msgstr ""
 
-#: includes/class-admin.php:53
+#: includes/class-admin.php:59
 msgid "Your session expired. Reload the page and try again."
 msgstr ""
 
-#: includes/class-admin.php:87
-#: includes/class-admin.php:198
-msgid "PHP2Shell & wp2shell Scanner"
-msgstr ""
-
-#: includes/class-admin.php:88
-msgid "PHP2Shell Scanner"
-msgstr ""
-
-#: includes/class-admin.php:96
+#: includes/class-admin.php:101
 msgid "Scan"
 msgstr ""
 
-#: includes/class-admin.php:113
-#: includes/class-admin.php:134
+#: includes/class-admin.php:118
+#: includes/class-admin.php:139
 msgid "Documentation"
 msgstr ""
 
-#: includes/class-admin.php:114
+#: includes/class-admin.php:119
 msgid "Support"
 msgstr ""
 
-#: includes/class-admin.php:115
+#: includes/class-admin.php:120
 msgid "Hire the author"
 msgstr ""
 
-#: includes/class-admin.php:126
+#: includes/class-admin.php:131
 msgid "About this plugin"
 msgstr ""
 
-#: includes/class-admin.php:128
+#: includes/class-admin.php:133
 msgid "Free and open source, by Jeremy Anderson."
 msgstr ""
 
-#: includes/class-admin.php:129
+#: includes/class-admin.php:134
 msgid "Need hands-on help with a vulnerable or hacked WordPress site, or a site built to stay secure? I build and look after WordPress sites."
 msgstr ""
 
-#: includes/class-admin.php:132
+#: includes/class-admin.php:137
 msgid "Book a call"
 msgstr ""
 
-#: includes/class-admin.php:133
+#: includes/class-admin.php:138
 msgid "Services"
 msgstr ""
 
-#: includes/class-admin.php:135
+#: includes/class-admin.php:140
 msgid "Report a problem"
 msgstr ""
 
-#: includes/class-admin.php:155
+#: includes/class-admin.php:160
 msgid "Starting scan…"
 msgstr ""
 
-#: includes/class-admin.php:156
+#: includes/class-admin.php:161
 msgid "Checking PHP, WordPress, plugins, users and the database…"
 msgstr ""
 
-#: includes/class-admin.php:157
+#: includes/class-admin.php:162
 msgid "Scanning files…"
 msgstr ""
 
-#: includes/class-admin.php:158
+#: includes/class-admin.php:163
 msgid "Verifying WordPress core files…"
 msgstr ""
 
-#: includes/class-admin.php:159
+#: includes/class-admin.php:164
 msgid "Verifying plugin files…"
 msgstr ""
 
-#: includes/class-admin.php:160
+#: includes/class-admin.php:165
 msgid "Reading the server logs…"
 msgstr ""
 
-#: includes/class-admin.php:161
+#: includes/class-admin.php:166
 msgid "Done. Loading results…"
 msgstr ""
 
-#: includes/class-admin.php:162
+#: includes/class-admin.php:167
 msgid "The scan stopped:"
 msgstr ""
 
-#: includes/class-admin.php:163
+#: includes/class-admin.php:168
 msgid "Retrying…"
 msgstr ""
 
-#: includes/class-admin.php:164
+#: includes/class-admin.php:169
 msgid "Waiting for another scan in progress…"
 msgstr ""
 
-#: includes/class-admin.php:165
+#: includes/class-admin.php:170
 msgid "Copied"
 msgstr ""
 
-#: includes/class-admin.php:166
+#: includes/class-admin.php:171
 msgid "Working…"
 msgstr ""
 
-#: includes/class-admin.php:167
+#: includes/class-admin.php:172
 msgid "Delete this for good? This can’t be undone."
 msgstr ""
 
-#: includes/class-admin.php:185
+#: includes/class-admin.php:190
 msgid "Findings"
 msgstr ""
 
-#: includes/class-admin.php:186
+#: includes/class-admin.php:191
 #: includes/class-fixes.php:99
 msgid "Quarantine"
 msgstr ""
 
-#: includes/class-admin.php:187
+#: includes/class-admin.php:192
 msgid "Fleet"
 msgstr ""
 
-#: includes/class-admin.php:188
+#: includes/class-admin.php:193
 msgid "Settings"
 msgstr ""
 
 #. translators: %d: number of quarantined items or undoable fixes
-#: includes/class-admin.php:194
+#: includes/class-admin.php:200
 #, php-format
 msgid "Quarantine (%d)"
 msgstr ""
 
-#: includes/class-admin.php:207
+#: includes/class-admin.php:213
 msgid "Scanner sections"
 msgstr ""
 
-#: includes/class-admin.php:230
+#: includes/class-admin.php:236
 msgid "Run your first scan to see findings here."
 msgstr ""
 
-#: includes/class-admin.php:244
+#: includes/class-admin.php:251
 msgid "Settings saved."
 msgstr ""
 
-#: includes/class-admin.php:245
+#: includes/class-admin.php:252
 msgid "Done. Everything that was moved is in the Quarantine tab, where you can undo it."
 msgstr ""
 
-#: includes/class-admin.php:246
+#: includes/class-admin.php:253
 msgid "Fleet settings saved."
 msgstr ""
 
-#: includes/class-admin.php:247
+#: includes/class-admin.php:254
 msgid "Report sent to the hub."
 msgstr ""
 
-#: includes/class-admin.php:248
+#: includes/class-admin.php:255
 msgid "New fleet key created. Member sites must be given the new key before they can report again."
 msgstr ""
 
-#: includes/class-admin.php:249
+#: includes/class-admin.php:256
 msgid "Site removed from the fleet list."
 msgstr ""
 
-#: includes/class-admin.php:250
+#: includes/class-admin.php:257
 msgid "Alert settings saved."
 msgstr ""
 
-#: includes/class-admin.php:251
+#: includes/class-admin.php:258
 msgid "Test alert sent. Check your inbox or chat channel."
 msgstr ""
 
-#: includes/class-admin.php:252
+#: includes/class-admin.php:259
 msgid "The list is empty. Sites reappear (and register again) with their next report."
 msgstr ""
 
-#: includes/class-admin.php:253
+#: includes/class-admin.php:260
 msgid "Scan requested. Sites pick this up within an hour (sites on version 1.2 or older can’t; scan those yourself)."
 msgstr ""
 
-#: includes/class-admin.php:310
+#: includes/class-admin.php:317
 msgid "Someone has very likely broken in."
 msgstr ""
 
-#: includes/class-admin.php:313
+#: includes/class-admin.php:320
 msgid "Something here looks like a break-in. Check it today."
 msgstr ""
 
-#: includes/class-admin.php:316
+#: includes/class-admin.php:323
 msgid "Both PHP and WordPress are open to attack. No signs anyone got in."
 msgstr ""
 
-#: includes/class-admin.php:319
+#: includes/class-admin.php:326
 msgid "PHP is open to attack. No signs anyone got in."
 msgstr ""
 
-#: includes/class-admin.php:322
+#: includes/class-admin.php:329
 msgid "WordPress is open to attack. No signs anyone got in."
 msgstr ""
 
-#: includes/class-admin.php:325
+#: includes/class-admin.php:332
 msgid "Probably safe — your host needs to confirm PHP is patched."
 msgstr ""
 
-#: includes/class-admin.php:328
+#: includes/class-admin.php:335
 msgid "No break-in found. A few things are worth a look."
 msgstr ""
 
-#: includes/class-admin.php:330
+#: includes/class-admin.php:337
 msgid "Both doors are shut and nobody got in."
 msgstr ""
 
 #. translators: 1: time ago, 2: number of PHP files, 3: duration in seconds
-#: includes/class-admin.php:351
+#: includes/class-admin.php:358
 #, php-format
 msgid "Scanned %1$s ago — %2$s PHP files in %3$ss."
 msgstr ""
 
-#: includes/class-admin.php:357
+#: includes/class-admin.php:364
 msgid "That’s over a month ago — scan again."
 msgstr ""
 
-#: includes/class-admin.php:362
+#: includes/class-admin.php:369
 msgid "Is the door open, and did anyone come in?"
 msgstr ""
 
-#: includes/class-admin.php:363
+#: includes/class-admin.php:370
 msgid "This checks whether PHP2Shell (a bug in PHP) or wp2shell (a bug in WordPress) can be used against this site, and looks for signs someone already did. It only reads — it changes nothing unless you click a fix."
 msgstr ""
 
-#: includes/class-admin.php:370
-#: includes/class-admin.php:508
-#: includes/class-admin.php:877
+#: includes/class-admin.php:377
+#: includes/class-admin.php:515
+#: includes/class-admin.php:884
 msgid "Scan again"
 msgstr ""
 
-#: includes/class-admin.php:370
+#: includes/class-admin.php:377
 msgid "Scan now"
 msgstr ""
 
-#: includes/class-admin.php:373
+#: includes/class-admin.php:380
 msgid "Download report"
 msgstr ""
 
-#: includes/class-admin.php:381
+#: includes/class-admin.php:388
 msgid "Cancel scan"
 msgstr ""
 
-#: includes/class-admin.php:391
+#: includes/class-admin.php:398
 msgid "PHP2Shell"
 msgstr ""
 
-#: includes/class-admin.php:394
-#: includes/class-admin.php:412
+#: includes/class-admin.php:401
+#: includes/class-admin.php:419
 msgid "Patched"
 msgstr ""
 
-#: includes/class-admin.php:395
-#: includes/class-admin.php:413
+#: includes/class-admin.php:402
+#: includes/class-admin.php:420
 msgid "Open to attack"
 msgstr ""
 
-#: includes/class-admin.php:396
+#: includes/class-admin.php:403
 msgid "Ask your host"
 msgstr ""
 
-#: includes/class-admin.php:397
+#: includes/class-admin.php:404
 msgid "Not checked"
 msgstr ""
 
-#: includes/class-admin.php:400
+#: includes/class-admin.php:407
 msgid "This PHP has the fix."
 msgstr ""
 
 #. translators: %s: fixed PHP version
-#: includes/class-admin.php:402
+#: includes/class-admin.php:409
 #, php-format
 msgid "Needs updating to %s or later. Only your host can usually do this."
 msgstr ""
 
-#: includes/class-admin.php:403
+#: includes/class-admin.php:410
 msgid "An operating-system build: it may already carry the fix without a new version number."
 msgstr ""
 
-#: includes/class-admin.php:409
+#: includes/class-admin.php:416
 msgid "wp2shell"
 msgstr ""
 
-#: includes/class-admin.php:416
+#: includes/class-admin.php:423
 msgid "This version isn’t affected."
 msgstr ""
 
-#: includes/class-admin.php:417
+#: includes/class-admin.php:424
 msgid "Update to 6.8.6, 6.9.5, 7.0.2 or newer."
 msgstr ""
 
-#: includes/class-admin.php:427
+#: includes/class-admin.php:434
 msgid "Signs of a break-in"
 msgstr ""
 
-#: includes/class-admin.php:428
+#: includes/class-admin.php:435
 msgid "Files, accounts and logs"
 msgstr ""
 
-#: includes/class-admin.php:431
+#: includes/class-admin.php:438
 msgid "None found"
 msgstr ""
 
-#: includes/class-admin.php:432
+#: includes/class-admin.php:439
 msgid "Worth a look"
 msgstr ""
 
-#: includes/class-admin.php:433
-#: includes/class-admin.php:1116
+#: includes/class-admin.php:440
+#: includes/class-admin.php:1123
 msgid "Suspicious"
 msgstr ""
 
-#: includes/class-admin.php:434
+#: includes/class-admin.php:441
 msgid "Break-in found"
 msgstr ""
 
-#: includes/class-admin.php:437
+#: includes/class-admin.php:444
 msgid "No webshells, rogue admins or attack traces."
 msgstr ""
 
-#: includes/class-admin.php:488
+#: includes/class-admin.php:495
 msgid "Back up the whole site first"
 msgstr ""
 
-#: includes/class-admin.php:488
+#: includes/class-admin.php:495
 msgid "Files and database, with your host’s backup tool or a backup plugin. It’s your evidence and your undo button."
 msgstr ""
 
-#: includes/class-admin.php:491
+#: includes/class-admin.php:498
 msgid "Ask your host to update PHP"
 msgstr ""
 
-#: includes/class-admin.php:491
+#: includes/class-admin.php:498
 msgid "Ask your host to confirm PHP is patched"
 msgstr ""
 
-#: includes/class-admin.php:491
+#: includes/class-admin.php:498
 msgid "On most hosting plans only they can. Here’s a message to send them:"
 msgstr ""
 
-#: includes/class-admin.php:494
+#: includes/class-admin.php:501
 msgid "Update WordPress"
 msgstr ""
 
-#: includes/class-admin.php:494
+#: includes/class-admin.php:501
 msgid "Dashboard → Updates. It takes a minute."
 msgstr ""
 
 #. translators: %d: number of items
-#: includes/class-admin.php:498
+#: includes/class-admin.php:505
 #, php-format
 msgid "Quarantine %d flagged item"
 msgid_plural "Quarantine %d flagged items"
@@ -402,12 +397,12 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of items
-#: includes/class-admin.php:498
+#: includes/class-admin.php:505
 msgid "They’re moved somewhere they can’t run. Nothing is deleted, and each one can be restored from the Quarantine tab."
 msgstr ""
 
 #. translators: %d: number of accounts
-#: includes/class-admin.php:502
+#: includes/class-admin.php:509
 #, php-format
 msgid "Check %d unexpected administrator"
 msgid_plural "Check %d unexpected administrators"
@@ -415,60 +410,60 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of accounts
-#: includes/class-admin.php:502
+#: includes/class-admin.php:509
 msgid "If you don’t know an account, use “Remove admin rights” next to it in the findings below."
 msgstr ""
 
-#: includes/class-admin.php:505
+#: includes/class-admin.php:512
 msgid "Change every password and secret key"
 msgstr ""
 
-#: includes/class-admin.php:505
+#: includes/class-admin.php:512
 msgid "Admin passwords, the database password, API keys in plugins, and the salts in wp-config.php. PHP2Shell can leak these from memory."
 msgstr ""
 
-#: includes/class-admin.php:508
+#: includes/class-admin.php:515
 msgid "Repeat until both doors are shut and no signs are left."
 msgstr ""
 
-#: includes/class-admin.php:512
+#: includes/class-admin.php:519
 msgid "What to do next"
 msgstr ""
 
-#: includes/class-admin.php:512
+#: includes/class-admin.php:519
 msgid "Nothing to do"
 msgstr ""
 
-#: includes/class-admin.php:514
+#: includes/class-admin.php:521
 msgid "Automatic scans are on, and you’ll get an email if that changes."
 msgstr ""
 
-#: includes/class-admin.php:514
+#: includes/class-admin.php:521
 msgid "Automatic scans are off — turn them on in Settings so you hear about problems."
 msgstr ""
 
-#: includes/class-admin.php:528
+#: includes/class-admin.php:535
 msgid "Open WordPress updates"
 msgstr ""
 
 #. translators: %d: count
-#: includes/class-admin.php:533
+#: includes/class-admin.php:540
 #, php-format
 msgid "Quarantine %d item now? You can restore it from the Quarantine tab."
 msgid_plural "Quarantine %d items now? You can restore them from the Quarantine tab."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-admin.php:536
+#: includes/class-admin.php:543
 msgid "Quarantine them"
 msgstr ""
 
-#: includes/class-admin.php:541
+#: includes/class-admin.php:548
 msgid "Get new salts"
 msgstr ""
 
 #. translators: 1: site URL, 2: PHP version, 3: server API, 4: fixed version
-#: includes/class-admin.php:576
+#: includes/class-admin.php:583
 #, php-format
 msgid ""
 "Hello,\n"
@@ -485,556 +480,556 @@ msgid ""
 "Thank you!"
 msgstr ""
 
-#: includes/class-admin.php:584
+#: includes/class-admin.php:591
 msgid "Message for your host"
 msgstr ""
 
-#: includes/class-admin.php:586
+#: includes/class-admin.php:593
 msgid "Copy message"
 msgstr ""
 
-#: includes/class-admin.php:587
+#: includes/class-admin.php:594
 msgid "Some hosts let you pick a newer PHP yourself: look for “PHP version” or “MultiPHP” in your hosting control panel and choose 8.2 or newer."
 msgstr ""
 
-#: includes/class-admin.php:599
+#: includes/class-admin.php:606
 msgid "PHP (PHP2Shell)"
 msgstr ""
 
-#: includes/class-admin.php:600
+#: includes/class-admin.php:607
 msgid "WordPress (wp2shell)"
 msgstr ""
 
-#: includes/class-admin.php:601
+#: includes/class-admin.php:608
 msgid "Accounts"
 msgstr ""
 
-#: includes/class-admin.php:602
-#: includes/class-admin.php:603
-#: includes/class-admin.php:604
+#: includes/class-admin.php:609
+#: includes/class-admin.php:610
+#: includes/class-admin.php:611
 msgid "Files and code"
 msgstr ""
 
-#: includes/class-admin.php:605
-#: includes/class-admin.php:606
-#: includes/class-admin.php:607
+#: includes/class-admin.php:612
+#: includes/class-admin.php:613
+#: includes/class-admin.php:614
 msgid "Plugins"
 msgstr ""
 
-#: includes/class-admin.php:608
+#: includes/class-admin.php:615
 msgid "WordPress core files"
 msgstr ""
 
-#: includes/class-admin.php:609
+#: includes/class-admin.php:616
 msgid "Database"
 msgstr ""
 
-#: includes/class-admin.php:610
+#: includes/class-admin.php:617
 msgid "Server logs"
 msgstr ""
 
-#: includes/class-admin.php:611
+#: includes/class-admin.php:618
 msgid "About this scan"
 msgstr ""
 
-#: includes/class-admin.php:639
+#: includes/class-admin.php:646
 msgid "Show"
-msgstr ""
-
-#. translators: %d: count
-#: includes/class-admin.php:641
-#, php-format
-msgid "Needs action (%d)"
-msgstr ""
-
-#. translators: %d: count
-#: includes/class-admin.php:644
-#, php-format
-msgid "Everything (%d)"
 msgstr ""
 
 #. translators: %d: count
 #: includes/class-admin.php:648
 #, php-format
+msgid "Needs action (%d)"
+msgstr ""
+
+#. translators: %d: count
+#: includes/class-admin.php:651
+#, php-format
+msgid "Everything (%d)"
+msgstr ""
+
+#. translators: %d: count
+#: includes/class-admin.php:655
+#, php-format
 msgid "Ignored (%d)"
 msgstr ""
 
-#: includes/class-admin.php:652
+#: includes/class-admin.php:659
 msgid "Nothing needs your attention. “Everything” lists what the scan looked at."
 msgstr ""
 
-#: includes/class-admin.php:686
+#: includes/class-admin.php:693
 msgid "Open this account"
 msgstr ""
 
-#: includes/class-admin.php:695
+#: includes/class-admin.php:702
 msgid "Admin rights removed."
 msgstr ""
 
-#: includes/class-admin.php:695
+#: includes/class-admin.php:702
 msgid "Quarantined."
 msgstr ""
 
-#: includes/class-admin.php:696
+#: includes/class-admin.php:703
 msgid "Undo"
 msgstr ""
 
-#: includes/class-admin.php:706
+#: includes/class-admin.php:713
 msgid "Stop ignoring"
 msgstr ""
 
-#: includes/class-admin.php:706
+#: includes/class-admin.php:713
 msgid "Ignore — it’s mine"
 msgstr ""
 
-#: includes/class-admin.php:721
+#: includes/class-admin.php:728
 msgid "Everything a fix changed is listed here and can be undone. Quarantined files sit in a private folder, renamed so they can’t run."
 msgstr ""
 
-#: includes/class-admin.php:723
+#: includes/class-admin.php:730
 msgid "This site doesn’t allow plugins to change files (DISALLOW_FILE_MODS), so only account fixes are available. Remove flagged files with your host’s file manager."
 msgstr ""
 
-#: includes/class-admin.php:726
+#: includes/class-admin.php:733
 msgid "Nothing has been quarantined or changed. Fixes appear next to findings that have one."
 msgstr ""
 
-#: includes/class-admin.php:733
+#: includes/class-admin.php:740
 msgid "What"
 msgstr ""
 
-#: includes/class-admin.php:734
+#: includes/class-admin.php:741
 msgid "When"
 msgstr ""
 
-#: includes/class-admin.php:735
-#: includes/class-admin.php:838
+#: includes/class-admin.php:742
+#: includes/class-admin.php:845
 msgid "Actions"
 msgstr ""
 
 #. translators: %s: login
-#: includes/class-admin.php:741
+#: includes/class-admin.php:748
 #, php-format
 msgid "Removed admin rights from “%s”"
 msgstr ""
 
 #. translators: %s: login
-#: includes/class-admin.php:741
+#: includes/class-admin.php:748
 msgid "Quarantined"
 msgstr ""
 
 #. translators: %s: time ago
-#: includes/class-admin.php:747
-#: includes/class-admin.php:864
+#: includes/class-admin.php:754
+#: includes/class-admin.php:871
 #, php-format
 msgid "%s ago"
 msgstr ""
 
-#: includes/class-admin.php:749
+#: includes/class-admin.php:756
 msgid "Give admin rights back"
 msgstr ""
 
-#: includes/class-admin.php:749
+#: includes/class-admin.php:756
 msgid "Restore"
 msgstr ""
 
-#: includes/class-admin.php:751
+#: includes/class-admin.php:758
 msgid "Delete for good"
 msgstr ""
 
-#: includes/class-admin.php:768
+#: includes/class-admin.php:775
 msgid "Look after several sites? Make one of them the hub, and the others send it their result after every scan — one list of every site, on your own server."
 msgstr ""
 
-#: includes/class-admin.php:777
+#: includes/class-admin.php:784
 msgid "Set up a fleet"
 msgstr ""
 
-#: includes/class-admin.php:777
+#: includes/class-admin.php:784
 msgid "Change fleet settings"
 msgstr ""
 
-#: includes/class-admin.php:782
+#: includes/class-admin.php:789
 msgid "Role of this site"
 msgstr ""
 
-#: includes/class-admin.php:783
+#: includes/class-admin.php:790
 msgid "Not part of a fleet"
 msgstr ""
 
-#: includes/class-admin.php:784
+#: includes/class-admin.php:791
 msgid "This site is the hub"
 msgstr ""
 
-#: includes/class-admin.php:784
+#: includes/class-admin.php:791
 msgid "It collects results from your other sites and shows them here."
 msgstr ""
 
-#: includes/class-admin.php:785
+#: includes/class-admin.php:792
 msgid "Report to a hub"
 msgstr ""
 
-#: includes/class-admin.php:785
+#: includes/class-admin.php:792
 msgid "Send this site’s results to the hub after every scan."
 msgstr ""
 
-#: includes/class-admin.php:789
+#: includes/class-admin.php:796
 msgid "Hub site address"
 msgstr ""
 
-#: includes/class-admin.php:793
-#: includes/class-admin.php:899
+#: includes/class-admin.php:800
+#: includes/class-admin.php:906
 msgid "Fleet key"
 msgstr ""
 
-#: includes/class-admin.php:794
+#: includes/class-admin.php:801
 msgid "Saved — leave blank to keep it"
 msgstr ""
 
-#: includes/class-admin.php:795
+#: includes/class-admin.php:802
 msgid "Shown on the hub’s Fleet tab."
 msgstr ""
 
-#: includes/class-admin.php:798
+#: includes/class-admin.php:805
 msgid "Save fleet settings"
 msgstr ""
 
-#: includes/class-admin.php:818
+#: includes/class-admin.php:825
 msgid "Ask every site to scan again? Each one starts within an hour."
 msgstr ""
 
-#: includes/class-admin.php:821
+#: includes/class-admin.php:828
 msgid "Ask all sites to scan"
 msgstr ""
 
-#: includes/class-admin.php:823
+#: includes/class-admin.php:830
 msgid "Download as CSV"
 msgstr ""
 
-#: includes/class-admin.php:829
+#: includes/class-admin.php:836
 msgid "No sites have reported yet. Connect your other sites with the key below, then scan them."
 msgstr ""
 
-#: includes/class-admin.php:833
+#: includes/class-admin.php:840
 msgid "Site"
 msgstr ""
 
-#: includes/class-admin.php:834
+#: includes/class-admin.php:841
 msgid "Result"
 msgstr ""
 
-#: includes/class-admin.php:835
+#: includes/class-admin.php:842
 msgid "PHP"
 msgstr ""
 
-#: includes/class-admin.php:836
+#: includes/class-admin.php:843
 msgid "WordPress"
 msgstr ""
 
-#: includes/class-admin.php:837
+#: includes/class-admin.php:844
 msgid "Last report"
 msgstr ""
 
-#: includes/class-admin.php:847
+#: includes/class-admin.php:854
 msgid "Older scanner version: update it so only this site can report for this address."
 msgstr ""
 
 #. translators: %d: count
-#: includes/class-admin.php:851
+#: includes/class-admin.php:858
 #, php-format
 msgid "%d serious finding"
 msgid_plural "%d serious findings"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-admin.php:866
+#: includes/class-admin.php:873
 msgid "Overdue"
 msgstr ""
 
-#: includes/class-admin.php:869
+#: includes/class-admin.php:876
 msgid "Scan requested"
 msgstr ""
 
-#: includes/class-admin.php:879
+#: includes/class-admin.php:886
 msgid "Remove this site from the list? It reappears if it reports again."
 msgstr ""
 
-#: includes/class-admin.php:883
+#: includes/class-admin.php:890
 msgid "Remove"
 msgstr ""
 
-#: includes/class-admin.php:895
+#: includes/class-admin.php:902
 msgid "Connect your other sites"
 msgstr ""
 
-#: includes/class-admin.php:896
+#: includes/class-admin.php:903
 msgid "On each site: install this plugin, open its Fleet tab, choose “Report to a hub”, and paste this address and key."
 msgstr ""
 
-#: includes/class-admin.php:897
+#: includes/class-admin.php:904
 msgid "Hub address"
 msgstr ""
 
-#: includes/class-admin.php:898
-#: includes/class-admin.php:900
+#: includes/class-admin.php:905
+#: includes/class-admin.php:907
 msgid "Copy"
 msgstr ""
 
-#: includes/class-admin.php:901
+#: includes/class-admin.php:908
 msgid "With WP-CLI, one command per site does it:"
 msgstr ""
 
-#: includes/class-admin.php:903
+#: includes/class-admin.php:910
 msgid "Copy command"
 msgstr ""
 
-#: includes/class-admin.php:904
+#: includes/class-admin.php:911
 msgid "Keep the key private: anyone with it can add a site to this list (they can’t read anything, or report for a site that has already registered). If it leaks, make a new one — then give the new key to every site."
 msgstr ""
 
-#: includes/class-admin.php:905
+#: includes/class-admin.php:912
 msgid "Make a new fleet key? Every member site will need the new key before it can report again."
 msgstr ""
 
-#: includes/class-admin.php:908
+#: includes/class-admin.php:915
 msgid "Make a new key"
 msgstr ""
 
-#: includes/class-admin.php:910
+#: includes/class-admin.php:917
 msgid "Empty the whole list? Sites reappear with their next report."
 msgstr ""
 
-#: includes/class-admin.php:913
+#: includes/class-admin.php:920
 msgid "Empty the list"
 msgstr ""
 
-#: includes/class-admin.php:916
+#: includes/class-admin.php:923
 msgid "This hub isn’t on HTTPS. Reports are signed, so they can’t be forged, but anyone on the network path could read them. Use HTTPS if you can."
 msgstr ""
 
-#: includes/class-admin.php:926
+#: includes/class-admin.php:933
 msgid "Alerts"
 msgstr ""
 
-#: includes/class-admin.php:927
+#: includes/class-admin.php:934
 msgid "Get one message when sites need a look: a site gets worse, a new site joins in trouble, or a site stops reporting. Several sites at once arrive as a single digest."
 msgstr ""
 
-#: includes/class-admin.php:932
+#: includes/class-admin.php:939
 msgid "Email me"
 msgstr ""
 
-#: includes/class-admin.php:933
-#: includes/class-admin.php:1018
+#: includes/class-admin.php:940
+#: includes/class-admin.php:1025
 msgid "Alert email address"
 msgstr ""
 
-#: includes/class-admin.php:936
+#: includes/class-admin.php:943
 msgid "Slack or Discord webhook"
 msgstr ""
 
-#: includes/class-admin.php:936
+#: includes/class-admin.php:943
 msgid "(optional)"
 msgstr ""
 
-#: includes/class-admin.php:938
+#: includes/class-admin.php:945
 msgid "In Slack: Apps → Incoming Webhooks. In Discord: channel settings → Integrations → Webhooks."
 msgstr ""
 
-#: includes/class-admin.php:941
+#: includes/class-admin.php:948
 msgid "Also tell me when a site hasn’t reported for"
 msgstr ""
 
-#: includes/class-admin.php:942
+#: includes/class-admin.php:949
 msgid "Days"
 msgstr ""
 
-#: includes/class-admin.php:942
+#: includes/class-admin.php:949
 msgid "days"
 msgstr ""
 
-#: includes/class-admin.php:945
+#: includes/class-admin.php:952
 msgid "Save alerts"
 msgstr ""
 
-#: includes/class-admin.php:946
+#: includes/class-admin.php:953
 msgid "Save and send a test"
 msgstr ""
 
 #. translators: %s: hub URL
-#: includes/class-admin.php:960
+#: includes/class-admin.php:967
 #, php-format
 msgid "This site reports to %s after every scan."
 msgstr ""
 
 #. translators: %s: time ago
-#: includes/class-admin.php:968
+#: includes/class-admin.php:975
 #, php-format
 msgid "Last report delivered %s ago."
 msgstr ""
 
 #. translators: 1: time ago, 2: error
-#: includes/class-admin.php:969
+#: includes/class-admin.php:976
 #, php-format
 msgid "The last report %1$s ago didn’t arrive: %2$s"
 msgstr ""
 
-#: includes/class-admin.php:977
+#: includes/class-admin.php:984
 msgid "Send the latest result now"
 msgstr ""
 
-#: includes/class-admin.php:992
+#: includes/class-admin.php:999
 msgid "Off"
 msgstr ""
 
-#: includes/class-admin.php:993
+#: includes/class-admin.php:1000
 msgid "Daily"
 msgstr ""
 
-#: includes/class-admin.php:994
+#: includes/class-admin.php:1001
 msgid "Weekly"
 msgstr ""
 
-#: includes/class-admin.php:1002
+#: includes/class-admin.php:1009
 msgid "Automatic scans"
 msgstr ""
 
 #. translators: %s: time
-#: includes/class-admin.php:1010
+#: includes/class-admin.php:1017
 #, php-format
 msgid "Next scan in %s."
 msgstr ""
 
-#: includes/class-admin.php:1015
+#: includes/class-admin.php:1022
 msgid "Email alerts"
 msgstr ""
 
-#: includes/class-admin.php:1017
+#: includes/class-admin.php:1024
 msgid "Email me when an automatic scan finds something new and serious"
 msgstr ""
 
-#: includes/class-admin.php:1022
+#: includes/class-admin.php:1029
 msgid "Core and plugin files"
 msgstr ""
 
-#: includes/class-admin.php:1023
+#: includes/class-admin.php:1030
 msgid "Compare WordPress’s own files, and plugins from wordpress.org, with the official copies"
 msgstr ""
 
-#: includes/class-admin.php:1026
+#: includes/class-admin.php:1033
 msgid "PHP error log"
 msgstr ""
 
-#: includes/class-admin.php:1028
+#: includes/class-admin.php:1035
 msgid "found automatically"
 msgstr ""
 
-#: includes/class-admin.php:1029
+#: includes/class-admin.php:1036
 msgid "Where PHP2Shell attempts show up. Leave empty to use the log PHP reports, plus WordPress’s debug.log."
 msgstr ""
 
-#: includes/class-admin.php:1033
+#: includes/class-admin.php:1040
 msgid "Web server access log"
 msgstr ""
 
-#: includes/class-admin.php:1036
+#: includes/class-admin.php:1043
 msgid "Optional. If PHP can read it, scans also look for attack traffic. .gz files work."
 msgstr ""
 
-#: includes/class-admin.php:1040
+#: includes/class-admin.php:1047
 msgid "This website’s PHP"
 msgstr ""
 
 #. translators: 1: PHP version, 2: server type, 3: operating system
-#: includes/class-admin.php:1046
+#: includes/class-admin.php:1053
 #, php-format
 msgid "PHP %1$s on %2$s (%3$s)"
 msgstr ""
 
-#: includes/class-admin.php:1056
+#: includes/class-admin.php:1063
 msgid "Save settings"
 msgstr ""
 
-#: includes/class-admin.php:1080
+#: includes/class-admin.php:1087
 msgid "Critical"
 msgstr ""
 
-#: includes/class-admin.php:1081
+#: includes/class-admin.php:1088
 msgid "High"
 msgstr ""
 
-#: includes/class-admin.php:1082
+#: includes/class-admin.php:1089
 msgid "Medium"
 msgstr ""
 
-#: includes/class-admin.php:1083
+#: includes/class-admin.php:1090
 msgid "Low"
 msgstr ""
 
-#: includes/class-admin.php:1084
+#: includes/class-admin.php:1091
 msgid "Info"
 msgstr ""
 
-#: includes/class-admin.php:1104
+#: includes/class-admin.php:1111
 msgid "Vulnerable — update PHP and WordPress"
 msgstr ""
 
-#: includes/class-admin.php:1107
+#: includes/class-admin.php:1114
 msgid "Vulnerable — PHP needs updating"
 msgstr ""
 
-#: includes/class-admin.php:1110
+#: includes/class-admin.php:1117
 msgid "Vulnerable — update WordPress"
 msgstr ""
 
-#: includes/class-admin.php:1112
+#: includes/class-admin.php:1119
 msgid "Vulnerable"
 msgstr ""
 
-#: includes/class-admin.php:1115
+#: includes/class-admin.php:1122
 msgid "Compromised"
 msgstr ""
 
-#: includes/class-admin.php:1117
+#: includes/class-admin.php:1124
 msgid "Needs review"
 msgstr ""
 
-#: includes/class-admin.php:1118
+#: includes/class-admin.php:1125
 #: includes/class-site-health.php:30
 msgid "No signs of PHP2Shell or wp2shell"
 msgstr ""
 
-#: includes/class-admin.php:1126
+#: includes/class-admin.php:1133
 msgid "No signs of a break-in, but this server’s PHP can be attacked through PHP2Shell. Ask your host to update it — there’s a message ready to send on the scanner page."
 msgstr ""
 
-#: includes/class-admin.php:1127
+#: includes/class-admin.php:1134
 msgid "No signs of a break-in, but this WordPress version can be attacked through wp2shell. Update it now."
 msgstr ""
 
-#: includes/class-admin.php:1130
+#: includes/class-admin.php:1137
 msgid "Strong evidence of an attack. Open the scanner for step-by-step help."
 msgstr ""
 
-#: includes/class-admin.php:1131
+#: includes/class-admin.php:1138
 msgid "Something here needs a closer look today."
 msgstr ""
 
-#: includes/class-admin.php:1132
+#: includes/class-admin.php:1139
 msgid "A few things to confirm, nothing alarming on its own."
 msgstr ""
 
-#: includes/class-admin.php:1133
+#: includes/class-admin.php:1140
 msgid "No known indicators found. Keep PHP and WordPress updated."
 msgstr ""
 
 #. translators: %s: verdict
-#: includes/class-admin.php:1168
+#: includes/class-admin.php:1175
 #, php-format
-msgid "PHP2Shell Scanner: %s"
+msgid "JAT Shell Scanner: %s"
 msgstr ""
 
-#: includes/class-admin.php:1170
+#: includes/class-admin.php:1177
 msgid "See what to do"
 msgstr ""
 
@@ -1045,7 +1040,7 @@ msgstr ""
 #. translators: 1: verdict, 2: site name
 #: includes/class-cron.php:149
 #, php-format
-msgid "[%2$s] PHP2Shell Scanner: %1$s"
+msgid "[%2$s] JAT Shell Scanner: %1$s"
 msgstr ""
 
 #. translators: %s: site URL
@@ -1124,44 +1119,44 @@ msgstr ""
 msgid "Couldn’t create the quarantine folder in the uploads folder. Ask your host to make uploads writable, or remove the file by hand."
 msgstr ""
 
-#: includes/class-fixes.php:451
+#: includes/class-fixes.php:455
 msgid "PHP isn’t allowed to move this file (file permissions). Remove it with your host’s file manager instead."
 msgstr ""
 
-#: includes/class-fixes.php:507
+#: includes/class-fixes.php:511
 msgid "The quarantined copy is missing."
 msgstr ""
 
-#: includes/class-fixes.php:510
+#: includes/class-fixes.php:514
 msgid "Something already exists at the original location, so it wasn’t overwritten."
 msgstr ""
 
-#: includes/class-fixes.php:520
+#: includes/class-fixes.php:524
 msgid "The original folder has been replaced by a link since this was quarantined, so it wasn’t restored. Restore it by hand if you’re sure."
 msgstr ""
 
-#: includes/class-fixes.php:523
+#: includes/class-fixes.php:527
 msgid "The original folder no longer exists and couldn’t be recreated."
 msgstr ""
 
-#: includes/class-fixes.php:529
+#: includes/class-fixes.php:533
 msgid "Couldn’t move it back (file permissions)."
 msgstr ""
 
-#: includes/class-fixes.php:549
-#: includes/class-fixes.php:593
+#: includes/class-fixes.php:553
+#: includes/class-fixes.php:597
 msgid "That account no longer exists."
 msgstr ""
 
-#: includes/class-fixes.php:552
+#: includes/class-fixes.php:556
 msgid "You can’t remove your own admin rights here."
 msgstr ""
 
-#: includes/class-fixes.php:555
+#: includes/class-fixes.php:559
 msgid "This is the only administrator left, so its admin rights weren’t removed. Create your own administrator account first."
 msgstr ""
 
-#: includes/class-fixes.php:558
+#: includes/class-fixes.php:562
 msgid "This is the only network administrator left, so its rights weren’t removed."
 msgstr ""
 
@@ -1230,7 +1225,7 @@ msgid "%1$s is reporting again: “%2$s”."
 msgstr ""
 
 #: includes/class-fleet.php:675
-msgid "This is a test alert from your PHP2Shell Scanner fleet hub. Alerts work."
+msgid "This is a test alert from your JAT Shell Scanner fleet hub. Alerts work."
 msgstr ""
 
 #. translators: %d: number of sites
@@ -1267,7 +1262,7 @@ msgid "PHP2Shell and wp2shell scan"
 msgstr ""
 
 #: includes/class-site-health.php:28
-msgid "Open PHP2Shell Scanner"
+msgid "Open JAT Shell Scanner"
 msgstr ""
 
 #: includes/class-site-health.php:32
@@ -1304,4 +1299,12 @@ msgstr ""
 
 #: includes/class-site-health.php:68
 msgid "The last scan was clean but is old. Scan again to be sure."
+msgstr ""
+
+#: includes/class-updater.php:121
+msgid "Checks whether a site is exposed to, or was broken into through, PHP2Shell (CVE-2026-109618 / CVE-2026-109619) and wp2shell (CVE-2026-63030 / CVE-2026-60137). Read-only."
+msgstr ""
+
+#: includes/class-updater.php:143
+msgid "Could not prepare the update folder."
 msgstr ""

@@ -1,4 +1,4 @@
-/* PHP2Shell & wp2shell Scanner admin. No dependencies. */
+/* JAT Shell Scanner admin. No dependencies. */
 ( function () {
 	'use strict';
 

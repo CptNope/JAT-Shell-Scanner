@@ -672,7 +672,7 @@ class WP2SS_Fleet {
 					$lines[] = sprintf( __( '%1$s is reporting again: “%2$s”.', 'jat-shell-scanner' ), $host( $e ), $label );
 					break;
 				case 'test':
-					$lines[] = __( 'This is a test alert from your PHP2Shell Scanner fleet hub. Alerts work.', 'jat-shell-scanner' );
+					$lines[] = __( 'This is a test alert from your JAT Shell Scanner fleet hub. Alerts work.', 'jat-shell-scanner' );
 					break;
 			}
 			foreach ( array_slice( isset( $e['fresh'] ) ? $e['fresh'] : array(), 0, 5 ) as $m ) {

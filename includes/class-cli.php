@@ -58,10 +58,10 @@ class WP2SS_CLI {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp php2shell scan
-	 *     wp php2shell scan --log=/var/log/nginx/access.log --min=medium
-	 *     wp php2shell scan --format=json > report.json
-	 *     wp @all php2shell scan --format=summary
+	 *     wp jat-shell scan
+	 *     wp jat-shell scan --log=/var/log/nginx/access.log --min=medium
+	 *     wp jat-shell scan --format=json > report.json
+	 *     wp @all jat-shell scan --format=summary
 	 *
 	 * Exit code: 0 = clean or review, 1 = vulnerable or suspicious, 2 = compromised.
 	 *
@@ -174,7 +174,7 @@ class WP2SS_CLI {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp php2shell ignore 3f9a1c2b7d10
+	 *     wp jat-shell ignore 3f9a1c2b7d10
 	 */
 	public function ignore( $args, $assoc ) {
 		foreach ( $args as $id ) {
@@ -197,7 +197,7 @@ class WP2SS_CLI {
 	public function status( $args, $assoc ) {
 		$r = WP2SS_Scanner::last_report();
 		if ( ! $r ) {
-			WP_CLI::error( 'No scan has been run yet. Try: wp php2shell scan' );
+			WP_CLI::error( 'No scan has been run yet. Try: wp jat-shell scan' );
 		}
 		$verdict = WP2SS_Scanner::verdict( $r['findings'] );
 		$format  = WP_CLI\Utils\get_flag_value( $assoc, 'format', 'summary' );
@@ -215,12 +215,12 @@ class WP2SS_CLI {
 	/**
 	 * Apply the one-click fix for a finding (quarantine a file or plugin, or remove admin rights).
 	 *
-	 * Every fix can be undone with `wp php2shell quarantine restore <id>`.
+	 * Every fix can be undone with `wp jat-shell quarantine restore <id>`.
 	 *
 	 * ## OPTIONS
 	 *
 	 * [<id>...]
-	 * : Finding ID(s), from the `id` column of `wp php2shell scan`.
+	 * : Finding ID(s), from the `id` column of `wp jat-shell scan`.
 	 *
 	 * [--all-critical]
 	 * : Fix every critical and high finding that has a file fix (like the dashboard's "Quarantine them" button).
@@ -230,13 +230,13 @@ class WP2SS_CLI {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp php2shell fix 3f9a1c2b7d10
-	 *     wp php2shell fix --all-critical --yes
+	 *     wp jat-shell fix 3f9a1c2b7d10
+	 *     wp jat-shell fix --all-critical --yes
 	 */
 	public function fix( $args, $assoc ) {
 		$report = WP2SS_Scanner::last_report();
 		if ( ! $report ) {
-			WP_CLI::error( 'Run a scan first: wp php2shell scan' );
+			WP_CLI::error( 'Run a scan first: wp jat-shell scan' );
 		}
 		$ids = $args;
 		if ( ! empty( $assoc['all-critical'] ) ) {
@@ -253,7 +253,7 @@ class WP2SS_CLI {
 			WP_CLI::success( 'Nothing to fix.' );
 			return;
 		}
-		WP_CLI::confirm( sprintf( 'Apply %d fix(es)? Each can be undone with `wp php2shell quarantine restore`.', count( $ids ) ), $assoc );
+		WP_CLI::confirm( sprintf( 'Apply %d fix(es)? Each can be undone with `wp jat-shell quarantine restore`.', count( $ids ) ), $assoc );
 		$failed = 0;
 		foreach ( $ids as $id ) {
 			$r = WP2SS_Fixes::apply( $id, 0 );
@@ -295,9 +295,9 @@ class WP2SS_CLI {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp php2shell quarantine list
-	 *     wp php2shell quarantine restore k3j9x0p2q7ab
-	 *     wp php2shell quarantine delete k3j9x0p2q7ab --yes
+	 *     wp jat-shell quarantine list
+	 *     wp jat-shell quarantine restore k3j9x0p2q7ab
+	 *     wp jat-shell quarantine delete k3j9x0p2q7ab --yes
 	 */
 	public function quarantine( $args, $assoc ) {
 		$action = $args[0];
@@ -319,7 +319,7 @@ class WP2SS_CLI {
 			return;
 		}
 		if ( empty( $args[1] ) ) {
-			WP_CLI::error( 'Give the id from `wp php2shell quarantine list`.' );
+			WP_CLI::error( 'Give the id from `wp jat-shell quarantine list`.' );
 		}
 		if ( 'delete' === $action ) {
 			WP_CLI::confirm( 'Delete it for good? This can’t be undone.', $assoc );
@@ -373,16 +373,16 @@ class WP2SS_CLI {
 	 * ## EXAMPLES
 	 *
 	 *     # On the hub site
-	 *     wp php2shell fleet hub
-	 *     wp php2shell fleet list
-	 *     wp php2shell fleet alerts --webhook=https://hooks.slack.com/services/… --email=me@example.com
-	 *     wp php2shell fleet test-alert
-	 *     wp php2shell fleet rescan                       # every site scans within the hour
-	 *     wp php2shell fleet rescan https://shop.example.com
+	 *     wp jat-shell fleet hub
+	 *     wp jat-shell fleet list
+	 *     wp jat-shell fleet alerts --webhook=https://hooks.slack.com/services/… --email=me@example.com
+	 *     wp jat-shell fleet test-alert
+	 *     wp jat-shell fleet rescan                       # every site scans within the hour
+	 *     wp jat-shell fleet rescan https://shop.example.com
 	 *
 	 *     # On every other site
-	 *     wp php2shell fleet join https://hub.example.com 3kd9…
-	 *     wp @all php2shell fleet join https://hub.example.com 3kd9…
+	 *     wp jat-shell fleet join https://hub.example.com 3kd9…
+	 *     wp @all jat-shell fleet join https://hub.example.com 3kd9…
 	 */
 	public function fleet( $args, $assoc ) {
 		$action = $args[0];
@@ -394,7 +394,7 @@ class WP2SS_CLI {
 					$key = trim( (string) fgets( STDIN ) );
 				}
 				if ( empty( $args[1] ) || '' === $key ) {
-					WP_CLI::error( 'Usage: wp php2shell fleet join <hub-url> <key>   (or set WP2SS_FLEET_KEY, or pass - to read the key from standard input)' );
+					WP_CLI::error( 'Usage: wp jat-shell fleet join <hub-url> <key>   (or set WP2SS_FLEET_KEY, or pass - to read the key from standard input)' );
 				}
 				$r = WP2SS_Fleet::save( 'member', $args[1], $key );
 				if ( is_wp_error( $r ) ) {
@@ -422,7 +422,7 @@ class WP2SS_CLI {
 				$s = WP2SS_Fleet::save( 'hub' );
 				WP_CLI::success( 'This site is now the fleet hub.' );
 				WP_CLI::log( 'Run this on each of your other sites:' );
-				WP_CLI::log( sprintf( '  wp php2shell fleet join %s %s', network_home_url(), $s['key'] ) );
+				WP_CLI::log( sprintf( '  wp jat-shell fleet join %s %s', network_home_url(), $s['key'] ) );
 				break;
 
 			case 'rescan':

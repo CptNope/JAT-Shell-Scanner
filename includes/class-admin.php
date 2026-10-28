@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WP2SS_Admin {
 
-	const SLUG = 'wp2shell-scanner';
+	const SLUG = 'jat-shell-scanner';
 
 	public static function init() {
 		add_action( is_multisite() ? 'network_admin_menu' : 'admin_menu', array( __CLASS__, 'menu' ) );
@@ -89,8 +89,8 @@ class WP2SS_Admin {
 	public static function menu() {
 		add_submenu_page(
 			is_multisite() ? 'settings.php' : 'tools.php',
-			__( 'PHP2Shell & wp2shell Scanner', 'jat-shell-scanner' ),
-			__( 'PHP2Shell Scanner', 'jat-shell-scanner' ),
+			__( 'JAT Shell Scanner', 'jat-shell-scanner' ),
+			__( 'JAT Shell Scanner', 'jat-shell-scanner' ),
 			self::cap(),
 			self::SLUG,
 			array( __CLASS__, 'page' )
@@ -201,7 +201,7 @@ class WP2SS_Admin {
 		}
 		?>
 		<div class="wrap wp2ss">
-			<h1 class="wp2ss-title"><?php esc_html_e( 'PHP2Shell & wp2shell Scanner', 'jat-shell-scanner' ); ?></h1>
+			<h1 class="wp2ss-title"><?php esc_html_e( 'JAT Shell Scanner', 'jat-shell-scanner' ); ?></h1>
 			<?php self::render_hero( $report, $job, $ignored ); ?>
 
 			<?php
@@ -812,7 +812,7 @@ class WP2SS_Admin {
 		$sites   = WP2SS_Fleet::sites();
 		$tally   = array_count_values( wp_list_pluck( $sites, 'verdict' ) );
 		$order   = array( 'COMPROMISED', 'SUSPICIOUS', 'VULNERABLE', 'REVIEW', 'CLEAN' );
-		$join    = sprintf( 'wp php2shell fleet join %s %s', network_home_url(), $s['key'] );
+		$join    = sprintf( 'wp jat-shell fleet join %s %s', network_home_url(), $s['key'] );
 		?>
 		<div class="wp2ss-fleet-summary">
 			<?php foreach ( $order as $v ) : ?>
@@ -1172,7 +1172,7 @@ class WP2SS_Admin {
 		?>
 		<div class="notice notice-error is-dismissible wp2ss-notice" data-report="<?php echo esc_attr( $r['id'] ); ?>">
 			<p>
-				<strong><?php echo esc_html( sprintf( /* translators: %s: verdict */ __( 'PHP2Shell Scanner: %s', 'jat-shell-scanner' ), self::verdict_label( $v, $r['findings'] ) ) ); ?></strong> —
+				<strong><?php echo esc_html( sprintf( /* translators: %s: verdict */ __( 'JAT Shell Scanner: %s', 'jat-shell-scanner' ), self::verdict_label( $v, $r['findings'] ) ) ); ?></strong> —
 				<?php echo esc_html( self::verdict_help( $v, $r['findings'] ) ); ?>
 				<a href="<?php echo esc_url( self::url() ); ?>"><?php esc_html_e( 'See what to do', 'jat-shell-scanner' ); ?></a>
 			</p>

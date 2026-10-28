@@ -157,6 +157,7 @@ section "5. Ignore list & exit codes"
 $WP php2shell scan --skip-core --format=summary >/dev/null 2>&1; CODE=$?
 [ "$CODE" = "2" ] && ok "exit code 2 when compromised" || bad "exit code was $CODE, expected 2"
 $WP wp2shell status --format=json >/dev/null 2>&1 && ok "old 'wp wp2shell' command still works" || bad "'wp wp2shell' alias missing"
+$WP jat-shell status --format=json >/dev/null 2>&1 && ok "'wp jat-shell' command works" || bad "'wp jat-shell' command missing"
 ID=$(echo "$R" | jq -r '[.findings[] | select(.message|test("Hidden PHP"))][0].id')
 $WP php2shell ignore "$ID" >/dev/null
 R2=$(scan)
@@ -722,7 +723,7 @@ has   "$R" "$(sev high 'differs from the official copy on wordpress.org: wp2ss-t
 hasnt "$R" "$(msg 'differs from the official copy on wordpress.org: wp2ss-t-org/inc/b.php')" "unchanged plugin file passes"
 has   "$R" "$(sev medium 'isn.t part of Org Test 1.0: wp2ss-t-org/inc/extra.php')" "extra PHP file in a wordpress.org plugin (medium)"
 has   "$R" "$(msg 'Checked [0-9]+ plugin.s. against wordpress.org')" "plugin verification summary"
-hasnt "$R" "$(msg 'differs from the official copy on wordpress.org: wp2shell-scanner/')" "the scanner doesn't check itself against wordpress.org"
+hasnt "$R" "$(msg 'differs from the official copy on wordpress.org: jat-shell-scanner/')" "the scanner doesn't check itself against wordpress.org"
 
 # Clean up for the final section.
 $WP option delete zzt_ok_js zzt_payload zzt_redirect >/dev/null

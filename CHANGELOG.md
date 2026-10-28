@@ -3,7 +3,14 @@
 ## [1.6.0] — 2026-10-28
 
 ### JAT Shell Scanner
-The WordPress.org edition is now called **JAT Shell Scanner** (slug and text domain `jat-shell-scanner`), credited to Jeremy Anderson Tech. Settings, scan history and fleet keys carry over; nothing to redo.
+The plugin is now called **JAT Shell Scanner** everywhere, credited to Jeremy Anderson Tech:
+
+- WordPress.org slug and text domain `jat-shell-scanner`.
+- Menu: **Tools → JAT Shell Scanner**; the page address is now `page=jat-shell-scanner`, and alert emails say JAT Shell Scanner.
+- GitHub: the repository is now [CptNope/JAT-Shell-Scanner](https://github.com/CptNope/JAT-Shell-Scanner) (old links redirect), and the release zip is `jat-shell-scanner.zip`, with folder `jat-shell-scanner` and main file `jat-shell-scanner.php`.
+- WP-CLI: `wp jat-shell`. The old `wp php2shell` and `wp wp2shell` still work.
+
+Copies installed from GitHub before 1.6 don't update to 1.6 by themselves, because the zip and folder names changed. Install 1.6 once by hand; the [README](https://github.com/CptNope/JAT-Shell-Scanner#readme) explains how to keep your settings. Settings, scan history and fleet keys carry over.
 
 ### Changes from the WordPress.org review
 - **Quarantine moved into uploads.** Flagged files now go into the plugin's own folder, `uploads/jat-shell-scanner/quarantine-<random>/` (the main site's uploads on multisite), which is blocked from the web on Apache, LiteSpeed and IIS, has an empty index, and holds only renamed files that can't run. Nothing is written into wp-content itself any more. Items quarantined by earlier GitHub builds stay in the old wp-content folder and can still be restored or deleted from the Quarantine tab; uninstall removes both.
@@ -17,7 +24,7 @@ The WordPress.org edition is now called **JAT Shell Scanner** (slug and text dom
 - No more `phpinfo()`: PHP's build date comes from the date on PHP's own files.
 - No `set_time_limit()` (scans already run in slices within the server's limit), no base64 for stored paths (hex), the public `get_dropins()` instead of a private core function, and WordPress's list of removed core files is read as text instead of loading `update-core.php`.
 - `wp_delete_file()` and `wp_is_writable()` instead of `unlink()` and `is_writable()`.
-- The WordPress.org build has no updater code at all: everything marked `<github-only>` (the GitHub updater and its checksum download) is removed by the build script, and the main file is named `jat-shell-scanner.php`.
+- The WordPress.org build has no updater code at all: everything marked `<github-only>` (the GitHub updater and its checksum download) is removed by the build script.
 - The readme's External services section now lists everything a fleet member sends, including the hourly check-in.
 
 ## [1.5.1] — 2026-10-24

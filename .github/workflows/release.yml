@@ -43,8 +43,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          HEADER=$(grep -m1 -E '^\s*\*\s*Version:' wp2shell-scanner.php | awk '{print $NF}')
-          CONST=$(grep -m1 "define( 'WP2SS_VERSION'" wp2shell-scanner.php | grep -oE "[0-9]+\.[0-9]+\.[0-9]+[^']*")
+          HEADER=$(grep -m1 -E '^\s*\*\s*Version:' jat-shell-scanner.php | awk '{print $NF}')
+          CONST=$(grep -m1 "define( 'WP2SS_VERSION'" jat-shell-scanner.php | grep -oE "[0-9]+\.[0-9]+\.[0-9]+[^']*")
           STABLE=$(grep -m1 -i '^Stable tag:' readme.txt | awk '{print $NF}')
           echo "header=$HEADER const=$CONST readme=$STABLE"
           if [ "$HEADER" != "$CONST" ] || [ "$HEADER" != "$STABLE" ]; then
@@ -60,12 +60,12 @@ jobs:
         if: steps.v.outputs.skip != '1'
         run: |
           V="${{ steps.v.outputs.version }}"
-          git archive --format=tar --prefix=wp2shell-scanner/ HEAD | tar -x -C "$RUNNER_TEMP"
-          php .github/scripts/make-manifest.php "$RUNNER_TEMP/wp2shell-scanner" "$V"
-          cp "$RUNNER_TEMP/wp2shell-scanner/manifest.json" manifest.json
-          (cd "$RUNNER_TEMP" && zip -qr "$GITHUB_WORKSPACE/wp2shell-scanner.zip" wp2shell-scanner)
-          unzip -l wp2shell-scanner.zip
-          sha256sum wp2shell-scanner.zip > wp2shell-scanner.zip.sha256
+          git archive --format=tar --prefix=jat-shell-scanner/ HEAD | tar -x -C "$RUNNER_TEMP"
+          php .github/scripts/make-manifest.php "$RUNNER_TEMP/jat-shell-scanner" "$V"
+          cp "$RUNNER_TEMP/jat-shell-scanner/manifest.json" manifest.json
+          (cd "$RUNNER_TEMP" && zip -qr "$GITHUB_WORKSPACE/jat-shell-scanner.zip" jat-shell-scanner)
+          unzip -l jat-shell-scanner.zip
+          sha256sum jat-shell-scanner.zip > jat-shell-scanner.zip.sha256
 
       - name: Release notes from CHANGELOG.md
         if: steps.v.outputs.skip != '1'
@@ -85,9 +85,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v${{ steps.v.outputs.version }}" \
-            wp2shell-scanner.zip wp2shell-scanner.zip.sha256 manifest.json \
+            jat-shell-scanner.zip jat-shell-scanner.zip.sha256 manifest.json \
             --target "${{ github.event.workflow_run.head_sha }}" \
-            --title "PHP2Shell & wp2shell Scanner v${{ steps.v.outputs.version }}" \
+            --title "JAT Shell Scanner v${{ steps.v.outputs.version }}" \
             --notes-file notes.md
 
   wporg:
