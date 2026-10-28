@@ -1,22 +1,22 @@
-# Copyright (C) 2026 Jeremy Anderson
+# Copyright (C) 2026 Jeremy Anderson Tech
 # This file is distributed under the MIT.
 msgid ""
 msgstr ""
-"Project-Id-Version: Anderson Shell Scanner 1.5.1\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/anderson-shell-scanner/\n"
+"Project-Id-Version: JAT Shell Scanner 1.6.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/jat-shell-scanner\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-24T10:24:34+00:00\n"
+"POT-Creation-Date: 2026-10-28T17:22:27+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
-"X-Domain: anderson-shell-scanner\n"
+"X-Domain: jat-shell-scanner\n"
 
 #. Plugin Name of the plugin
 #: wp2shell-scanner.php
-msgid "Anderson Shell Scanner"
+msgid "JAT Shell Scanner"
 msgstr ""
 
 #. Plugin URI of the plugin
@@ -31,7 +31,7 @@ msgstr ""
 
 #. Author of the plugin
 #: wp2shell-scanner.php
-msgid "Jeremy Anderson"
+msgid "Jeremy Anderson Tech"
 msgstr ""
 
 #. Author URI of the plugin
@@ -154,7 +154,7 @@ msgid "Findings"
 msgstr ""
 
 #: includes/class-admin.php:186
-#: includes/class-fixes.php:95
+#: includes/class-fixes.php:99
 msgid "Quarantine"
 msgstr ""
 
@@ -1068,100 +1068,100 @@ msgstr ""
 msgid "You get this email because automatic scans and alerts are on. Change that on the scanner page."
 msgstr ""
 
-#: includes/class-fixes.php:57
+#: includes/class-fixes.php:61
 msgid "Remove admin rights"
 msgstr ""
 
-#: includes/class-fixes.php:59
+#: includes/class-fixes.php:63
 msgid "Turn this account into a Subscriber? It will lose all admin powers. You can undo this."
 msgstr ""
 
-#: includes/class-fixes.php:78
+#: includes/class-fixes.php:82
 msgid "Quarantine plugin"
 msgstr ""
 
-#: includes/class-fixes.php:80
+#: includes/class-fixes.php:84
 msgid "Deactivate this plugin and move it into quarantine, where it can’t run? You can restore it later."
 msgstr ""
 
-#: includes/class-fixes.php:97
+#: includes/class-fixes.php:101
 msgid "Move this into quarantine, where it can’t run? You can restore it later."
 msgstr ""
 
-#: includes/class-fixes.php:314
+#: includes/class-fixes.php:334
 msgid "That finding isn’t in the latest report. Scan again and retry."
 msgstr ""
 
-#: includes/class-fixes.php:317
+#: includes/class-fixes.php:337
 msgid "This has already been fixed."
 msgstr ""
 
-#: includes/class-fixes.php:321
+#: includes/class-fixes.php:341
 msgid "There’s no automatic fix for this finding."
 msgstr ""
 
-#: includes/class-fixes.php:343
+#: includes/class-fixes.php:363
 msgid "This file has changed since the scan. Scan again, then retry."
 msgstr ""
 
-#: includes/class-fixes.php:369
+#: includes/class-fixes.php:389
 msgid "Fix not found."
 msgstr ""
 
-#: includes/class-fixes.php:389
+#: includes/class-fixes.php:409
 msgid "Quarantined item not found."
 msgstr ""
 
-#: includes/class-fixes.php:393
+#: includes/class-fixes.php:413
 msgid "Refusing to delete something outside the quarantine folder."
 msgstr ""
 
-#: includes/class-fixes.php:409
+#: includes/class-fixes.php:434
 msgid "That location can’t be quarantined safely."
 msgstr ""
 
-#: includes/class-fixes.php:413
-msgid "Couldn’t create the quarantine folder in wp-content. Ask your host to make wp-content writable, or remove the file by hand."
+#: includes/class-fixes.php:438
+msgid "Couldn’t create the quarantine folder in the uploads folder. Ask your host to make uploads writable, or remove the file by hand."
 msgstr ""
 
-#: includes/class-fixes.php:426
+#: includes/class-fixes.php:451
 msgid "PHP isn’t allowed to move this file (file permissions). Remove it with your host’s file manager instead."
 msgstr ""
 
-#: includes/class-fixes.php:482
+#: includes/class-fixes.php:507
 msgid "The quarantined copy is missing."
 msgstr ""
 
-#: includes/class-fixes.php:485
+#: includes/class-fixes.php:510
 msgid "Something already exists at the original location, so it wasn’t overwritten."
 msgstr ""
 
-#: includes/class-fixes.php:495
+#: includes/class-fixes.php:520
 msgid "The original folder has been replaced by a link since this was quarantined, so it wasn’t restored. Restore it by hand if you’re sure."
 msgstr ""
 
-#: includes/class-fixes.php:498
+#: includes/class-fixes.php:523
 msgid "The original folder no longer exists and couldn’t be recreated."
 msgstr ""
 
-#: includes/class-fixes.php:504
+#: includes/class-fixes.php:529
 msgid "Couldn’t move it back (file permissions)."
 msgstr ""
 
-#: includes/class-fixes.php:524
-#: includes/class-fixes.php:568
+#: includes/class-fixes.php:549
+#: includes/class-fixes.php:593
 msgid "That account no longer exists."
 msgstr ""
 
-#: includes/class-fixes.php:527
+#: includes/class-fixes.php:552
 msgid "You can’t remove your own admin rights here."
 msgstr ""
 
-#: includes/class-fixes.php:530
+#: includes/class-fixes.php:555
 msgid "This is the only administrator left, so its admin rights weren’t removed. Create your own administrator account first."
 msgstr ""
 
-#: includes/class-fixes.php:533
+#: includes/class-fixes.php:558
 msgid "This is the only network administrator left, so its rights weren’t removed."
 msgstr ""
 
@@ -1200,65 +1200,65 @@ msgid "The hub didn’t accept the report (HTTP %1$s): %2$s"
 msgstr ""
 
 #. translators: 1: site, 2: new result, 3: old result
-#: includes/class-fleet.php:620
+#: includes/class-fleet.php:656
 #, php-format
 msgid "%1$s is now “%2$s” (was “%3$s”)."
 msgstr ""
 
 #. translators: 1: site, 2: result
-#: includes/class-fleet.php:624
+#: includes/class-fleet.php:660
 #, php-format
 msgid "%1$s joined the fleet: “%2$s”."
 msgstr ""
 
 #. translators: 1: site, 2: result
-#: includes/class-fleet.php:628
+#: includes/class-fleet.php:664
 #, php-format
 msgid "%1$s has new serious findings (“%2$s”)."
 msgstr ""
 
 #. translators: 1: site, 2: time ago
-#: includes/class-fleet.php:632
+#: includes/class-fleet.php:668
 #, php-format
 msgid "%1$s hasn’t reported for %2$s. Its scans may have stopped — or someone switched the scanner off."
 msgstr ""
 
 #. translators: 1: site, 2: result
-#: includes/class-fleet.php:636
+#: includes/class-fleet.php:672
 #, php-format
 msgid "%1$s is reporting again: “%2$s”."
 msgstr ""
 
-#: includes/class-fleet.php:639
+#: includes/class-fleet.php:675
 msgid "This is a test alert from your PHP2Shell Scanner fleet hub. Alerts work."
 msgstr ""
 
 #. translators: %d: number of sites
-#: includes/class-fleet.php:674
+#: includes/class-fleet.php:710
 msgid "PHP2Shell fleet: test alert"
 msgstr ""
 
 #. translators: %d: number of sites
-#: includes/class-fleet.php:674
+#: includes/class-fleet.php:710
 #, php-format
 msgid "PHP2Shell fleet: %d site needs a look"
 msgid_plural "PHP2Shell fleet: %d sites need a look"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-fleet.php:682
+#: includes/class-fleet.php:718
 msgid "Fleet dashboard:"
 msgstr ""
 
-#: includes/class-fleet.php:682
+#: includes/class-fleet.php:718
 msgid "You get this because fleet alerts are on. Change that on the hub’s Fleet tab."
 msgstr ""
 
-#: includes/class-fleet.php:719
+#: includes/class-fleet.php:755
 msgid "Turn on email alerts or add a webhook first."
 msgstr ""
 
-#: includes/class-fleet.php:724
+#: includes/class-fleet.php:760
 msgid "The test alert couldn’t be sent. Check the email address or webhook, and that this site can send email."
 msgstr ""
 
@@ -1304,12 +1304,4 @@ msgstr ""
 
 #: includes/class-site-health.php:68
 msgid "The last scan was clean but is old. Scan again to be sure."
-msgstr ""
-
-#: includes/class-updater.php:121
-msgid "Checks whether a site is exposed to, or was broken into through, PHP2Shell (CVE-2026-109618 / CVE-2026-109619) and wp2shell (CVE-2026-63030 / CVE-2026-60137). Read-only."
-msgstr ""
-
-#: includes/class-updater.php:143
-msgid "Could not prepare the update folder."
 msgstr ""

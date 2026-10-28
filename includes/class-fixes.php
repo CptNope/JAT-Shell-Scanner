@@ -6,7 +6,9 @@
  * one (or runs `wp php2shell fix`), and each can be undone:
  *
  *  - Quarantine: a flagged file or plugin folder is moved into a private,
- *    randomly named folder inside wp-content and renamed so it can't run.
+ *    randomly named folder in this plugin's folder in uploads
+ *    (uploads/jat-shell-scanner/), which is blocked from the web, and
+ *    renamed so it can't run.
  *    It can be restored to where it was, or deleted for good.
  *  - Remove admin rights: a flagged administrator is turned into a
  *    Subscriber (and loses super-admin on multisite). The old roles are kept
@@ -26,7 +28,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WP2SS_Fixes {
 
 	const OPTION     = 'wp2ss_fixes';
-	const DIR_OPTION = 'wp2ss_quarantine_dir';
+	const DIR_OPTION = 'wp2ss_quarantine_folder';
+	/** Builds before 1.6 kept quarantine in wp-content; those records can still be restored or deleted. */
+	const LEGACY_DIR_OPTION = 'wp2ss_quarantine_dir';
 
 	/* ------------------------------------------------------------------ */
 	/* What can be fixed                                                   */
@@ -54,9 +58,9 @@ class WP2SS_Fixes {
 			if ( $id && $id !== get_current_user_id() && get_userdata( $id ) ) {
 				return array(
 					'action'  => 'demote',
-					'label'   => __( 'Remove admin rights', 'anderson-shell-scanner' ),
+					'label'   => __( 'Remove admin rights', 'jat-shell-scanner' ),
 					'target'  => $id,
-					'confirm' => __( 'Turn this account into a Subscriber? It will lose all admin powers. You can undo this.', 'anderson-shell-scanner' ),
+					'confirm' => __( 'Turn this account into a Subscriber? It will lose all admin powers. You can undo this.', 'jat-shell-scanner' ),
 				);
 			}
 			return null;
@@ -68,16 +72,16 @@ class WP2SS_Fixes {
 
 		// A whole plugin folder (wp2shell_<hex>, CMSmap, fake cache plugin, gg-…).
 		if ( 'plugin' === $f['type'] ) {
-			$plugin_dir = wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) );
+			$plugin_dir = WP2SS_Paths::plugins();
 			$path       = wp_normalize_path( $loc );
 			if ( 0 === strpos( $path, $plugin_dir . '/' ) ) {
 				$folder = $plugin_dir . '/' . strtok( substr( $path, strlen( $plugin_dir ) + 1 ), '/' );
 				if ( self::safe_target( $folder ) ) {
 					return array(
 						'action'  => 'quarantine_plugin',
-						'label'   => __( 'Quarantine plugin', 'anderson-shell-scanner' ),
+						'label'   => __( 'Quarantine plugin', 'jat-shell-scanner' ),
 						'target'  => $folder,
-						'confirm' => __( 'Deactivate this plugin and move it into quarantine, where it can’t run? You can restore it later.', 'anderson-shell-scanner' ),
+						'confirm' => __( 'Deactivate this plugin and move it into quarantine, where it can’t run? You can restore it later.', 'jat-shell-scanner' ),
 					);
 				}
 			}
@@ -92,9 +96,9 @@ class WP2SS_Fixes {
 			if ( self::safe_target( $loc ) && @is_file( $loc ) && ! self::through_link( $loc ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 				return array(
 					'action'  => 'quarantine',
-					'label'   => __( 'Quarantine', 'anderson-shell-scanner' ),
+					'label'   => __( 'Quarantine', 'jat-shell-scanner' ),
 					'target'  => wp_normalize_path( $loc ),
-					'confirm' => __( 'Move this into quarantine, where it can’t run? You can restore it later.', 'anderson-shell-scanner' ),
+					'confirm' => __( 'Move this into quarantine, where it can’t run? You can restore it later.', 'jat-shell-scanner' ),
 				);
 			}
 		}
@@ -114,12 +118,12 @@ class WP2SS_Fixes {
 			return false;
 		}
 		$real    = wp_normalize_path( $real );
-		$abs     = wp_normalize_path( untrailingslashit( (string) realpath( ABSPATH ) ) );
-		$content = wp_normalize_path( untrailingslashit( (string) realpath( WP_CONTENT_DIR ) ) );
+		$abs     = WP2SS_Paths::real( WP2SS_Paths::core() );
+		$content = WP2SS_Paths::real( WP2SS_Paths::content() );
+		$plugins = WP2SS_Paths::real( WP2SS_Paths::plugins() );
 		$inside  = 0 === strpos( $real . '/', $abs . '/' ) || 0 === strpos( $real . '/', $content . '/' );
 		if ( ! $inside ) {
-			$plugins = wp_normalize_path( untrailingslashit( (string) realpath( WP_PLUGIN_DIR ) ) );
-			$inside  = $plugins && 0 === strpos( $real . '/', $plugins . '/' );
+			$inside = $plugins && 0 === strpos( $real . '/', $plugins . '/' );
 		}
 		if ( ! $inside ) {
 			return false;
@@ -154,20 +158,25 @@ class WP2SS_Fixes {
 			$content . '/themes',
 			$content . '/uploads',
 			$content . '/mu-plugins',
-			wp_normalize_path( untrailingslashit( (string) realpath( WP_PLUGIN_DIR ) ) ),
-			wp_normalize_path( untrailingslashit( (string) realpath( WP2SS_DIR ) ) ),
+			$plugins,
+			WP2SS_Paths::real( WP2SS_Paths::themes() ),
+			WP2SS_Paths::real( WP2SS_Paths::uploads() ),
+			WP2SS_Paths::real( WP2SS_Paths::mu_plugins() ),
+			WP2SS_Paths::real( WP2SS_DIR ),
+			WP2SS_Paths::storage(),
 			self::qdir(),
+			self::legacy_qdir(),
 		);
 		if ( in_array( $real, $never, true ) ) {
 			return false;
 		}
 		// Nothing inside this plugin's own folder except files it doesn't ship (an attacker's addition).
-		$self = wp_normalize_path( untrailingslashit( (string) realpath( WP2SS_DIR ) ) );
+		$self = WP2SS_Paths::real( WP2SS_DIR );
 		if ( 0 === strpos( $real . '/', $self . '/' ) && ( is_dir( $real ) || in_array( substr( $real, strlen( $self ) + 1 ), WP2SS_Scanner::OWN_PHP, true ) ) ) {
 			return false;
 		}
 		// Whole theme folders are too big a hammer; single files inside them are fine.
-		$themes = wp_normalize_path( untrailingslashit( (string) realpath( get_theme_root() ) ) );
+		$themes = WP2SS_Paths::real( WP2SS_Paths::themes() );
 		if ( is_dir( $real ) && dirname( $real ) === $themes ) {
 			return false;
 		}
@@ -184,12 +193,12 @@ class WP2SS_Fixes {
 		$bases = array_filter(
 			array_unique(
 				array(
-					wp_normalize_path( untrailingslashit( ABSPATH ) ),
-					wp_normalize_path( untrailingslashit( WP_CONTENT_DIR ) ),
-					wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) ),
-					wp_normalize_path( untrailingslashit( (string) realpath( ABSPATH ) ) ),
-					wp_normalize_path( untrailingslashit( (string) realpath( WP_CONTENT_DIR ) ) ),
-					wp_normalize_path( untrailingslashit( (string) realpath( WP_PLUGIN_DIR ) ) ),
+					WP2SS_Paths::core(),
+					WP2SS_Paths::content(),
+					WP2SS_Paths::plugins(),
+					WP2SS_Paths::real( WP2SS_Paths::core() ),
+					WP2SS_Paths::real( WP2SS_Paths::content() ),
+					WP2SS_Paths::real( WP2SS_Paths::plugins() ),
 				)
 			)
 		);
@@ -215,27 +224,38 @@ class WP2SS_Fixes {
 	/* Quarantine folder                                                   */
 	/* ------------------------------------------------------------------ */
 
-	/** The private quarantine folder (created on first use). */
+	/** The private quarantine folder in uploads/jat-shell-scanner (created on first use). */
 	public static function qdir( $create = false ) {
 		$name = get_site_option( self::DIR_OPTION );
-		if ( ! $name || ! preg_match( '/^wp2ss-quarantine-[a-z0-9]{16}$/', $name ) ) {
+		if ( ! $name || ! preg_match( '/^quarantine-[a-z0-9]{16}$/', $name ) ) {
 			if ( ! $create ) {
 				return '';
 			}
-			$name = 'wp2ss-quarantine-' . strtolower( wp_generate_password( 16, false ) );
+			$name = 'quarantine-' . strtolower( wp_generate_password( 16, false ) );
 			update_site_option( self::DIR_OPTION, $name );
 		}
-		$dir = wp_normalize_path( untrailingslashit( WP_CONTENT_DIR ) ) . '/' . $name;
-		if ( $create && ! is_dir( $dir ) ) {
-			if ( ! wp_mkdir_p( $dir ) ) {
-				return '';
-			}
-			// Belt and braces: block web access on Apache, LiteSpeed and IIS. Files are also renamed so nothing can execute.
-			@file_put_contents( $dir . '/.htaccess', "Require all denied\nDeny from all\n" ); // phpcs:ignore
-			@file_put_contents( $dir . '/web.config', '<?xml version="1.0"?><configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>' ); // phpcs:ignore
-			@file_put_contents( $dir . '/index.php', "<?php\n// Silence is golden.\n" ); // phpcs:ignore
+		$base = WP2SS_Paths::storage( $create );
+		if ( '' === $base ) {
+			return '';
+		}
+		$dir = $base . '/' . $name;
+		if ( $create && ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
+			return '';
+		}
+		if ( $create ) {
+			WP2SS_Paths::protect( $dir );
 		}
 		return $dir;
+	}
+
+	/** The wp-content quarantine folder of builds before 1.6, if one exists ('' otherwise). Only read and emptied, never added to. */
+	public static function legacy_qdir() {
+		$name = get_site_option( self::LEGACY_DIR_OPTION );
+		if ( ! $name || ! preg_match( '/^wp2ss-quarantine-[a-z0-9]{16}$/', $name ) ) {
+			return '';
+		}
+		$dir = WP2SS_Paths::content() . '/' . $name;
+		return is_dir( $dir ) ? $dir : '';
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -311,14 +331,14 @@ class WP2SS_Fixes {
 			}
 		}
 		if ( ! $finding ) {
-			return new WP_Error( 'wp2ss_no_finding', __( 'That finding isn’t in the latest report. Scan again and retry.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_finding', __( 'That finding isn’t in the latest report. Scan again and retry.', 'jat-shell-scanner' ) );
 		}
 		if ( self::record_for_finding( $finding_id ) ) {
-			return new WP_Error( 'wp2ss_done', __( 'This has already been fixed.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_done', __( 'This has already been fixed.', 'jat-shell-scanner' ) );
 		}
 		$fix = self::fix_for( $finding );
 		if ( ! $fix ) {
-			return new WP_Error( 'wp2ss_no_fix', __( 'There’s no automatic fix for this finding.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_fix', __( 'There’s no automatic fix for this finding.', 'jat-shell-scanner' ) );
 		}
 
 		$r = array(
@@ -340,7 +360,7 @@ class WP2SS_Fixes {
 		} else {
 			// The file must still be the one the scan saw: never act on something swapped in since.
 			if ( 'quarantine' === $fix['action'] && ! empty( $finding['sha1'] ) && ! hash_equals( (string) $finding['sha1'], (string) @sha1_file( $fix['target'] ) ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
-				return new WP_Error( 'wp2ss_changed', __( 'This file has changed since the scan. Scan again, then retry.', 'anderson-shell-scanner' ) );
+				return new WP_Error( 'wp2ss_changed', __( 'This file has changed since the scan. Scan again, then retry.', 'jat-shell-scanner' ) );
 			}
 			if ( 'quarantine_plugin' === $fix['action'] ) {
 				self::deactivate_folder( $fix['target'] );
@@ -366,7 +386,7 @@ class WP2SS_Fixes {
 	public static function undo( $id ) {
 		$all = self::records();
 		if ( empty( $all[ $id ] ) ) {
-			return new WP_Error( 'wp2ss_no_record', __( 'Fix not found.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_record', __( 'Fix not found.', 'jat-shell-scanner' ) );
 		}
 		$r = $all[ $id ];
 		if ( 'demote' === $r['action'] ) {
@@ -386,11 +406,11 @@ class WP2SS_Fixes {
 	public static function purge( $id ) {
 		$all = self::records();
 		if ( empty( $all[ $id ] ) || 'demote' === $all[ $id ]['action'] ) {
-			return new WP_Error( 'wp2ss_no_record', __( 'Quarantined item not found.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_record', __( 'Quarantined item not found.', 'jat-shell-scanner' ) );
 		}
 		$q = $all[ $id ]['quarantined'];
 		if ( ! self::in_qdir( $q ) ) {
-			return new WP_Error( 'wp2ss_bad_path', __( 'Refusing to delete something outside the quarantine folder.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_bad_path', __( 'Refusing to delete something outside the quarantine folder.', 'jat-shell-scanner' ) );
 		}
 		self::rrmdir( $q );
 		self::drop_record( $id );
@@ -400,17 +420,22 @@ class WP2SS_Fixes {
 	/* ------------------------------------------------------------------ */
 
 	private static function in_qdir( $path ) {
-		$q = self::qdir();
-		return $q && 0 === strpos( wp_normalize_path( $path ) . '/', $q . '/' ) && wp_normalize_path( $path ) !== $q;
+		$path = wp_normalize_path( $path );
+		foreach ( array( self::qdir(), self::legacy_qdir() ) as $q ) {
+			if ( $q && 0 === strpos( $path . '/', $q . '/' ) && $path !== $q ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static function quarantine( $target ) {
 		if ( ! self::safe_target( $target ) ) {
-			return new WP_Error( 'wp2ss_unsafe', __( 'That location can’t be quarantined safely.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_unsafe', __( 'That location can’t be quarantined safely.', 'jat-shell-scanner' ) );
 		}
 		$q = self::qdir( true );
 		if ( ! $q || ! is_writable( $q ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- Checks the plugin's own quarantine folder.
-			return new WP_Error( 'wp2ss_no_qdir', __( 'Couldn’t create the quarantine folder in wp-content. Ask your host to make wp-content writable, or remove the file by hand.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_qdir', __( 'Couldn’t create the quarantine folder in the uploads folder. Ask your host to make uploads writable, or remove the file by hand.', 'jat-shell-scanner' ) );
 		}
 		$real = wp_normalize_path( realpath( $target ) );
 		$sha1 = is_file( $real ) ? (string) @sha1_file( $real ) : ''; // phpcs:ignore WordPress.PHP.NoSilencedErrors
@@ -423,7 +448,7 @@ class WP2SS_Fixes {
 				if ( file_exists( $dest ) && file_exists( $real ) ) {
 					@unlink( $dest ); // phpcs:ignore
 				}
-				return new WP_Error( 'wp2ss_move_failed', __( 'PHP isn’t allowed to move this file (file permissions). Remove it with your host’s file manager instead.', 'anderson-shell-scanner' ) );
+				return new WP_Error( 'wp2ss_move_failed', __( 'PHP isn’t allowed to move this file (file permissions). Remove it with your host’s file manager instead.', 'jat-shell-scanner' ) );
 			}
 		}
 		// Make sure nothing in a quarantined folder can execute, even if the folder is reachable.
@@ -479,10 +504,10 @@ class WP2SS_Fixes {
 
 	private static function restore( $r ) {
 		if ( ! self::in_qdir( $r['quarantined'] ) || ! file_exists( $r['quarantined'] ) ) {
-			return new WP_Error( 'wp2ss_missing', __( 'The quarantined copy is missing.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_missing', __( 'The quarantined copy is missing.', 'jat-shell-scanner' ) );
 		}
 		if ( file_exists( $r['original'] ) ) {
-			return new WP_Error( 'wp2ss_exists', __( 'Something already exists at the original location, so it wasn’t overwritten.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_exists', __( 'Something already exists at the original location, so it wasn’t overwritten.', 'jat-shell-scanner' ) );
 		}
 		// The way back must still be the real folder it came from: no links swapped in since.
 		$original = wp_normalize_path( $r['original'] );
@@ -492,23 +517,23 @@ class WP2SS_Fixes {
 			$exists = dirname( $exists );
 		}
 		if ( self::through_link( $original ) || wp_normalize_path( (string) realpath( $exists ) ) !== $exists ) {
-			return new WP_Error( 'wp2ss_moved', __( 'The original folder has been replaced by a link since this was quarantined, so it wasn’t restored. Restore it by hand if you’re sure.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_moved', __( 'The original folder has been replaced by a link since this was quarantined, so it wasn’t restored. Restore it by hand if you’re sure.', 'jat-shell-scanner' ) );
 		}
 		if ( ! is_dir( $parent ) && ! wp_mkdir_p( $parent ) ) {
-			return new WP_Error( 'wp2ss_parent', __( 'The original folder no longer exists and couldn’t be recreated.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_parent', __( 'The original folder no longer exists and couldn’t be recreated.', 'jat-shell-scanner' ) );
 		}
 		if ( 'dir' === $r['kind'] ) {
 			self::undefang( $r['quarantined'], isset( $r['defang'] ) ? (int) $r['defang'] : 1 );
 		}
 		if ( ! @rename( $r['quarantined'], $r['original'] ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.rename_rename -- Same-filesystem atomic move of a file already checked not to be a link; WP_Filesystem may need FTP credentials and isn't atomic.
-			return new WP_Error( 'wp2ss_move_failed', __( 'Couldn’t move it back (file permissions).', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_move_failed', __( 'Couldn’t move it back (file permissions).', 'jat-shell-scanner' ) );
 		}
 		return true;
 	}
 
 	private static function deactivate_folder( $folder ) {
 		if ( ! function_exists( 'get_plugins' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			WP2SS_Paths::admin_include( 'plugin.php' );
 		}
 		$slug = basename( $folder );
 		foreach ( array_keys( get_plugins() ) as $file ) {
@@ -521,16 +546,16 @@ class WP2SS_Fixes {
 	private static function demote( $user_id ) {
 		$u = get_userdata( $user_id );
 		if ( ! $u ) {
-			return new WP_Error( 'wp2ss_no_user', __( 'That account no longer exists.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_user', __( 'That account no longer exists.', 'jat-shell-scanner' ) );
 		}
 		if ( get_current_user_id() === $user_id ) {
-			return new WP_Error( 'wp2ss_self', __( 'You can’t remove your own admin rights here.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_self', __( 'You can’t remove your own admin rights here.', 'jat-shell-scanner' ) );
 		}
 		if ( ! is_multisite() && count( get_users( array( 'role' => 'administrator', 'fields' => 'ID', 'exclude' => array( $user_id ), 'number' => 1 ) ) ) < 1 ) {
-			return new WP_Error( 'wp2ss_last_admin', __( 'This is the only administrator left, so its admin rights weren’t removed. Create your own administrator account first.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_last_admin', __( 'This is the only administrator left, so its admin rights weren’t removed. Create your own administrator account first.', 'jat-shell-scanner' ) );
 		}
 		if ( is_multisite() && is_super_admin( $user_id ) && count( array_diff( get_super_admins(), array( $u->user_login ) ) ) < 1 ) {
-			return new WP_Error( 'wp2ss_last_admin', __( 'This is the only network administrator left, so its rights weren’t removed.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_last_admin', __( 'This is the only network administrator left, so its rights weren’t removed.', 'jat-shell-scanner' ) );
 		}
 		$roles = array();
 		$sites = is_multisite() ? get_blogs_of_user( $user_id, true ) : array( (object) array( 'userblog_id' => get_current_blog_id() ) );
@@ -550,7 +575,7 @@ class WP2SS_Fixes {
 		}
 		$super = false;
 		if ( is_multisite() && is_super_admin( $user_id ) ) {
-			require_once ABSPATH . 'wp-admin/includes/ms.php';
+			WP2SS_Paths::admin_include( 'ms.php' );
 			$super = revoke_super_admin( $user_id );
 		}
 		// Log them out everywhere.
@@ -565,7 +590,7 @@ class WP2SS_Fixes {
 
 	private static function undemote( $r ) {
 		if ( ! get_userdata( (int) $r['user'] ) ) {
-			return new WP_Error( 'wp2ss_no_user', __( 'That account no longer exists.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_user', __( 'That account no longer exists.', 'jat-shell-scanner' ) );
 		}
 		foreach ( (array) $r['roles'] as $blog => $roles ) {
 			if ( is_multisite() ) {
@@ -581,7 +606,7 @@ class WP2SS_Fixes {
 			}
 		}
 		if ( ! empty( $r['super'] ) ) {
-			require_once ABSPATH . 'wp-admin/includes/ms.php';
+			WP2SS_Paths::admin_include( 'ms.php' );
 			grant_super_admin( (int) $r['user'] );
 		}
 		return true;

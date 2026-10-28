@@ -59,6 +59,7 @@ class WP2SS_Scanner {
 		'includes/class-env.php',
 		'includes/class-fixes.php',
 		'includes/class-fleet.php',
+		'includes/class-paths.php',
 		'includes/class-scanner.php',
 		'includes/class-settings.php',
 		'includes/class-site-health.php',
@@ -523,18 +524,23 @@ class WP2SS_Scanner {
 
 	/**
 	 * Folders to walk, each with the name it appears under in findings.
-	 * wp-content first; then plugin, must-use and upload folders that live elsewhere.
+	 * wp-content first; then plugin, must-use, theme and upload folders that live elsewhere.
 	 */
 	private static function walk_roots() {
-		$content = wp_normalize_path( untrailingslashit( WP_CONTENT_DIR ) );
+		$content = WP2SS_Paths::content();
 		$roots   = array( array( self::enc( $content ), 'wp-content' ) );
 		$extra   = array(
-			'wp-content/plugins'    => WP_PLUGIN_DIR,
-			'wp-content/mu-plugins' => defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : '',
+			'wp-content/plugins'    => WP2SS_Paths::plugins(),
+			'wp-content/mu-plugins' => WP2SS_Paths::mu_plugins(),
+			'wp-content/themes'     => WP2SS_Paths::themes(),
+			'wp-content/uploads'    => WP2SS_Paths::uploads(),
 		);
-		$up = wp_upload_dir( null, false );
-		if ( ! empty( $up['basedir'] ) ) {
-			$extra['wp-content/uploads'] = $up['basedir'];
+		// Theme folders registered somewhere else with register_theme_directory().
+		foreach ( (array) get_theme_roots() as $root ) {
+			$dir = 0 === strpos( (string) $root, '/' ) && is_dir( $root ) ? $root : $content . '/' . ltrim( (string) $root, '/' );
+			if ( is_dir( $dir ) && ! in_array( wp_normalize_path( untrailingslashit( $dir ) ), $extra, true ) ) {
+				$extra[ 'themes:' . basename( $dir ) ] = $dir;
+			}
 		}
 		foreach ( $extra as $label => $dir ) {
 			$dir = wp_normalize_path( untrailingslashit( (string) $dir ) );
@@ -960,11 +966,11 @@ class WP2SS_Scanner {
 	/** 3. Installed plugins. */
 	private function check_plugins() {
 		if ( ! function_exists( 'get_plugins' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			WP2SS_Paths::admin_include( 'plugin.php' );
 		}
 		wp_cache_delete( 'plugins', 'plugins' );
 		$plugins = get_plugins();
-		$dir     = wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) );
+		$dir     = WP2SS_Paths::plugins();
 		$self    = wp_normalize_path( untrailingslashit( WP2SS_DIR ) );
 		$recent  = array();
 
@@ -1021,10 +1027,11 @@ class WP2SS_Scanner {
 
 	/** 4. Must-use plugins run on every request and are invisible on the Plugins screen. */
 	private function check_mu_plugins() {
-		if ( ! defined( 'WPMU_PLUGIN_DIR' ) || ! is_dir( WPMU_PLUGIN_DIR ) ) {
+		$mu = WP2SS_Paths::mu_plugins();
+		if ( '' === $mu ) {
 			return;
 		}
-		foreach ( (array) glob( WPMU_PLUGIN_DIR . '/*.php' ) as $f ) {
+		foreach ( (array) glob( $mu . '/*.php' ) as $f ) {
 			$m = @filemtime( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 			if ( ! $m || $m < $this->sig['disclosure_ts'] ) {
 				continue;
@@ -1175,9 +1182,9 @@ class WP2SS_Scanner {
 	 */
 	private function check_dropins() {
 		if ( ! function_exists( '_get_dropins' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			WP2SS_Paths::admin_include( 'plugin.php' );
 		}
-		$dir = wp_normalize_path( untrailingslashit( WP_CONTENT_DIR ) );
+		$dir = WP2SS_Paths::content(); // Drop-ins live in the content folder by definition.
 		foreach ( array_keys( _get_dropins() ) as $name ) {
 			$f = "$dir/$name";
 			if ( ! is_file( $f ) || is_link( $f ) ) {
@@ -1363,8 +1370,8 @@ class WP2SS_Scanner {
 
 	/** 10. The site root: hidden PHP, PHP auto-loaded into every request, wp-config.php. */
 	private function check_root_files() {
-		$abs     = wp_normalize_path( untrailingslashit( ABSPATH ) );
-		$content = wp_normalize_path( untrailingslashit( WP_CONTENT_DIR ) );
+		$abs     = WP2SS_Paths::core();
+		$content = WP2SS_Paths::content();
 
 		$entries = @scandir( $abs ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		foreach ( $entries ? $entries : array() as $name ) {
@@ -1591,7 +1598,7 @@ class WP2SS_Scanner {
 				if ( is_link( $path ) && ! $this->may_follow_link( $path, $dir ) ) {
 					continue;
 				}
-				if ( 0 === strpos( $name, 'wp2ss-quarantine-' ) && wp_normalize_path( $path ) === WP2SS_Fixes::qdir() ) {
+				if ( in_array( wp_normalize_path( $path ), array_filter( array( WP2SS_Fixes::qdir(), WP2SS_Fixes::legacy_qdir() ) ), true ) ) {
 					continue; // Our own quarantine: everything in it has already been dealt with.
 				}
 				if ( preg_match( '/^wp2shell_[0-9a-f]{4,}$/i', $name ) && 0 !== strpos( $rel, 'wp-content/plugins/' ) ) {
@@ -1771,7 +1778,7 @@ class WP2SS_Scanner {
 
 	private function flush_theme_changes() {
 		foreach ( $this->s['themes'] as $theme => $t ) {
-			$this->add( 'low', 'file', sprintf( 'Theme "%s": %d PHP file(s) changed since July 17, 2026.', self::clean_text( $theme ), $t['n'] ), 'Normal after a theme update or your own edits. Otherwise inspect: ' . implode( ', ', $t['files'] ) . ( $t['n'] > 5 ? ' …' : '' ), wp_normalize_path( WP_CONTENT_DIR . '/themes/' . $theme ), 'theme-recent' );
+			$this->add( 'low', 'file', sprintf( 'Theme "%s": %d PHP file(s) changed since July 17, 2026.', self::clean_text( $theme ), $t['n'] ), 'Normal after a theme update or your own edits. Otherwise inspect: ' . implode( ', ', $t['files'] ) . ( $t['n'] > 5 ? ' …' : '' ), WP2SS_Paths::theme( $theme ), 'theme-recent' );
 		}
 		$this->s['themes'] = array();
 	}
@@ -1782,7 +1789,7 @@ class WP2SS_Scanner {
 	 * @return bool True when finished.
 	 */
 	private function check_core() {
-		$abs = wp_normalize_path( ABSPATH );
+		$abs = trailingslashit( WP2SS_Paths::core() );
 
 		if ( null === $this->s['core'] ) {
 			$sums = $this->core_sums( true );
@@ -1824,9 +1831,9 @@ class WP2SS_Scanner {
 
 			// Files WordPress itself deletes on upgrade but FTP-style updates leave behind.
 			$old = array();
-			if ( is_readable( ABSPATH . 'wp-admin/includes/update-core.php' ) ) {
+			if ( is_readable( WP2SS_Paths::admin_file( 'update-core.php' ) ) ) {
 				global $_old_files;
-				require_once ABSPATH . 'wp-admin/includes/update-core.php';
+				WP2SS_Paths::admin_include( 'update-core.php' );
 				$old = is_array( $_old_files ) ? array_flip( $_old_files ) : array();
 			}
 
@@ -1896,7 +1903,7 @@ class WP2SS_Scanner {
 			if ( ! $may_fetch || ! $this->attempt( 'core_fetch' ) ) {
 				return null;
 			}
-			require_once ABSPATH . 'wp-admin/includes/update.php';
+			WP2SS_Paths::admin_include( 'update.php' );
 			$sums = get_core_checksums( $v, $locale ? $locale : 'en_US' );
 			if ( ! is_array( $sums ) && 'en_US' !== $locale ) {
 				$sums = get_core_checksums( $v, 'en_US' );
@@ -1922,7 +1929,7 @@ class WP2SS_Scanner {
 			$this->s['plug'] = array( 'list' => $this->wporg_plugins(), 'i' => 0, 'pos' => 0, 'bad' => array(), 'ok' => array(), 'skipped' => array(), 'other' => array(), 'offline' => false );
 		}
 		$p   = &$this->s['plug'];
-		$dir = wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) );
+		$dir = WP2SS_Paths::plugins();
 
 		while ( $p['i'] < count( $p['list'] ) ) {
 			list( $slug, $version, $name ) = $p['list'][ $p['i'] ];
@@ -2021,10 +2028,10 @@ class WP2SS_Scanner {
 	 */
 	private function wporg_plugins() {
 		if ( ! function_exists( 'get_plugins' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			WP2SS_Paths::admin_include( 'plugin.php' );
 		}
 		$self    = wp_normalize_path( untrailingslashit( WP2SS_DIR ) );
-		$dir     = wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) );
+		$dir     = WP2SS_Paths::plugins();
 		$updates = get_site_transient( 'update_plugins' );
 		$known   = array();
 		foreach ( array( 'response', 'no_update' ) as $k ) {
@@ -2115,7 +2122,7 @@ class WP2SS_Scanner {
 		if ( $el && ( '/' === $el[0] || preg_match( '#^[A-Za-z]:[\\\\/]#', $el ) ) ) {
 			$errs[] = array( $el, false );
 		}
-		$debug = ( defined( 'WP_DEBUG_LOG' ) && is_string( WP_DEBUG_LOG ) ) ? WP_DEBUG_LOG : WP_CONTENT_DIR . '/debug.log';
+		$debug = WP2SS_Paths::debug_log();
 		$errs[] = array( $debug, false );
 
 		$seen = array();

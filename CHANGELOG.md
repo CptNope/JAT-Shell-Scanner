@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.6.0] — 2026-10-28
+
+### JAT Shell Scanner
+The WordPress.org edition is now called **JAT Shell Scanner** (slug and text domain `jat-shell-scanner`), credited to Jeremy Anderson Tech. Settings, scan history and fleet keys carry over; nothing to redo.
+
+### Changes from the WordPress.org review
+- **Quarantine moved into uploads.** Flagged files now go into the plugin's own folder, `uploads/jat-shell-scanner/quarantine-<random>/` (the main site's uploads on multisite), which is blocked from the web on Apache, LiteSpeed and IIS, has an empty index, and holds only renamed files that can't run. Nothing is written into wp-content itself any more. Items quarantined by earlier GitHub builds stay in the old wp-content folder and can still be restored or deleted from the Quarantine tab; uninstall removes both.
+- **Folders from WordPress's functions.** A new `WP2SS_Paths` class finds plugins (from the plugin's own location), must-use plugins (`wp_get_mu_plugins()`), themes (`get_theme_root()`, per theme), uploads (`wp_upload_dir()`) and the debug log (PHP's `error_log` setting). Only WordPress's core folder and the content folder, which have no function, come from `ABSPATH` and `WP_CONTENT_DIR`, read in that one class. Sites that moved wp-content, plugins or themes are scanned in the right places, and theme folders registered with `register_theme_directory()` are scanned too.
+- **Fleet endpoints:** the signature check now runs as the REST route's `permission_callback`.
+- Removed `load_plugin_textdomain()`; WordPress loads translations for the slug itself.
+
 ## [1.5.1] — 2026-10-24
 
 ### Latest PHP2Shell intel (October 22–24)

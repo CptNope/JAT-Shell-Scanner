@@ -103,7 +103,7 @@ class WP2SS_Fleet {
 	public static function save( $mode, $hub = '', $key = '' ) {
 		$s = self::settings();
 		if ( ! in_array( $mode, array( 'off', 'hub', 'member' ), true ) ) {
-			return new WP_Error( 'wp2ss_mode', __( 'Unknown fleet mode.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_mode', __( 'Unknown fleet mode.', 'jat-shell-scanner' ) );
 		}
 		$s['mode'] = $mode;
 		if ( 'hub' === $mode && strlen( $s['key'] ) < 32 ) {
@@ -117,10 +117,10 @@ class WP2SS_Fleet {
 			}
 			// Plain URL check: wp_http_validate_url() would refuse hubs on a private network or a non-standard port.
 			if ( ! $hub || ! filter_var( $hub, FILTER_VALIDATE_URL ) || ! preg_match( '#^https?://#i', $hub ) ) {
-				return new WP_Error( 'wp2ss_hub', __( 'Enter the hub site’s address, e.g. https://hub.example.com', 'anderson-shell-scanner' ) );
+				return new WP_Error( 'wp2ss_hub', __( 'Enter the hub site’s address, e.g. https://hub.example.com', 'jat-shell-scanner' ) );
 			}
 			if ( strlen( $key ) < 32 ) {
-				return new WP_Error( 'wp2ss_key', __( 'Paste the fleet key shown on the hub site (it’s 48 characters long).', 'anderson-shell-scanner' ) );
+				return new WP_Error( 'wp2ss_key', __( 'Paste the fleet key shown on the hub site (it’s 48 characters long).', 'jat-shell-scanner' ) );
 			}
 			if ( untrailingslashit( $hub ) !== $s['hub'] ) {
 				$s['enrolled'] = false;
@@ -144,10 +144,10 @@ class WP2SS_Fleet {
 		$to      = trim( (string) $to );
 		$webhook = trim( (string) $webhook );
 		if ( '' !== $to && ! is_email( $to ) ) {
-			return new WP_Error( 'wp2ss_alert_to', __( 'That email address doesn’t look right.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_alert_to', __( 'That email address doesn’t look right.', 'jat-shell-scanner' ) );
 		}
 		if ( '' !== $webhook && ( ! filter_var( $webhook, FILTER_VALIDATE_URL ) || 0 !== stripos( $webhook, 'https://' ) ) ) {
-			return new WP_Error( 'wp2ss_webhook', __( 'The webhook address must start with https:// — copy it from Slack or Discord.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_webhook', __( 'The webhook address must start with https:// — copy it from Slack or Discord.', 'jat-shell-scanner' ) );
 		}
 		$s['alert_email']   = (bool) $email;
 		$s['alert_to']      = $to;
@@ -231,10 +231,10 @@ class WP2SS_Fleet {
 		$s      = self::settings();
 		$report = $report ? $report : WP2SS_Scanner::last_report();
 		if ( 'member' !== $s['mode'] || ! $s['hub'] || ! $s['key'] ) {
-			return new WP_Error( 'wp2ss_not_member', __( 'This site isn’t set up to report to a hub.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_not_member', __( 'This site isn’t set up to report to a hub.', 'jat-shell-scanner' ) );
 		}
 		if ( ! $report ) {
-			return new WP_Error( 'wp2ss_no_report', __( 'Run a scan first.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_report', __( 'Run a scan first.', 'jat-shell-scanner' ) );
 		}
 		$data = self::summary( $report );
 		if ( ! $s['enrolled'] ) {
@@ -266,7 +266,7 @@ class WP2SS_Fleet {
 			)
 		);
 		if ( ! $ok ) {
-			return new WP_Error( 'wp2ss_send_failed', sprintf( /* translators: 1: HTTP code, 2: detail */ __( 'The hub didn’t accept the report (HTTP %1$s): %2$s', 'anderson-shell-scanner' ), $code ? $code : '—', substr( wp_strip_all_tags( (string) $detail ), 0, 200 ) ) );
+			return new WP_Error( 'wp2ss_send_failed', sprintf( /* translators: 1: HTTP code, 2: detail */ __( 'The hub didn’t accept the report (HTTP %1$s): %2$s', 'jat-shell-scanner' ), $code ? $code : '—', substr( wp_strip_all_tags( (string) $detail ), 0, 200 ) ) );
 		}
 		return true;
 	}
@@ -344,8 +344,8 @@ class WP2SS_Fleet {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( __CLASS__, 'receive' ),
-				// Authentication is the HMAC signature checked in receive(); the route is useless without the fleet key.
-				'permission_callback' => '__return_true',
+				// Only your own sites can report: the request must be signed with this hub's fleet key.
+				'permission_callback' => array( __CLASS__, 'authorize_report' ),
 			)
 		);
 		register_rest_route(
@@ -354,12 +354,48 @@ class WP2SS_Fleet {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( __CLASS__, 'receive_poll' ),
-				'permission_callback' => '__return_true', // Same HMAC check as reports.
+				'permission_callback' => array( __CLASS__, 'authorize_poll' ),
 			)
 		);
 	}
 
-	/** Check a signed request. @return array|WP_Error [ data, timestamp ] */
+	/** Requests whose signature has already been checked, so it isn't checked twice. */
+	private static $verified = array();
+
+	/**
+	 * Permission check for reports: the fleet key's signature proves the
+	 * request comes from one of your sites. A site may register here.
+	 *
+	 * @return true|WP_Error
+	 */
+	public static function authorize_report( WP_REST_Request $req ) {
+		return self::authorize( $req, true );
+	}
+
+	/**
+	 * Permission check for check-ins: signed, from a site that has registered.
+	 *
+	 * @return true|WP_Error
+	 */
+	public static function authorize_poll( WP_REST_Request $req ) {
+		return self::authorize( $req, false );
+	}
+
+	private static function authorize( WP_REST_Request $req, $allow_enroll ) {
+		$v = self::verify( $req, $allow_enroll );
+		if ( is_wp_error( $v ) ) {
+			return $v;
+		}
+		self::$verified[ spl_object_hash( $req ) ] = $v;
+		return true;
+	}
+
+	/** The checked request data, from the permission check (or checked now). */
+	private static function verified( WP_REST_Request $req, $allow_enroll ) {
+		$id = spl_object_hash( $req );
+		return isset( self::$verified[ $id ] ) ? self::$verified[ $id ] : self::verify( $req, $allow_enroll );
+	}
+
 	/**
 	 * Check a signed request: the fleet key proves it's one of your sites,
 	 * and the site's own registered secret proves which one.
@@ -423,7 +459,7 @@ class WP2SS_Fleet {
 
 	/** A member checking in: answer whether a new scan was requested. */
 	public static function receive_poll( WP_REST_Request $req ) {
-		$v = self::verify( $req, false );
+		$v = self::verified( $req, false );
 		if ( is_wp_error( $v ) ) {
 			return $v;
 		}
@@ -440,7 +476,7 @@ class WP2SS_Fleet {
 	}
 
 	public static function receive( WP_REST_Request $req ) {
-		$v = self::verify( $req );
+		$v = self::verified( $req, true );
 		if ( is_wp_error( $v ) ) {
 			return $v;
 		}
@@ -617,26 +653,26 @@ class WP2SS_Fleet {
 			switch ( $e['event'] ) {
 				case 'worse':
 					/* translators: 1: site, 2: new result, 3: old result */
-					$lines[] = sprintf( __( '%1$s is now “%2$s” (was “%3$s”).', 'anderson-shell-scanner' ), $host( $e ), $label, WP2SS_Admin::verdict_label( $e['was'] ) );
+					$lines[] = sprintf( __( '%1$s is now “%2$s” (was “%3$s”).', 'jat-shell-scanner' ), $host( $e ), $label, WP2SS_Admin::verdict_label( $e['was'] ) );
 					break;
 				case 'new':
 					/* translators: 1: site, 2: result */
-					$lines[] = sprintf( __( '%1$s joined the fleet: “%2$s”.', 'anderson-shell-scanner' ), $host( $e ), $label );
+					$lines[] = sprintf( __( '%1$s joined the fleet: “%2$s”.', 'jat-shell-scanner' ), $host( $e ), $label );
 					break;
 				case 'findings':
 					/* translators: 1: site, 2: result */
-					$lines[] = sprintf( __( '%1$s has new serious findings (“%2$s”).', 'anderson-shell-scanner' ), $host( $e ), $label );
+					$lines[] = sprintf( __( '%1$s has new serious findings (“%2$s”).', 'jat-shell-scanner' ), $host( $e ), $label );
 					break;
 				case 'stale':
 					/* translators: 1: site, 2: time ago */
-					$lines[] = sprintf( __( '%1$s hasn’t reported for %2$s. Its scans may have stopped — or someone switched the scanner off.', 'anderson-shell-scanner' ), $host( $e ), human_time_diff( (int) $e['last'] ) );
+					$lines[] = sprintf( __( '%1$s hasn’t reported for %2$s. Its scans may have stopped — or someone switched the scanner off.', 'jat-shell-scanner' ), $host( $e ), human_time_diff( (int) $e['last'] ) );
 					break;
 				case 'back':
 					/* translators: 1: site, 2: result */
-					$lines[] = sprintf( __( '%1$s is reporting again: “%2$s”.', 'anderson-shell-scanner' ), $host( $e ), $label );
+					$lines[] = sprintf( __( '%1$s is reporting again: “%2$s”.', 'jat-shell-scanner' ), $host( $e ), $label );
 					break;
 				case 'test':
-					$lines[] = __( 'This is a test alert from your PHP2Shell Scanner fleet hub. Alerts work.', 'anderson-shell-scanner' );
+					$lines[] = __( 'This is a test alert from your PHP2Shell Scanner fleet hub. Alerts work.', 'jat-shell-scanner' );
 					break;
 			}
 			foreach ( array_slice( isset( $e['fresh'] ) ? $e['fresh'] : array(), 0, 5 ) as $m ) {
@@ -671,7 +707,7 @@ class WP2SS_Fleet {
 		$url   = add_query_arg( 'tab', 'fleet', WP2SS_Admin::url() );
 		$count = count( $events );
 		/* translators: %d: number of sites */
-		$subject = 1 === $count && 'test' === $events[0]['event'] ? __( 'PHP2Shell fleet: test alert', 'anderson-shell-scanner' ) : sprintf( _n( 'PHP2Shell fleet: %d site needs a look', 'PHP2Shell fleet: %d sites need a look', $count, 'anderson-shell-scanner' ), $count );
+		$subject = 1 === $count && 'test' === $events[0]['event'] ? __( 'PHP2Shell fleet: test alert', 'jat-shell-scanner' ) : sprintf( _n( 'PHP2Shell fleet: %d site needs a look', 'PHP2Shell fleet: %d sites need a look', $count, 'jat-shell-scanner' ), $count );
 
 		$sent = false;
 		if ( $s['alert_email'] ) {
@@ -679,7 +715,7 @@ class WP2SS_Fleet {
 				return 'text/plain'; // Site names and findings come from other sites: never HTML.
 			};
 			add_filter( 'wp_mail_content_type', $plain, 999 );
-			$body = implode( "\n", $lines ) . "\n\n" . __( 'Fleet dashboard:', 'anderson-shell-scanner' ) . ' ' . $url . "\n\n" . __( 'You get this because fleet alerts are on. Change that on the hub’s Fleet tab.', 'anderson-shell-scanner' );
+			$body = implode( "\n", $lines ) . "\n\n" . __( 'Fleet dashboard:', 'jat-shell-scanner' ) . ' ' . $url . "\n\n" . __( 'You get this because fleet alerts are on. Change that on the hub’s Fleet tab.', 'jat-shell-scanner' );
 			$sent = wp_mail( $s['alert_to'] ? $s['alert_to'] : WP2SS_Settings::alert_email(), $subject, $body ) || $sent;
 			remove_filter( 'wp_mail_content_type', $plain, 999 );
 		}
@@ -716,12 +752,12 @@ class WP2SS_Fleet {
 	public static function test_alert() {
 		$s = self::settings();
 		if ( ! $s['alert_email'] && ! $s['alert_webhook'] ) {
-			return new WP_Error( 'wp2ss_no_alerts', __( 'Turn on email alerts or add a webhook first.', 'anderson-shell-scanner' ) );
+			return new WP_Error( 'wp2ss_no_alerts', __( 'Turn on email alerts or add a webhook first.', 'jat-shell-scanner' ) );
 		}
 		delete_site_option( self::QUEUE );
 		self::queue( 'test', array( 'site' => self::own_url(), 'name' => '', 'verdict' => 'CLEAN', 'label' => '' ) );
 		wp_clear_scheduled_hook( self::ALERT_HOOK );
-		return self::send_digest() ? true : new WP_Error( 'wp2ss_alert_failed', __( 'The test alert couldn’t be sent. Check the email address or webhook, and that this site can send email.', 'anderson-shell-scanner' ) );
+		return self::send_digest() ? true : new WP_Error( 'wp2ss_alert_failed', __( 'The test alert couldn’t be sent. Check the email address or webhook, and that this site can send email.', 'jat-shell-scanner' ) );
 	}
 
 	/** Ask one site (by key) or every site to scan at its next check-in. @return int sites asked */

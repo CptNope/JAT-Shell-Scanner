@@ -1,16 +1,16 @@
 <?php
 /**
- * Plugin Name:       Anderson Shell Scanner
+ * Plugin Name:       JAT Shell Scanner
  * Plugin URI:        https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/
  * Description:       Checks whether your site is exposed to — or was broken into through — PHP2Shell (CVE-2026-109618 / CVE-2026-109619, critical bugs in PHP itself) and wp2shell (CVE-2026-63030 / CVE-2026-60137, a WordPress core bug). Looks at your PHP and WordPress versions, webshells, rogue admins, changed files and server logs. Scans only read; one-click fixes (quarantine, removing admin rights) are optional and can be undone. Includes a self-hosted fleet dashboard for many sites, with alerts.
- * Version:           1.5.1
+ * Version:           1.6.0
  * Requires at least: 6.0
  * Requires PHP:      7.0
- * Author:            Jeremy Anderson
+ * Author:            Jeremy Anderson Tech
  * Author URI:        https://jeremyanderson.tech
  * License:           MIT
  * License URI:       https://opensource.org/licenses/MIT
- * Text Domain:       anderson-shell-scanner
+ * Text Domain:       jat-shell-scanner
  * Domain Path:       /languages
  * Network:           true
  * Update URI:        https://github.com/CptNope/PHP2Shell-WP-scanner
@@ -26,13 +26,13 @@ if ( defined( 'WP2SS_VERSION' ) ) {
 	return; // Another copy is already loaded (e.g. installed twice under different folder names).
 }
 
-define( 'WP2SS_VERSION', '1.5.1' );
+define( 'WP2SS_VERSION', '1.6.0' );
 define( 'WP2SS_FILE', __FILE__ );
 define( 'WP2SS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WP2SS_URL', plugin_dir_url( __FILE__ ) );
 define( 'WP2SS_BASENAME', plugin_basename( __FILE__ ) );
 define( 'WP2SS_REPO', 'CptNope/PHP2Shell-WP-scanner' );
-define( 'WP2SS_WPORG_SLUG', 'anderson-shell-scanner' );
+define( 'WP2SS_WPORG_SLUG', 'jat-shell-scanner' );
 define( 'WP2SS_AUTHOR_URL', 'https://jeremyanderson.tech/' );
 define( 'WP2SS_DOCS_URL', WP2SS_AUTHOR_URL . 'project/php2shell-wp2shell-scanner/' );
 
@@ -45,6 +45,7 @@ define( 'WP2SS_DOCS_URL', WP2SS_AUTHOR_URL . 'project/php2shell-wp2shell-scanner
  */
 define( 'WP2SS_CHANNEL', file_exists( WP2SS_DIR . 'includes/class-updater.php' ) ? 'github' : 'wporg' );
 
+require_once WP2SS_DIR . 'includes/class-paths.php';
 require_once WP2SS_DIR . 'includes/class-scanner.php';
 require_once WP2SS_DIR . 'includes/class-env.php';
 require_once WP2SS_DIR . 'includes/class-settings.php';
@@ -60,11 +61,7 @@ require_once WP2SS_DIR . 'includes/class-fleet.php';
 add_action(
 	'plugins_loaded',
 	function () {
-		if ( 'github' === WP2SS_CHANNEL ) {
-			// WordPress.org loads translations for directory plugins by itself.
-			load_plugin_textdomain( 'anderson-shell-scanner', false, dirname( WP2SS_BASENAME ) . '/languages' ); // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- GitHub edition only.
-		}
-
+		// Translations: WordPress loads them for the plugin's slug by itself (since 4.6).
 		WP2SS_Env::init();
 		WP2SS_Cron::init();
 		if ( 'github' === WP2SS_CHANNEL ) {
