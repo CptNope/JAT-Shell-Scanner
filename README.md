@@ -8,7 +8,7 @@
 [![Latest release](https://img.shields.io/github/v/release/CptNope/PHP2Shell-WP-scanner?cacheSeconds=300)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/CptNope/PHP2Shell-WP-scanner/total?cacheSeconds=3600)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases)
 ![PHP 7.0–8.5](https://img.shields.io/badge/PHP-7.0%E2%80%938.5-777bb4)
-![WordPress 6.0+](https://img.shields.io/badge/WordPress-6.0%2B-21759b)
+![WordPress 6.2+](https://img.shields.io/badge/WordPress-6.2%2B-21759b)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
@@ -167,7 +167,7 @@ You need to check **two** things: your **PHP** version (for PHP2Shell) and your 
 > [!NOTE]
 > **"My version number looks old, but my host says it's patched."** That can be true. Linux distributions (Ubuntu, Debian, AlmaLinux, Rocky, CloudLinux, Red Hat…) often fix PHP **without changing its version number**. The scanner detects this situation and says *"ask your host to confirm"* instead of *"vulnerable"*. If they confirm, click **Ignore** on that finding.
 >
-> On **Ubuntu and Debian** the scanner can usually settle this itself: it reads the installed package version (for example `8.3.6-0ubuntu0.24.04.13`) and knows which package builds carry the fix. On other systems it also looks at **when PHP was built** — a PHP compiled after October 21, 2026 is reported as *probably patched*.
+> On **Ubuntu and Debian** the scanner can usually settle this itself: it reads the installed package version (for example `8.3.6-0ubuntu0.24.04.13`) and knows which package builds carry the fix. On other systems it also looks at **when PHP was built** (the date on PHP’s own files) — a PHP built after October 21, 2026 is reported as *probably patched*.
 
 | Distribution | PHP | First fixed package |
 |---|---|---|
@@ -338,7 +338,7 @@ These reduce the risk; they don't remove it — security firms have shown attack
 |---|---|---|
 | **PHP version** | The version your **website** runs — not just the command line's — against the fixed releases | Critical / High / Medium → *Vulnerable* or *Needs review* |
 | **OS packages** | The installed Ubuntu/Debian package version against the first fixed build; other distributions that may carry the fix without a new version number | High (known-unfixed package) · Info (fixed package) · Medium ("ask your host") |
-| **Build date** | PHP compiled after the fix was published (October 21, 2026) | Medium ("probably patched — confirm") |
+| **Build date** | PHP built after the fix was published (October 21, 2026), from the date on PHP’s own files | Medium ("probably patched — confirm") |
 | **Riskiest setup** | Apache `mod_php`, which researchers rate highest-risk | Noted in the finding |
 | **Temporary protections** | `session.upload_progress.enabled`, `memory_limit`, `fatal_error_backtraces`, `post_max_size`, `max_input_nesting_level`. They make attacks **harder, not impossible** — only a patched PHP fixes it | Info |
 | **PHP history** | Whether this site ran an unpatched PHP **after October 17, 2026**, even if it's patched now | Medium — change your passwords and keys |
@@ -868,7 +868,7 @@ Attacks began **October 17, 2026** — make sure the logs you check go back that
 | Huge folders (100,000+ files) | ✅ | Read one entry at a time; the scan can pause mid-folder |
 | File names in old encodings (Latin-1) | ✅ | Handled without stalling the scan |
 | Windows / IIS | ⚠️ | Should work (paths are normalised) but isn't tested in CI |
-| PHP 7.0 → 8.5 · WordPress 6.0 → 7.x | ✅ | Tested in CI |
+| PHP 7.0 → 8.5 · WordPress 6.2 → 7.x | ✅ | Tested in CI |
 
 ## 17. How it works inside
 

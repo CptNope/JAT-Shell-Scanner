@@ -366,7 +366,7 @@ R=$(scan)
 has "$R" "$(sev info 'package 7.4.3-4ubuntu2.29.esm5. includes the PHP2Shell fix')" "Ubuntu ESM package for PHP 7.4 is recognised as fixed"
 set_php 8.1.34 "" linux 256M "[]" "" 1792627200
 R=$(scan)
-has "$R" "$(sev medium 'was built on 2026-10-22')" "a PHP built after the fix was released is 'probably patched'"
+has "$R" "$(sev medium 'files date from 2026-10-22')" "a PHP built after the fix was released is 'probably patched'"
 
 section "13. PHP2Shell: log evidence"
 set_php 8.3.36

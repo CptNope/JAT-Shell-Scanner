@@ -39,19 +39,24 @@ class WP2SS_Admin {
 		return add_query_arg( $args, $base );
 	}
 
-	private static function guard( $nonce_action ) {
+	/** Stop unless the current user may use the scanner. */
+	private static function require_cap() {
 		if ( ! current_user_can( self::cap() ) ) {
 			wp_die( esc_html__( 'You are not allowed to do that.', 'jat-shell-scanner' ), 403 );
 		}
-		check_admin_referer( $nonce_action );
 	}
 
-	/** Checks permissions and starts buffering, so stray PHP warnings can't corrupt the JSON reply. */
+	/** AJAX: stop unless the current user may use the scanner, and buffer output so stray PHP warnings can't corrupt the JSON reply. Each handler then checks its nonce. */
 	private static function ajax_guard() {
 		ob_start();
-		if ( ! current_user_can( self::cap() ) || ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
-			self::json( false, array( 'message' => __( 'Your session expired. Reload the page and try again.', 'jat-shell-scanner' ) ), 403 );
+		if ( ! current_user_can( self::cap() ) ) {
+			self::json( false, array( 'message' => __( 'You are not allowed to do that.', 'jat-shell-scanner' ) ), 403 );
 		}
+	}
+
+	/** AJAX: the nonce didn't check out. */
+	private static function ajax_expired() {
+		self::json( false, array( 'message' => __( 'Your session expired. Reload the page and try again.', 'jat-shell-scanner' ) ), 403 );
 	}
 
 	private static function json( $ok, $data = null, $status = null ) {
@@ -187,7 +192,8 @@ class WP2SS_Admin {
 			'fleet'      => __( 'Fleet', 'jat-shell-scanner' ),
 			'settings'   => __( 'Settings', 'jat-shell-scanner' ),
 		);
-		$tab     = isset( $_GET['tab'] ) && isset( $tabs[ $_GET['tab'] ] ) ? sanitize_key( $_GET['tab'] ) : 'findings'; // phpcs:ignore WordPress.Security.NonceVerification
+		$tab     = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Which tab to show; changes nothing.
+		$tab     = isset( $tabs[ $tab ] ) ? $tab : 'findings';
 		$q_count = count( WP2SS_Fixes::records() );
 		if ( $q_count ) {
 			/* translators: %d: number of quarantined items or undoable fixes */
@@ -239,7 +245,8 @@ class WP2SS_Admin {
 
 	/** Messages after a form post (?done=…). */
 	private static function flash() {
-		// phpcs:disable WordPress.Security.NonceVerification
+		// Read-only: which message to show after a form was submitted (and checked) elsewhere.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		$map = array(
 			'saved'      => array( 'success', __( 'Settings saved.', 'jat-shell-scanner' ) ),
 			'fixed'      => array( 'success', __( 'Done. Everything that was moved is in the Quarantine tab, where you can undo it.', 'jat-shell-scanner' ) ),
@@ -252,7 +259,7 @@ class WP2SS_Admin {
 			'cleared'    => array( 'success', __( 'The list is empty. Sites reappear (and register again) with their next report.', 'jat-shell-scanner' ) ),
 			'rescan'     => array( 'success', __( 'Scan requested. Sites pick this up within an hour (sites on version 1.2 or older can’t; scan those yourself).', 'jat-shell-scanner' ) ),
 		);
-		$done = isset( $_GET['done'] ) ? sanitize_key( $_GET['done'] ) : '';
+		$done = isset( $_GET['done'] ) ? sanitize_key( wp_unslash( $_GET['done'] ) ) : '';
 		$err = '';
 		if ( ! empty( $_GET['err'] ) ) {
 			$err = (string) get_transient( 'wp2ss_err_' . get_current_user_id() );
@@ -1179,12 +1186,18 @@ class WP2SS_Admin {
 
 	public static function ajax_start() {
 		self::ajax_guard();
-		$state = WP2SS_Scanner::start( WP2SS_Settings::scan_args(), 'manual', ! empty( $_POST['force'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
+			self::ajax_expired();
+		}
+		$state = WP2SS_Scanner::start( WP2SS_Settings::scan_args(), 'manual', ! empty( $_POST['force'] ) );
 		self::json( true, self::state_payload( $state ) );
 	}
 
 	public static function ajax_step() {
 		self::ajax_guard();
+		if ( ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
+			self::ajax_expired();
+		}
 		$r = WP2SS_Scanner::step( self::budget() );
 		if ( null === $r ) {
 			$report = WP2SS_Scanner::last_report();
@@ -1195,14 +1208,20 @@ class WP2SS_Admin {
 
 	public static function ajax_cancel() {
 		self::ajax_guard();
+		if ( ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
+			self::ajax_expired();
+		}
 		WP2SS_Scanner::cancel();
 		self::json( true );
 	}
 
 	public static function ajax_ignore() {
 		self::ajax_guard();
-		$id     = isset( $_POST['id'] ) ? sanitize_text_field( wp_unslash( $_POST['id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		$ignore = ! empty( $_POST['ignore'] ); // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
+			self::ajax_expired();
+		}
+		$id     = isset( $_POST['id'] ) ? sanitize_text_field( wp_unslash( $_POST['id'] ) ) : '';
+		$ignore = ! empty( $_POST['ignore'] );
 		if ( ! WP2SS_Scanner::set_ignored( $id, $ignore, get_current_user_id() ) ) {
 			self::json( false );
 		}
@@ -1211,14 +1230,20 @@ class WP2SS_Admin {
 
 	public static function ajax_dismiss() {
 		self::ajax_guard();
-		$id = isset( $_POST['report'] ) ? preg_replace( '/[^A-Za-z0-9]/', '', wp_unslash( $_POST['report'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput
+		if ( ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
+			self::ajax_expired();
+		}
+		$id = isset( $_POST['report'] ) ? preg_replace( '/[^A-Za-z0-9]/', '', sanitize_text_field( wp_unslash( $_POST['report'] ) ) ) : '';
 		update_user_meta( get_current_user_id(), 'wp2ss_dismissed', $id );
 		self::json( true );
 	}
 
 	public static function ajax_fix() {
 		self::ajax_guard();
-		$id = isset( $_POST['id'] ) ? preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_POST['id'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
+			self::ajax_expired();
+		}
+		$id = isset( $_POST['id'] ) ? preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_POST['id'] ) ) ) : '';
 		$r  = WP2SS_Fixes::apply( $id, get_current_user_id() );
 		if ( is_wp_error( $r ) ) {
 			self::json( false, array( 'message' => $r->get_error_message() ) );
@@ -1228,7 +1253,10 @@ class WP2SS_Admin {
 
 	public static function ajax_undo() {
 		self::ajax_guard();
-		$id = isset( $_POST['record'] ) ? preg_replace( '/[^a-z0-9]/', '', sanitize_text_field( wp_unslash( $_POST['record'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
+			self::ajax_expired();
+		}
+		$id = isset( $_POST['record'] ) ? preg_replace( '/[^a-z0-9]/', '', sanitize_text_field( wp_unslash( $_POST['record'] ) ) ) : '';
 		$r  = WP2SS_Fixes::undo( $id );
 		if ( is_wp_error( $r ) ) {
 			self::json( false, array( 'message' => $r->get_error_message() ) );
@@ -1238,7 +1266,10 @@ class WP2SS_Admin {
 
 	public static function ajax_purge() {
 		self::ajax_guard();
-		$id = isset( $_POST['record'] ) ? preg_replace( '/[^a-z0-9]/', '', sanitize_text_field( wp_unslash( $_POST['record'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! check_ajax_referer( 'wp2ss', 'nonce', false ) ) {
+			self::ajax_expired();
+		}
+		$id = isset( $_POST['record'] ) ? preg_replace( '/[^a-z0-9]/', '', sanitize_text_field( wp_unslash( $_POST['record'] ) ) ) : '';
 		$r  = WP2SS_Fixes::purge( $id );
 		if ( is_wp_error( $r ) ) {
 			self::json( false, array( 'message' => $r->get_error_message() ) );
@@ -1265,13 +1296,15 @@ class WP2SS_Admin {
 
 	/** No-JavaScript fallback: run the whole scan in this request. */
 	public static function post_scan() {
-		self::guard( 'wp2ss_scan' );
+		self::require_cap();
+		check_admin_referer( 'wp2ss_scan' );
 		WP2SS_Scanner::run_all( WP2SS_Settings::scan_args(), 'manual' );
 		self::back( 'findings', array(), false );
 	}
 
 	public static function post_export() {
-		self::guard( 'wp2ss_export' );
+		self::require_cap();
+		check_admin_referer( 'wp2ss_export' );
 		$report = WP2SS_Scanner::last_report();
 		if ( $report ) {
 			$report['ignored'] = array();
@@ -1290,8 +1323,8 @@ class WP2SS_Admin {
 	}
 
 	public static function post_settings() {
-		self::guard( 'wp2ss_settings' );
-		// phpcs:disable WordPress.Security.NonceVerification
+		self::require_cap();
+		check_admin_referer( 'wp2ss_settings' );
 		WP2SS_Settings::save(
 			array(
 				'schedule'  => isset( $_POST['schedule'] ) ? sanitize_key( wp_unslash( $_POST['schedule'] ) ) : 'weekly',
@@ -1302,13 +1335,13 @@ class WP2SS_Admin {
 				'error_log' => isset( $_POST['error_log'] ) ? sanitize_text_field( wp_unslash( $_POST['error_log'] ) ) : '',
 			)
 		);
-		// phpcs:enable
 		self::back( 'settings', array( 'done' => 'saved' ) );
 	}
 
 	/** Quarantine every critical/high item that has a file fix. */
 	public static function post_fix_all() {
-		self::guard( 'wp2ss_fix_all' );
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fix_all' );
 		$report = WP2SS_Scanner::last_report();
 		$errors = array();
 		if ( $report ) {
@@ -1323,12 +1356,11 @@ class WP2SS_Admin {
 	}
 
 	public static function post_fleet() {
-		self::guard( 'wp2ss_fleet' );
-		// phpcs:disable WordPress.Security.NonceVerification
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fleet' );
 		$mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : 'off';
 		$hub  = isset( $_POST['hub'] ) ? esc_url_raw( wp_unslash( $_POST['hub'] ) ) : '';
 		$key  = isset( $_POST['key'] ) ? sanitize_text_field( wp_unslash( $_POST['key'] ) ) : '';
-		// phpcs:enable
 		$r = WP2SS_Fleet::save( $mode, $hub, $key );
 		if ( is_wp_error( $r ) ) {
 			self::back( 'fleet', array( 'err' => $r->get_error_message() ) );
@@ -1343,27 +1375,30 @@ class WP2SS_Admin {
 	}
 
 	public static function post_fleet_send() {
-		self::guard( 'wp2ss_fleet_send' );
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fleet_send' );
 		$r = WP2SS_Fleet::send();
 		self::back( 'fleet', is_wp_error( $r ) ? array( 'err' => $r->get_error_message() ) : array( 'done' => 'sent' ) );
 	}
 
 	public static function post_fleet_rotate() {
-		self::guard( 'wp2ss_fleet_rotate' );
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fleet_rotate' );
 		WP2SS_Fleet::rotate_key();
 		self::back( 'fleet', array( 'done' => 'rotated' ) );
 	}
 
 	public static function post_fleet_forget() {
-		self::guard( 'wp2ss_fleet_forget' );
-		$key = isset( $_POST['site'] ) ? preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_POST['site'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fleet_forget' );
+		$key = isset( $_POST['site'] ) ? preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_POST['site'] ) ) ) : '';
 		WP2SS_Fleet::forget( $key );
 		self::back( 'fleet', array( 'done' => 'forgot' ) );
 	}
 
 	public static function post_fleet_alerts() {
-		self::guard( 'wp2ss_fleet_alerts' );
-		// phpcs:disable WordPress.Security.NonceVerification
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fleet_alerts' );
 		$r    = WP2SS_Fleet::save_alerts(
 			! empty( $_POST['alert_email'] ),
 			isset( $_POST['alert_to'] ) ? sanitize_email( wp_unslash( $_POST['alert_to'] ) ) : '',
@@ -1372,7 +1407,6 @@ class WP2SS_Admin {
 			isset( $_POST['stale_days'] ) ? absint( $_POST['stale_days'] ) : 15
 		);
 		$test = ! empty( $_POST['test'] );
-		// phpcs:enable
 		if ( is_wp_error( $r ) ) {
 			self::back( 'fleet', array( 'err' => $r->get_error_message() ) );
 		}
@@ -1384,27 +1418,31 @@ class WP2SS_Admin {
 
 	public static function post_fleet_test( $check = true ) {
 		if ( false !== $check ) {
-			self::guard( 'wp2ss_fleet_test' );
+			self::require_cap();
+			check_admin_referer( 'wp2ss_fleet_test' );
 		}
 		$t = WP2SS_Fleet::test_alert();
 		self::back( 'fleet', is_wp_error( $t ) ? array( 'err' => $t->get_error_message() ) : array( 'done' => 'tested' ) );
 	}
 
 	public static function post_fleet_rescan() {
-		self::guard( 'wp2ss_fleet_rescan' );
-		$key = isset( $_POST['site'] ) ? preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_POST['site'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fleet_rescan' );
+		$key = isset( $_POST['site'] ) ? preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_POST['site'] ) ) ) : '';
 		WP2SS_Fleet::request_rescan( $key ? $key : null );
 		self::back( 'fleet', array( 'done' => 'rescan' ) );
 	}
 
 	public static function post_fleet_clear() {
-		self::guard( 'wp2ss_fleet_clear' );
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fleet_clear' );
 		WP2SS_Fleet::clear();
 		self::back( 'fleet', array( 'done' => 'cleared' ) );
 	}
 
 	public static function post_fleet_csv() {
-		self::guard( 'wp2ss_fleet_csv' );
+		self::require_cap();
+		check_admin_referer( 'wp2ss_fleet_csv' );
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="php2shell-fleet-' . gmdate( 'Ymd' ) . '.csv"' );

@@ -52,6 +52,7 @@ class WP2SS_Scanner {
 	/** PHP files that ship with this plugin (used when there is no release manifest). */
 	const OWN_PHP = array(
 		'wp2shell-scanner.php',
+		'jat-shell-scanner.php', // The main file's name in the WordPress.org build.
 		'uninstall.php',
 		'includes/class-admin.php',
 		'includes/class-cli.php',
@@ -63,7 +64,9 @@ class WP2SS_Scanner {
 		'includes/class-scanner.php',
 		'includes/class-settings.php',
 		'includes/class-site-health.php',
+		// <github-only>
 		'includes/class-updater.php',
+		// </github-only>
 		'includes/signatures.php',
 		'tests/false-positives.php', // Only present in a GitHub source download.
 	);
@@ -458,13 +461,13 @@ class WP2SS_Scanner {
 		$token = time() . '|' . wp_generate_password( 8, false );
 
 		for ( $try = 0; $try < 2; $try++ ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
-			$ok = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO `$table` (option_name, option_value, autoload) VALUES (%s, %s, 'no')", self::LOCK_NAME, $token ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- An atomic lock on the options table's unique key; the options API can't do that.
+			$ok = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, 'no')", $table, self::LOCK_NAME, $token ) );
 			if ( $ok ) {
 				return $token;
 			}
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
-			$held = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM `$table` WHERE option_name = %s", self::LOCK_NAME ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- An atomic lock on the options table's unique key; the options API can't do that.
+			$held = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM %i WHERE option_name = %s", $table, self::LOCK_NAME ) );
 			if ( null === $held ) {
 				continue; // Released between our two queries.
 			}
@@ -472,8 +475,8 @@ class WP2SS_Scanner {
 				return false;
 			}
 			// Stale lock from a request that died: remove exactly that one, then retry.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
-			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s AND option_value = %s", self::LOCK_NAME, $held ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- An atomic lock on the options table's unique key; the options API can't do that.
+			$wpdb->query( $wpdb->prepare( "DELETE FROM %i WHERE option_name = %s AND option_value = %s", $table, self::LOCK_NAME, $held ) );
 		}
 		return false;
 	}
@@ -482,11 +485,11 @@ class WP2SS_Scanner {
 		global $wpdb;
 		$table = self::lock_table();
 		if ( null === $token ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
-			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s", self::LOCK_NAME ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- An atomic lock on the options table's unique key; the options API can't do that.
+			$wpdb->query( $wpdb->prepare( "DELETE FROM %i WHERE option_name = %s", $table, self::LOCK_NAME ) );
 		} elseif ( $token ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is WordPress's own options table name.
-			$wpdb->query( $wpdb->prepare( "DELETE FROM `$table` WHERE option_name = %s AND option_value = %s", self::LOCK_NAME, $token ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- An atomic lock on the options table's unique key; the options API can't do that.
+			$wpdb->query( $wpdb->prepare( "DELETE FROM %i WHERE option_name = %s AND option_value = %s", $table, self::LOCK_NAME, $token ) );
 		}
 	}
 
@@ -506,11 +509,11 @@ class WP2SS_Scanner {
 	}
 
 	private static function enc( $path ) {
-		return self::is_utf8( $path ) ? $path : 'b64:' . base64_encode( $path ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
+		return self::is_utf8( $path ) ? $path : 'hex:' . bin2hex( $path ); // Paths that aren't UTF-8 can't be stored as JSON as they are.
 	}
 
 	private static function dec( $path ) {
-		return 0 === strpos( $path, 'b64:' ) ? (string) base64_decode( substr( $path, 4 ) ) : $path; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
+		return 0 === strpos( $path, 'hex:' ) && ctype_xdigit( substr( $path, 4 ) ) ? (string) hex2bin( substr( $path, 4 ) ) : $path;
 	}
 
 	/** Text safe to store and show: invalid UTF-8 (e.g. Latin-1 file names) is made printable. */
@@ -561,9 +564,6 @@ class WP2SS_Scanner {
 	}
 
 	private function work( $budget ) {
-		if ( function_exists( 'set_time_limit' ) && false === strpos( (string) ini_get( 'disable_functions' ), 'set_time_limit' ) ) {
-			@set_time_limit( (int) max( 60, $budget * 3 ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- Scans run in short slices; only raised when the host allows it.
-		}
 		$this->deadline = microtime( true ) + max( 0.0005, (float) $budget );
 
 		while ( 'done' !== $this->s['phase'] && ! $this->out_of_time() ) {
@@ -778,7 +778,7 @@ class WP2SS_Scanner {
 				break;
 
 			case 'build-after-fix':
-				$this->add( 'medium', 'php', sprintf( 'PHP %s is older than the PHP2Shell fix by number, but was built on %s — after the fix came out — so it probably carries a backport.%s', $v, gmdate( 'Y-m-d', (int) $e['build'] ), $where ), 'Ask your host to confirm CVE-2026-109618 and CVE-2026-109619 are fixed in this build, then click Ignore.' . $risk, '', 'php-status' );
+				$this->add( 'medium', 'php', sprintf( 'PHP %s is older than the PHP2Shell fix by number, but its files date from %s — after the fix came out — so it probably carries a backport.%s', $v, gmdate( 'Y-m-d', (int) $e['build'] ), $where ), 'Ask your host to confirm CVE-2026-109618 and CVE-2026-109619 are fixed in this build, then click Ignore.' . $risk, '', 'php-status' );
 				break;
 
 			case 'vulnerable':
@@ -1181,11 +1181,11 @@ class WP2SS_Scanner {
 	 * any that changed since the attacks began.
 	 */
 	private function check_dropins() {
-		if ( ! function_exists( '_get_dropins' ) ) {
+		if ( ! function_exists( 'get_dropins' ) ) {
 			WP2SS_Paths::admin_include( 'plugin.php' );
 		}
 		$dir = WP2SS_Paths::content(); // Drop-ins live in the content folder by definition.
-		foreach ( array_keys( _get_dropins() ) as $name ) {
+		foreach ( array_keys( get_dropins() ) as $name ) {
 			$f = "$dir/$name";
 			if ( ! is_file( $f ) || is_link( $f ) ) {
 				continue;
@@ -1275,9 +1275,9 @@ class WP2SS_Scanner {
 			list( $match, $values ) = $this->like_any( 'option_value', $this->sig['db_needles'] );
 			// WP-Cron's own option is checked by check_cron(); transients are caches; wp2ss_ is this plugin.
 			$values = array_merge( $values, array( $wpdb->esc_like( '_transient_' ) . '%', $wpdb->esc_like( '_site_transient_' ) . '%', $wpdb->esc_like( 'wp2ss_' ) . '%' ) );
-			// $table is a WordPress table name and $match only placeholders, both built above; $values fills them all.
+			// $match is only "option_value LIKE %s OR …" placeholders, built by like_any(); the table and $values fill them all.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber,PluginCheck.Security.DirectDB.UnescapedDBParameter
-			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT option_name, option_value FROM `$table` WHERE $match AND option_name <> 'cron' AND option_name NOT LIKE %s AND option_name NOT LIKE %s AND option_name NOT LIKE %s LIMIT 200", $values ), ARRAY_N );
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT option_name, option_value FROM %i WHERE $match AND option_name <> 'cron' AND option_name NOT LIKE %s AND option_name NOT LIKE %s AND option_name NOT LIKE %s LIMIT 200", array_merge( array( $table ), $values ) ), ARRAY_N );
 			foreach ( (array) $rows as $row ) {
 				$value = substr( (string) $row[1], 0, self::MAX_READ );
 				$hit   = $this->match_stored( $value );
@@ -1300,9 +1300,9 @@ class WP2SS_Scanner {
 			$table = $t[0] . 'posts';
 			list( $match, $values ) = $this->like_any( 'post_content', $this->sig['post_needles'] );
 			array_unshift( $values, $since );
-			// $table is a WordPress table name and $match only placeholders, both built above.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
-			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_type, post_title, post_content FROM `$table` WHERE post_modified_gmt >= %s AND post_type NOT IN ('revision', 'customize_changeset', 'oembed_cache') AND $match ORDER BY post_modified_gmt DESC LIMIT 300", $values ), ARRAY_A );
+			// $match is only "post_content LIKE %s OR …" placeholders, built by like_any(); the table and $values fill them all.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber,PluginCheck.Security.DirectDB.UnescapedDBParameter
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_type, post_title, post_content FROM %i WHERE post_modified_gmt >= %s AND post_type NOT IN ('revision', 'customize_changeset', 'oembed_cache') AND $match ORDER BY post_modified_gmt DESC LIMIT 300", array_merge( array( $table ), $values ) ), ARRAY_A );
 			$shown = 0;
 			$more  = 0;
 			foreach ( (array) $rows as $p ) {
@@ -1475,9 +1475,17 @@ class WP2SS_Scanner {
 	 * this version, or null when they can't be fetched (then only unexpected PHP is flagged).
 	 */
 	private function own_manifest() {
-		if ( 'wporg' === WP2SS_CHANNEL ) {
-			return self::wporg_manifest();
+		// <github-only>
+		if ( 'github' === WP2SS_CHANNEL ) {
+			return $this->github_manifest();
 		}
+		// </github-only>
+		return self::wporg_manifest();
+	}
+
+	// <github-only>
+	/** GitHub build: GitHub's copy of the release manifest when reachable (cached), else the shipped manifest.json. */
+	private function github_manifest() {
 		$local_raw = @file_get_contents( WP2SS_DIR . 'manifest.json' ); // phpcs:ignore
 		$local     = $local_raw ? json_decode( $local_raw, true ) : null;
 		if ( ! is_array( $local ) || empty( $local['files'] ) ) {
@@ -1499,6 +1507,24 @@ class WP2SS_Scanner {
 			}
 		}
 		return $local;
+	}
+	// </github-only>
+
+	/**
+	 * Core files WordPress has removed over the years (they may be left on
+	 * disk after updates). Read as text from WordPress's own list in
+	 * wp-admin/includes/update-core.php; that file is never loaded.
+	 *
+	 * @return string[] Paths relative to the WordPress folder.
+	 */
+	private static function old_core_files() {
+		$file = WP2SS_Paths::admin_file( 'update-core.php' );
+		$code = is_readable( $file ) ? (string) file_get_contents( $file ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- A local core file, read as text.
+		if ( ! preg_match( '/\$_old_files\s*=\s*array\s*\((.*?)\n\s*\);/s', $code, $m ) ) {
+			return array();
+		}
+		preg_match_all( "/'([^'\\\\]+)'/", $m[1], $names );
+		return $names[1];
 	}
 
 	/** WordPress.org's published checksums for this exact version (cached), or null. */
@@ -1831,11 +1857,7 @@ class WP2SS_Scanner {
 
 			// Files WordPress itself deletes on upgrade but FTP-style updates leave behind.
 			$old = array();
-			if ( is_readable( WP2SS_Paths::admin_file( 'update-core.php' ) ) ) {
-				global $_old_files;
-				WP2SS_Paths::admin_include( 'update-core.php' );
-				$old = is_array( $_old_files ) ? array_flip( $_old_files ) : array();
-			}
+			$old = array_flip( self::old_core_files() );
 
 			foreach ( array( 'wp-admin', 'wp-includes' ) as $d ) {
 				if ( ! is_dir( $abs . $d ) ) {

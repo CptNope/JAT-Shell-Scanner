@@ -88,17 +88,26 @@ class WP2SS_Env {
 		return substr( $out, 0, 60 );
 	}
 
-	/** When this PHP binary was built (from phpinfo), as a timestamp; 0 if unknown. */
+	/**
+	 * When this PHP was built, as a timestamp; 0 if unknown. Packaged PHP
+	 * (Debian, Ubuntu, RHEL, Alpine…) keeps the build time on its own files,
+	 * so the date of the PHP program or its opcache module is used.
+	 */
 	private static function build_date() {
-		if ( ! function_exists( 'phpinfo' ) || false !== stripos( (string) ini_get( 'disable_functions' ), 'phpinfo' ) ) {
-			return 0;
+		$files = array();
+		if ( defined( 'PHP_BINARY' ) && '' !== PHP_BINARY ) {
+			$files[] = PHP_BINARY;
 		}
-		ob_start();
-		phpinfo( INFO_GENERAL ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_phpinfo -- Output is captured, never shown; only PHP's build date is read from it.
-		$s = (string) ob_get_clean();
-		if ( preg_match( '/Build Date\s*(?:=>|<\/td><td[^>]*>)\s*([A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}(?:\s+\d{2}:\d{2}:\d{2})?)/', $s, $m ) ) {
-			$t = strtotime( preg_replace( '/\s+/', ' ', $m[1] ) . ' UTC' );
-			return $t ? (int) $t : 0;
+		$ext = (string) ini_get( 'extension_dir' );
+		if ( '' !== $ext ) {
+			$files[] = $ext . '/opcache.so';
+			$files[] = $ext . '/php_opcache.dll';
+		}
+		foreach ( $files as $file ) {
+			$time = @filemtime( $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors -- open_basedir may hide it; then the date is just unknown.
+			if ( $time ) {
+				return (int) $time;
+			}
 		}
 		return 0;
 	}

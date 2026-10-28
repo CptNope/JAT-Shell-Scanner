@@ -11,6 +11,15 @@ The WordPress.org edition is now called **JAT Shell Scanner** (slug and text dom
 - **Fleet endpoints:** the signature check now runs as the REST route's `permission_callback`.
 - Removed `load_plugin_textdomain()`; WordPress loads translations for the slug itself.
 
+### Hardening for the next review round
+- Every form and AJAX handler checks its nonce itself, right where it reads the request (no shared helper), and AJAX handlers check the capability first.
+- SQL table names go through `%i` placeholders, so **WordPress 6.2 or newer is now required**.
+- No more `phpinfo()`: PHP's build date comes from the date on PHP's own files.
+- No `set_time_limit()` (scans already run in slices within the server's limit), no base64 for stored paths (hex), the public `get_dropins()` instead of a private core function, and WordPress's list of removed core files is read as text instead of loading `update-core.php`.
+- `wp_delete_file()` and `wp_is_writable()` instead of `unlink()` and `is_writable()`.
+- The WordPress.org build has no updater code at all: everything marked `<github-only>` (the GitHub updater and its checksum download) is removed by the build script, and the main file is named `jat-shell-scanner.php`.
+- The readme's External services section now lists everything a fleet member sends, including the hourly check-in.
+
 ## [1.5.1] — 2026-10-24
 
 ### Latest PHP2Shell intel (October 22–24)
