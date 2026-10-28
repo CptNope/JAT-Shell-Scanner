@@ -1172,4 +1172,4 @@ Found a security problem **in this plugin**? Please report it privately via **Se
 
 MIT — see [LICENSE](LICENSE). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
-Made by [Jeremy Anderson](https://jeremyanderson.tech/) — WordPress builds, custom platforms and AI tools. [Services](https://jeremyanderson.tech/services/) · [Book a call](https://jeremyanderson.tech/book-a-call/)
+Made by Jeremy Anderson of [Jeremy Anderson Tech](https://jeremyanderson.tech/) — WordPress builds, custom platforms and AI tools. [Services](https://jeremyanderson.tech/services/) · [Book a call](https://jeremyanderson.tech/book-a-call/)
