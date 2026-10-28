@@ -1,17 +1,17 @@
 <div align="center">
 
-# 🛡️ PHP2Shell & wp2shell Scanner
+# 🛡️ JAT Shell Scanner
 
 **Find out in two minutes whether your WordPress site is exposed to — or has already been broken into through — the October 2026 PHP2Shell attack on PHP, and the July 2026 wp2shell attack on WordPress.**
 
-[![CI](https://github.com/CptNope/PHP2Shell-WP-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/CptNope/PHP2Shell-WP-scanner/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/CptNope/PHP2Shell-WP-scanner?cacheSeconds=300)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/CptNope/PHP2Shell-WP-scanner/total?cacheSeconds=3600)](https://github.com/CptNope/PHP2Shell-WP-scanner/releases)
+[![CI](https://github.com/CptNope/JAT-Shell-Scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/CptNope/JAT-Shell-Scanner/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/CptNope/JAT-Shell-Scanner?cacheSeconds=300)](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/CptNope/JAT-Shell-Scanner/total?cacheSeconds=3600)](https://github.com/CptNope/JAT-Shell-Scanner/releases)
 ![PHP 7.0–8.5](https://img.shields.io/badge/PHP-7.0%E2%80%938.5-777bb4)
 ![WordPress 6.2+](https://img.shields.io/badge/WordPress-6.2%2B-21759b)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
+### [⬇️ Download jat-shell-scanner.zip](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip)
 
 **Current version: 1.6.0** (October 28, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
 
@@ -217,16 +217,16 @@ No technical skills needed. It takes about two minutes.
 flowchart LR
     A["⬇️ Download<br/>the zip"] --> B["Plugins → Add New Plugin<br/>→ Upload Plugin"]
     B --> C["Install Now<br/>→ Activate"]
-    C --> D["Tools →<br/>PHP2Shell Scanner"]
+    C --> D["Tools →<br/>JAT Shell Scanner"]
     D --> E["Click<br/>Scan now"]
     E --> F["Read your result"]
 ```
 
-1. **Download** [**wp2shell-scanner.zip**](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip). Don't unzip it.
+1. **Download** [**jat-shell-scanner.zip**](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip). Don't unzip it.
 2. Log in to WordPress as an administrator and go to **Plugins → Add New Plugin**.
 3. Click **Upload Plugin** (top of the page), then **Choose File**, pick the zip, and click **Install Now**.
 4. When it says *"Plugin installed successfully"*, click **Activate Plugin**.
-5. Go to **Tools → PHP2Shell Scanner** (or click **Scan** under the plugin on the Plugins screen).
+5. Go to **Tools → JAT Shell Scanner** (or click **Scan** under the plugin on the Plugins screen).
 6. Click **Scan now**. A progress bar shows how it's going. Most sites finish in under a minute; very large ones take a few minutes.
 7. Read your result — see [Understanding your results](#4-understanding-your-results).
 
@@ -249,7 +249,7 @@ flowchart LR
 From then on it **scans automatically once a week** and **emails you** only if something serious and new turns up.
 
 > [!TIP]
-> **Multisite?** Go to **Network Admin → Plugins**, upload, and choose **Network Activate**. The scanner lives under **Network Admin → Settings → PHP2Shell Scanner** and covers the whole network.
+> **Multisite?** Go to **Network Admin → Plugins**, upload, and choose **Network Activate**. The scanner lives under **Network Admin → Settings → JAT Shell Scanner** and covers the whole network.
 
 > [!WARNING]
 > Use the download link above — **not** GitHub's green **Code → Download ZIP** button. That one is the raw source code; it works, but the release zip is the one that can check its own files for tampering.
@@ -399,7 +399,7 @@ These reduce the risk; they don't remove it — security firms have shown attack
 
 ## 7. Settings, automatic scans and email alerts
 
-All settings are on the scanner page (**Tools → PHP2Shell Scanner**, right-hand box):
+All settings are on the scanner page (**Tools → JAT Shell Scanner**, right-hand box):
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -451,10 +451,10 @@ If a finding is something you know about — your own admin account, your host's
 - A finding stays ignored when only a date or count in its text changes (e.g. your host updates their must-use plugin again).
 - **If an ignored file changes, it's flagged again** — so an attacker can't hide inside something you once approved.
 - The ignore list is **signed** with your site's secret keys from `wp-config.php`, so an attacker who only got into the database can't quietly add their own files to it.
-- From WP-CLI: `wp php2shell ignore <id>` and `wp php2shell ignore <id> --undo`.
+- From WP-CLI: `wp jat-shell ignore <id>` and `wp jat-shell ignore <id> --undo`.
 
 > [!CAUTION]
-> Only ignore things you're sure about. If you're unsure, ask your developer or host — or [open an issue](https://github.com/CptNope/PHP2Shell-WP-scanner/issues) describing what was flagged (don't post passwords or full file contents).
+> Only ignore things you're sure about. If you're unsure, ask your developer or host — or [open an issue](https://github.com/CptNope/JAT-Shell-Scanner/issues) describing what was flagged (don't post passwords or full file contents).
 
 ## 9. If your site is compromised
 
@@ -508,7 +508,7 @@ flowchart LR
 
 Safety rules:
 
-- **Scans never change anything** — only a button you click (or `wp php2shell fix`) does.
+- **Scans never change anything** — only a button you click (or `wp jat-shell fix`) does.
 - It refuses to touch WordPress core folders and root files (`wp-login.php`, `xmlrpc.php`…), `wp-config.php`, the site's `.htaccess` and `.user.ini`, the drop-ins (`db.php`, `object-cache.php`, `advanced-cache.php`, `sunrise.php`), the root of `wp-content`, `plugins`, `themes`, `uploads` or `mu-plugins`, a whole theme, or this scanner's own files. Modified core files are left to **Dashboard → Updates → Re-install**.
 - It only moves **the file the scan saw**: if the file changed since (different contents), or was swapped for a link, it refuses and asks you to scan again. Restoring refuses too if the original folder has been replaced by a link.
 - It never removes the rights of the **last administrator**.
@@ -527,7 +527,7 @@ There are two editions, built from the same code:
 | Edition | Install from | Updates from | Self-check against |
 |---|---|---|---|
 | **WordPress.org** — *JAT Shell Scanner* | Plugins → Add New Plugin, search "JAT Shell Scanner" | WordPress.org, like any directory plugin | WordPress.org's published checksums |
-| **GitHub** | The zip on the [releases page](https://github.com/CptNope/PHP2Shell-WP-scanner/releases) | This repository's releases (below) | The release's `manifest.json` |
+| **GitHub** | The zip on the [releases page](https://github.com/CptNope/JAT-Shell-Scanner/releases) | This repository's releases (below) | The release's `manifest.json` |
 
 The WordPress.org edition is the same plugin without `includes/class-updater.php` (WordPress.org plugins may only update through WordPress.org). To switch from GitHub to WordPress.org, delete the GitHub copy and install from the directory — deleting removes settings and quarantine, so restore anything you need first.
 
@@ -541,7 +541,7 @@ sequenceDiagram
     GH-->>WP: Latest release + download link
     alt Newer than installed
         WP->>WP: Shows "update available" on Plugins and Dashboard → Updates
-        WP->>GH: Downloads wp2shell-scanner.zip when you update (or automatically)
+        WP->>GH: Downloads jat-shell-scanner.zip when you update (or automatically)
     else Up to date
         WP->>WP: Nothing to do
     end
@@ -572,7 +572,7 @@ sequenceDiagram
 | "A role has administrator powers" | A plugin (e.g. a membership or shop plugin) changed a role | If you trust that plugin, click **Ignore** |
 | Weekly scans don't seem to run | Quiet site, or WP-Cron disabled with no server cron | Visit the site now and then, or ask your host for a real cron |
 | No alert emails arrive | Your site can't send email | Install an SMTP plugin; check the alert address |
-| "The … stopped early: …" info finding | One check hit an unexpected error; the rest still ran | Please [open an issue](https://github.com/CptNope/PHP2Shell-WP-scanner/issues) with that message |
+| "The … stopped early: …" info finding | One check hit an unexpected error; the rest still ran | Please [open an issue](https://github.com/CptNope/JAT-Shell-Scanner/issues) with that message |
 
 ## 12. FAQ
 
@@ -583,7 +583,7 @@ It can tell whether your PHP version is vulnerable, which temporary protections 
 
 <details><summary><b>Will it change, quarantine or delete anything?</b></summary>
 
-Scans never do. Changes happen only when you click a fix button (or run `wp php2shell fix`): a file is moved into quarantine and renamed so it can't run, or an admin is made a Subscriber. Every fix can be undone from the **Quarantine** tab. See [One-click fixes](#one-click-fixes).
+Scans never do. Changes happen only when you click a fix button (or run `wp jat-shell fix`): a file is moved into quarantine and renamed so it can't run, or an admin is made a Subscriber. Every fix can be undone from the **Quarantine** tab. See [One-click fixes](#one-click-fixes).
 </details>
 
 <details><summary><b>Will it slow my site down?</b></summary>
@@ -616,36 +616,36 @@ No. See [Privacy and stored data](#18-privacy-and-stored-data).
 Yes — deactivate and delete it; it removes everything it stored. Keeping it gives you weekly checks and alerts as new indicators are added.
 </details>
 
-<details><summary><b>Why is the plugin file called wp2shell-scanner?</b></summary>
+<details><summary><b>I installed a version before 1.6 from GitHub. How do I move to 1.6?</b></summary>
 
-Version 1.0 only covered wp2shell. The internal name stayed the same so existing installs keep updating automatically.
+Version 1.6 renamed the plugin to JAT Shell Scanner, including its folder (`jat-shell-scanner`) and this repository, so older copies don't update to it by themselves. Deactivate the old copy, upload `jat-shell-scanner.zip` from the [latest release](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest) and activate it, then remove the old `wp2shell-scanner` folder with your host's file manager or SFTP. Removing it that way keeps your settings, scan history and quarantine; **Delete** on the Plugins screen would erase them.
 </details>
 
 ---
 
 ## 13. WP-CLI reference
 
-Everything the dashboard does is available from the command line. The command is `wp php2shell` (the 1.0 name `wp wp2shell` still works).
+Everything the dashboard does is available from the command line. The command is `wp jat-shell` (the older names `wp php2shell` and `wp wp2shell` still work).
 
 | Command | What it does |
 |---|---|
-| `wp php2shell scan` | Run a full scan now and print the findings |
-| `wp php2shell status` | Show the last result without scanning again |
-| `wp php2shell ignore <id>…` | Mark finding(s) as ignored (`--undo` to restore) |
-| `wp php2shell fix <id>…` | Apply the one-click fix for finding(s); `--all-critical` fixes every critical/high file finding; `--yes` skips the question |
-| `wp php2shell quarantine list` | List quarantined items and other fixes (`--format=json`) |
-| `wp php2shell quarantine restore <id>` | Undo a fix: restore a file/plugin, or give admin rights back |
-| `wp php2shell quarantine delete <id>` | Delete a quarantined item for good |
-| `wp php2shell fleet hub` | Make this site the fleet hub and print its key |
-| `wp php2shell fleet join <hub-url> <key>` | Report this site's results to a hub after every scan |
-| `wp php2shell fleet send` / `status` / `leave` | Report now / show fleet status / stop reporting |
-| `wp php2shell fleet list` | On the hub: every site's latest result (`--format=csv` or `json`) |
-| `wp php2shell fleet rescan [<site>]` | On the hub: ask one site, or all, to scan at their next hourly check-in |
-| `wp php2shell fleet alerts [--email=…] [--webhook=…] [--stale-days=…]` | On the hub: show or change alert settings (`off` turns one off) |
-| `wp php2shell fleet test-alert` | On the hub: send a test alert now |
-| `wp php2shell fleet check-in` | On a member: check in with the hub now (starts a scan if one was requested) |
+| `wp jat-shell scan` | Run a full scan now and print the findings |
+| `wp jat-shell status` | Show the last result without scanning again |
+| `wp jat-shell ignore <id>…` | Mark finding(s) as ignored (`--undo` to restore) |
+| `wp jat-shell fix <id>…` | Apply the one-click fix for finding(s); `--all-critical` fixes every critical/high file finding; `--yes` skips the question |
+| `wp jat-shell quarantine list` | List quarantined items and other fixes (`--format=json`) |
+| `wp jat-shell quarantine restore <id>` | Undo a fix: restore a file/plugin, or give admin rights back |
+| `wp jat-shell quarantine delete <id>` | Delete a quarantined item for good |
+| `wp jat-shell fleet hub` | Make this site the fleet hub and print its key |
+| `wp jat-shell fleet join <hub-url> <key>` | Report this site's results to a hub after every scan |
+| `wp jat-shell fleet send` / `status` / `leave` | Report now / show fleet status / stop reporting |
+| `wp jat-shell fleet list` | On the hub: every site's latest result (`--format=csv` or `json`) |
+| `wp jat-shell fleet rescan [<site>]` | On the hub: ask one site, or all, to scan at their next hourly check-in |
+| `wp jat-shell fleet alerts [--email=…] [--webhook=…] [--stale-days=…]` | On the hub: show or change alert settings (`off` turns one off) |
+| `wp jat-shell fleet test-alert` | On the hub: send a test alert now |
+| `wp jat-shell fleet check-in` | On a member: check in with the hub now (starts a scan if one was requested) |
 
-**`wp php2shell scan` options**
+**`wp jat-shell scan` options**
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -670,24 +670,24 @@ Everything the dashboard does is available from the command line. The command is
 **Examples**
 
 ```bash
-wp php2shell scan                                          # human-readable table
-wp php2shell scan --min=high                               # only what needs action
-wp php2shell scan --error-log=/var/log/php-fpm/www-error.log --log=/var/log/nginx/access.log
-wp php2shell scan --format=json > php2shell-report.json    # full report
-wp php2shell scan --format=summary                         # VULNERABLE  https://example.com  wp 7.1.2  php 8.3.10  critical:0 high:1 medium:0
-wp php2shell scan --format=json | jq -r '.findings[] | select(.severity=="critical") | .message'
-wp php2shell status --format=table
-wp php2shell ignore 3f9a1c2b7d10
-wp php2shell fix 3f9a1c2b7d10                              # quarantine one flagged file
-wp php2shell fix --all-critical --yes                      # quarantine everything critical/high
-wp php2shell quarantine list
-wp php2shell quarantine restore k3j9x0p2q7ab
+wp jat-shell scan                                          # human-readable table
+wp jat-shell scan --min=high                               # only what needs action
+wp jat-shell scan --error-log=/var/log/php-fpm/www-error.log --log=/var/log/nginx/access.log
+wp jat-shell scan --format=json > php2shell-report.json    # full report
+wp jat-shell scan --format=summary                         # VULNERABLE  https://example.com  wp 7.1.2  php 8.3.10  critical:0 high:1 medium:0
+wp jat-shell scan --format=json | jq -r '.findings[] | select(.severity=="critical") | .message'
+wp jat-shell status --format=table
+wp jat-shell ignore 3f9a1c2b7d10
+wp jat-shell fix 3f9a1c2b7d10                              # quarantine one flagged file
+wp jat-shell fix --all-critical --yes                      # quarantine everything critical/high
+wp jat-shell quarantine list
+wp jat-shell quarantine restore k3j9x0p2q7ab
 ```
 
 **Install with WP-CLI**
 
 ```bash
-wp plugin install https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip --activate
+wp plugin install https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip --activate
 # Multisite: add --network
 ```
 
@@ -707,17 +707,17 @@ flowchart LR
     M1 -- "signed HTTPS POST<br/>verdict + counts" --> H
     M2 --> H
     M3 --> H
-    H["Hub site<br/>Tools → PHP2Shell Scanner → Fleet"] --> T["One table, worst first<br/>CSV export"]
+    H["Hub site<br/>Tools → JAT Shell Scanner → Fleet"] --> T["One table, worst first<br/>CSV export"]
 ```
 
 1. On the hub: **Fleet → This site is the hub → Save**. Copy the **fleet key**.
 2. On each other site: **Fleet → Report to a hub**, paste the hub address and key, **Save**, then **Send now**. Or from the command line on all of them at once:
 
 ```bash
-wp php2shell fleet hub                                    # on the hub — prints the key
-wp @all php2shell fleet join https://hub.example.com KEY  # on every other site
-wp @all php2shell scan --format=summary                   # each scan reports in
-wp php2shell fleet list --format=csv > fleet.csv          # on the hub
+wp jat-shell fleet hub                                    # on the hub — prints the key
+wp @all jat-shell fleet join https://hub.example.com KEY  # on every other site
+wp @all jat-shell scan --format=summary                   # each scan reports in
+wp jat-shell fleet list --format=csv > fleet.csv          # on the hub
 ```
 
 What a member sends (and nothing else):
@@ -750,7 +750,7 @@ sequenceDiagram
 - Reinstalled the scanner on a member? Click **Remove** on its row on the hub, then report again — it registers afresh. **Empty the list** does that for every site.
 - If the fleet key leaks, **Make a new key** on the hub and re-join the members. Use HTTPS for the hub — the screen warns you if you don't.
 - Members only send to public addresses. For a hub on a private network (`10.x`, `192.168.x`, `localhost`), add `define( 'WP2SS_FLEET_PRIVATE_HUB', true );` to each member's `wp-config.php`.
-- To keep the key out of your shell history and process list: `WP2SS_FLEET_KEY=… wp php2shell fleet join https://hub.example.com`, or `… fleet join https://hub.example.com - < keyfile`.
+- To keep the key out of your shell history and process list: `WP2SS_FLEET_KEY=… wp jat-shell fleet join https://hub.example.com`, or `… fleet join https://hub.example.com - < keyfile`.
 
 ### Fleet alerts
 
@@ -769,20 +769,20 @@ The hub can tell you when something changes, so you don't have to keep checking:
 - Messages are plain text; anything that could ping a channel (`@everyone`, `<!channel>`) or add links is neutralised, since site names and findings come from other sites.
 
 ```bash
-wp php2shell fleet alerts --email=ops@agency.example --webhook=https://hooks.slack.com/services/… --stale-days=10
-wp php2shell fleet test-alert
+wp jat-shell fleet alerts --email=ops@agency.example --webhook=https://hooks.slack.com/services/… --stale-days=10
+wp jat-shell fleet test-alert
 ```
 
 ### Asking sites to scan again
 
-**Scan again** on a row (or **Ask all sites to scan**) asks members to scan at their next check-in. Members on 1.3 or later check in with the hub **every hour**, so the new result arrives within about an hour — useful right after you've patched a server. From the command line: `wp php2shell fleet rescan` (all) or `wp php2shell fleet rescan https://shop.example`.
+**Scan again** on a row (or **Ask all sites to scan**) asks members to scan at their next check-in. Members on 1.3 or later check in with the hub **every hour**, so the new result arrives within about an hour — useful right after you've patched a server. From the command line: `wp jat-shell fleet rescan` (all) or `wp jat-shell fleet rescan https://shop.example`.
 
 ### With WP-CLI only
 
 ```mermaid
 flowchart LR
     A["Your sites"] --> B["Install / update the plugin<br/>wp plugin install URL --activate --force"]
-    B --> C["wp php2shell scan --format=summary"]
+    B --> C["wp jat-shell scan --format=summary"]
     C --> D{"Exit code"}
     D -- 0 --> E["🟢 OK"]
     D -- 1 --> F["🟠 Patch PHP / WordPress, or review"]
@@ -792,16 +792,16 @@ flowchart LR
 **With WP-CLI aliases** (`@all` defined in `wp-cli.yml`):
 
 ```bash
-URL=https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip
+URL=https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip
 wp @all plugin install "$URL" --activate --force
-wp @all php2shell scan --format=summary
+wp @all jat-shell scan --format=summary
 ```
 
 **Every WordPress on one server**, flagging the bad ones:
 
 ```bash
 #!/usr/bin/env bash
-URL=https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip
+URL=https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip
 for wp in $(find /var/www /home -maxdepth 4 -name wp-config.php -printf '%h\n' 2>/dev/null); do
   wp --path="$wp" plugin install "$URL" --activate --force --quiet 2>/dev/null
   wp --path="$wp" php2shell scan --format=summary 2>/dev/null
@@ -849,7 +849,7 @@ Logs let the scanner see attack *attempts*, not just leftovers. Both are optiona
 | Plesk | `/var/www/vhosts/<your-domain>/logs/access_log` |
 | Managed WordPress hosts | Usually not readable by PHP — use the host's log viewer, or ask support |
 
-Attacks began **October 17, 2026** — make sure the logs you check go back that far. Rotated logs (`access.log.2.gz`) work too: `wp php2shell scan --log=/var/log/nginx/access.log.2.gz`.
+Attacks began **October 17, 2026** — make sure the logs you check go back that far. Rotated logs (`access.log.2.gz`) work too: `wp jat-shell scan --log=/var/log/nginx/access.log.2.gz`.
 
 ## 16. Hosting compatibility
 
@@ -876,7 +876,7 @@ Attacks began **October 17, 2026** — make sure the logs you check go back that
 
 | File | Job |
 |---|---|
-| `wp2shell-scanner.php` | Plugin header, constants, loads everything |
+| `jat-shell-scanner.php` | Plugin header, constants, loads everything |
 | `includes/signatures.php` | **All indicators** — fixed PHP and WordPress versions, log patterns, hashes, IPs, code patterns. Easy to review and extend. |
 | `includes/class-scanner.php` | The scan engine: resumable job, locking, every check |
 | `includes/class-env.php` | Records the **website's** PHP (version, server type, php.ini settings, history) |
@@ -895,7 +895,7 @@ flowchart TB
     subgraph Triggers
         UI["Dashboard<br/>Scan now"]
         CRON["WP-Cron<br/>weekly / daily"]
-        CLI["WP-CLI<br/>wp php2shell scan"]
+        CLI["WP-CLI<br/>wp jat-shell scan"]
     end
     ENV["Website PHP snapshot<br/>class-env.php"]
     UI -->|"AJAX: start, then a step every few seconds"| ENGINE
@@ -1058,7 +1058,7 @@ add_action( 'wp2ss_scan_complete', function ( $report ) {
 
 ## 20. Report format (JSON)
 
-What **Download report (JSON)** and `wp php2shell scan --format=json` produce:
+What **Download report (JSON)** and `wp jat-shell scan --format=json` produce:
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -1078,7 +1078,7 @@ What **Download report (JSON)** and `wp php2shell scan --format=json` produce:
 
 | `findings[]` field | Meaning |
 |---|---|
-| `id` | Stable 12-character ID (use with `wp php2shell ignore`) |
+| `id` | Stable 12-character ID (use with `wp jat-shell ignore`) |
 | `severity` | `critical`, `high`, `medium`, `low`, `info` |
 | `type` | `php`, `version`, `plugin`, `mu-plugin`, `user`, `rest`, `file`, `code`, `hash`, `core`, `log`, `scan` |
 | `message` | What was found |
@@ -1112,7 +1112,7 @@ npm i mermaid@11 jsdom && node tests/check-mermaid.mjs README.md
 
 ```mermaid
 flowchart LR
-    A["Bump version in<br/>wp2shell-scanner.php ×2<br/>+ readme.txt"] --> B["Add CHANGELOG.md entry"]
+    A["Bump version in<br/>jat-shell-scanner.php ×2<br/>+ readme.txt"] --> B["Add CHANGELOG.md entry"]
     B --> C["Push to main"]
     C --> D["CI: lint, integration,<br/>false positives, docs"]
     D -- all green --> E["Release workflow:<br/>versions match? new version?"]

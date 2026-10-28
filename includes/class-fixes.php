@@ -3,7 +3,7 @@
  * One-click fixes, every one of them reversible.
  *
  * Scans never change anything. Fixes run only when an administrator clicks
- * one (or runs `wp php2shell fix`), and each can be undone:
+ * one (or runs `wp jat-shell fix`), and each can be undone:
  *
  *  - Quarantine: a flagged file or plugin folder is moved into a private,
  *    randomly named folder in this plugin's folder in uploads

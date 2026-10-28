@@ -42,7 +42,7 @@ jobs:
       - run: node tests/check-mermaid.mjs README.md
       - name: README and readme.txt show the plugin's version
         run: |
-          V=$(sed -n 's/^ \* Version: *//p' wp2shell-scanner.php | tr -d '[:space:]')
+          V=$(sed -n 's/^ \* Version: *//p' jat-shell-scanner.php | tr -d '[:space:]')
           grep -q "Current version: $V" README.md || { echo "::error file=README.md::README says a different version than the plugin ($V). Update 'Current version' and 'What's new'."; exit 1; }
           grep -q "^Stable tag: $V$" readme.txt || { echo "::error file=readme.txt::readme.txt Stable tag isn't $V."; exit 1; }
           grep -q "^## \[$V\]" CHANGELOG.md || { echo "::error file=CHANGELOG.md::CHANGELOG.md has no entry for $V."; exit 1; }
@@ -118,7 +118,7 @@ jobs:
           coverage: none
 
       - name: Build plugin zip (same as a release)
-        run: git archive --format=zip --prefix=wp2shell-scanner/ -o wp2shell-scanner.zip HEAD
+        run: git archive --format=zip --prefix=jat-shell-scanner/ -o jat-shell-scanner.zip HEAD
 
       - name: Install WordPress ${{ matrix.wp }}
         run: |
@@ -129,7 +129,7 @@ jobs:
           wp config set WP_DEBUG_LOG true --raw --path=site
           wp config set WP_DEBUG_DISPLAY false --raw --path=site
           wp core install --path=site --url=http://localhost --title=CI --admin_user=admin --admin_password=password --admin_email=ci@example.com --skip-email
-          wp plugin install ./wp2shell-scanner.zip --activate --path=site
+          wp plugin install ./jat-shell-scanner.zip --activate --path=site
 
       - name: Integration tests
         run: bash tests/integration.sh "$PWD/site"
@@ -139,5 +139,5 @@ jobs:
         run: |
           touch site/wp-content/debug.log
           # Anything from the plugin, or any deprecated-function notice (those name WordPress's file, not ours).
-          if grep -v 'simulated crash' site/wp-content/debug.log | grep -iE 'wp2shell-scanner|is <strong>deprecated|deprecated since version'; then exit 1; fi
+          if grep -v 'simulated crash' site/wp-content/debug.log | grep -iE 'jat-shell-scanner|is <strong>deprecated|deprecated since version'; then exit 1; fi
           echo "clean"

@@ -13,7 +13,7 @@
  * Text Domain:       jat-shell-scanner
  * Domain Path:       /languages
  * Network:           true
- * Update URI:        https://github.com/CptNope/PHP2Shell-WP-scanner
+ * Update URI:        https://github.com/CptNope/JAT-Shell-Scanner
  *
  * @package WP2Shell_Scanner
  */
@@ -31,7 +31,7 @@ define( 'WP2SS_FILE', __FILE__ );
 define( 'WP2SS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WP2SS_URL', plugin_dir_url( __FILE__ ) );
 define( 'WP2SS_BASENAME', plugin_basename( __FILE__ ) );
-define( 'WP2SS_REPO', 'CptNope/PHP2Shell-WP-scanner' );
+define( 'WP2SS_REPO', 'CptNope/JAT-Shell-Scanner' );
 define( 'WP2SS_WPORG_SLUG', 'jat-shell-scanner' );
 define( 'WP2SS_AUTHOR_URL', 'https://jeremyanderson.tech/' );
 define( 'WP2SS_DOCS_URL', WP2SS_AUTHOR_URL . 'project/php2shell-wp2shell-scanner/' );
@@ -85,8 +85,9 @@ add_action(
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			require_once WP2SS_DIR . 'includes/class-cli.php';
-			WP_CLI::add_command( 'php2shell', 'WP2SS_CLI' );
-			WP_CLI::add_command( 'wp2shell', 'WP2SS_CLI' ); // Name used by version 1.0.
+			WP_CLI::add_command( 'jat-shell', 'WP2SS_CLI' );
+			WP_CLI::add_command( 'php2shell', 'WP2SS_CLI' ); // Names used before 1.6.
+			WP_CLI::add_command( 'wp2shell', 'WP2SS_CLI' );
 		}
 	}
 );

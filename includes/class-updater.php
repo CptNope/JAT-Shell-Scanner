@@ -3,7 +3,7 @@
  * Updates from GitHub releases, through the normal WordPress update screen.
  *
  * Looks at the latest published release of the repo, and if its version is
- * newer, offers the attached wp2shell-scanner.zip as an update. Results are
+ * newer, offers the attached jat-shell-scanner.zip as an update. Results are
  * cached so the GitHub API is asked at most twice a day.
  *
  * @package WP2Shell_Scanner
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WP2SS_Updater {
 
 	const REPO      = WP2SS_REPO;
-	const ASSET     = 'wp2shell-scanner.zip';
+	const ASSET     = 'jat-shell-scanner.zip';
 	const TRANSIENT = 'wp2ss_release';
 
 	public static function init() {
@@ -43,7 +43,7 @@ class WP2SS_Updater {
 				'timeout' => 8,
 				'headers' => array(
 					'Accept'     => 'application/vnd.github+json',
-					'User-Agent' => 'wp2shell-scanner/' . WP2SS_VERSION,
+					'User-Agent' => 'jat-shell-scanner/' . WP2SS_VERSION,
 				),
 			)
 		);
@@ -87,7 +87,7 @@ class WP2SS_Updater {
 		}
 		$item = (object) array(
 			'id'           => 'github.com/' . self::REPO,
-			'slug'         => 'wp2shell-scanner',
+			'slug'         => 'jat-shell-scanner',
 			'plugin'       => WP2SS_BASENAME,
 			'new_version'  => $r['version'],
 			'url'          => 'https://github.com/' . self::REPO,
@@ -103,18 +103,18 @@ class WP2SS_Updater {
 	}
 
 	public static function info( $result, $action, $args ) {
-		if ( 'plugin_information' !== $action || empty( $args->slug ) || 'wp2shell-scanner' !== $args->slug ) {
+		if ( 'plugin_information' !== $action || empty( $args->slug ) || 'jat-shell-scanner' !== $args->slug ) {
 			return $result;
 		}
 		$r = self::release();
 		return (object) array(
 			'name'          => 'JAT Shell Scanner',
-			'slug'          => 'wp2shell-scanner',
+			'slug'          => 'jat-shell-scanner',
 			'version'       => $r ? $r['version'] : WP2SS_VERSION,
 			'author'        => 'Jeremy Anderson',
 			'homepage'      => 'https://github.com/' . self::REPO,
 			'download_link' => $r ? $r['package'] : '',
-			'requires'      => '6.0',
+			'requires'      => '6.2',
 			'requires_php'  => '7.0',
 			'last_updated'  => $r ? $r['published'] : '',
 			'sections'      => array(

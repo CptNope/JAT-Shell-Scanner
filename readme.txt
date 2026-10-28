@@ -39,12 +39,12 @@ This plugin tells you whether your site is exposed to either, and looks for sign
 * Fleet dashboard: one hub site shows the results of all your sites, with email/Slack/Discord alerts and remote rescans
 * Ignore false positives (signed, so attackers can't forge it)
 * Site Health integration
-* WP-CLI: `wp php2shell scan`, `status`, `ignore`, `fix`, `quarantine`, `fleet`
+* WP-CLI: `wp jat-shell scan`, `status`, `ignore`, `fix`, `quarantine`, `fleet`
 * Multisite aware
 
 = Free, open source, no account =
 
-Everything in the plugin is free. There is no paid version, no sign-up and no tracking. Development happens in the open on [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner).
+Everything in the plugin is free. There is no paid version, no sign-up and no tracking. Development happens in the open on [GitHub](https://github.com/CptNope/JAT-Shell-Scanner).
 
 = Need hands-on help? =
 
@@ -65,9 +65,9 @@ The plugin only contacts outside servers in the cases below. It sends no analyti
 == Installation ==
 
 1. Install from Plugins → Add New Plugin (search for "JAT Shell Scanner"), or upload the zip, and activate.
-2. Go to Tools → PHP2Shell Scanner and click Scan now.
+2. Go to Tools → JAT Shell Scanner and click Scan now.
 
-On multisite, network-activate and use Network Admin → Settings → PHP2Shell Scanner.
+On multisite, network-activate and use Network Admin → Settings → JAT Shell Scanner.
 
 == Frequently Asked Questions ==
 
@@ -93,7 +93,7 @@ The GitHub edition updates itself from GitHub releases. To switch to this WordPr
 
 = Where do I report a bug or a new attack indicator? =
 
-Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner/security/advisories/new).
+Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/JAT-Shell-Scanner/security/advisories/new).
 
 == Screenshots ==
 
@@ -129,7 +129,7 @@ Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/)
 * Recognises the Installatron Worker (it-api.php), the temporary script IONOS and other hosts use for one-click installs.
 * Hidden "data" files that can only answer 404 are no longer reported as backdoors.
 
-The full history is in [CHANGELOG.md](https://github.com/CptNope/PHP2Shell-WP-scanner/blob/main/CHANGELOG.md).
+The full history is in [CHANGELOG.md](https://github.com/CptNope/JAT-Shell-Scanner/blob/main/CHANGELOG.md).
 
 == Upgrade Notice ==
 

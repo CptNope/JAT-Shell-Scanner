@@ -51,8 +51,7 @@ class WP2SS_Scanner {
 
 	/** PHP files that ship with this plugin (used when there is no release manifest). */
 	const OWN_PHP = array(
-		'wp2shell-scanner.php',
-		'jat-shell-scanner.php', // The main file's name in the WordPress.org build.
+		'jat-shell-scanner.php',
 		'uninstall.php',
 		'includes/class-admin.php',
 		'includes/class-cli.php',
