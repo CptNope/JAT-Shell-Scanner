@@ -740,6 +740,87 @@ R=$(scan)
 hasnt "$R" '[.findings[] | select((.severity=="critical" or .severity=="high") and .type!="version")] | length > 0' "no high/critical findings after cleanup"
 rm -f "$LOG"
 
+section "19. WordPress.org review: where files go, checks on requests"
+# Quarantine goes into the plugin's own folder in uploads, protected; nothing new in wp-content.
+BEFORE=$(ls -A "$C" | sort)
+mkdir -p "$C/uploads/2026/10"
+printf "<?php eval(\$_POST['q']);\n" > "$C/uploads/2026/10/loc.php"
+R=$(scan)
+FID=$(echo "$R" | jq -r '[.findings[] | select(.type=="code" and (.message|test("loc.php")))][0].id')
+$WP php2shell fix "$FID" --yes >/dev/null 2>&1
+QD=$($WP eval 'echo WP2SS_Fixes::qdir();' 2>/dev/null)
+UP=$($WP eval 'echo WP2SS_Paths::uploads();' 2>/dev/null)
+case "$QD" in "$UP/jat-shell-scanner/quarantine-"*) ok "quarantine is in uploads/jat-shell-scanner/" ;; *) bad "quarantine is somewhere else ($QD)" ;; esac
+ls "$QD" 2>/dev/null | grep -q 'loc.php.quarantined' && ok "quarantined file is there, renamed" || bad "quarantined file missing"
+for d in "$UP/jat-shell-scanner" "$QD"; do
+	[ -f "$d/.htaccess" ] && [ -f "$d/web.config" ] && [ -f "$d/index.php" ] && grep -q "Require all denied" "$d/.htaccess" && ok "web access blocked in ${d#$C/}" || bad "protection files missing in ${d#$C/}"
+done
+[ "$BEFORE" = "$(ls -A "$C" | sort)" ] && ok "nothing new written into wp-content itself" || bad "wp-content changed: $(diff <(echo "$BEFORE") <(ls -A "$C" | sort) | tr '\n' ' ')"
+R=$(scan)
+hasnt "$R" "$(msg 'jat-shell-scanner')" "the plugin's uploads folder raises no findings"
+
+# Items quarantined by builds before 1.6 (in wp-content) can still be restored.
+OUT=$($WP eval '
+	$recs = WP2SS_Fixes::records(); $r = reset( $recs );
+	$legacy = "wp2ss-quarantine-" . str_repeat( "a", 16 );
+	update_site_option( "wp2ss_quarantine_dir", $legacy );
+	$old = WP2SS_Paths::content() . "/" . $legacy; wp_mkdir_p( $old );
+	$dest = $old . "/" . basename( $r["quarantined"] );
+	rename( $r["quarantined"], $dest );
+	$r["quarantined"] = $dest;
+	$sign = new ReflectionMethod( "WP2SS_Fixes", "save_record" ); $sign->setAccessible( true ); $sign->invoke( null, $r );
+	echo $r["id"];
+' 2>/dev/null)
+$WP php2shell quarantine restore "$OUT" >/dev/null 2>&1
+[ -e "$C/uploads/2026/10/loc.php" ] && ok "a file quarantined in wp-content by an older build is restored" || bad "legacy restore failed"
+rm -rf "$C/wp2ss-quarantine-aaaaaaaaaaaaaaaa" "$C/uploads/2026/10"
+$WP eval 'delete_site_option( "wp2ss_quarantine_dir" ); delete_site_option( "wp2ss_fixes" );' >/dev/null
+
+# Folders come from WordPress's functions: a theme folder registered outside wp-content is scanned.
+EXTRA="$OUTSIDE/extra-themes"
+mkdir -p "$EXTRA/outside-theme" "$C/mu-plugins"
+printf "/*\nTheme Name: Outside\n*/\n" > "$EXTRA/outside-theme/style.css"
+printf "<?php eval(\$_POST['t']);\n" > "$EXTRA/outside-theme/shell.php"
+printf "<?php register_theme_directory( '%s' );\n" "$EXTRA" > "$C/mu-plugins/extra-themes.php"
+$WP eval 'search_theme_directories( true ); delete_site_transient( "theme_roots" );' >/dev/null 2>&1
+R=$(scan)
+has "$R" "[.findings[] | select(.location | test(\"outside-theme/shell.php\"))] | length > 0" "theme folders registered outside wp-content are scanned"
+OUT=$($WP eval 'echo WP2SS_Paths::plugins() === wp_normalize_path( untrailingslashit( WP_PLUGIN_DIR ) ) ? "y" : "n"; echo WP2SS_Paths::themes() === wp_normalize_path( get_theme_root() ) ? "y" : "n"; echo WP2SS_Paths::mu_plugins() === wp_normalize_path( WPMU_PLUGIN_DIR ) ? "y" : "n";' 2>/dev/null)
+[ "$OUT" = "yyy" ] && ok "plugin, theme and must-use folders found through WordPress functions" || bad "folder lookups differ ($OUT)"
+rm -rf "$EXTRA" "$C/mu-plugins/extra-themes.php"
+
+# Requests: no nonce, no change.
+OUT=$($WP eval 'echo get_site_option( "wp2ss_settings" ) ? md5( serialize( get_site_option( "wp2ss_settings" ) ) ) : "none";' 2>/dev/null)
+$WP --user=admin eval '$_POST = array( "schedule" => "daily", "email" => "1", "email_to" => "x@evil.test" ); $_REQUEST = $_POST; WP2SS_Admin::post_settings();' >/dev/null 2>&1
+AFTER=$($WP eval 'echo get_site_option( "wp2ss_settings" ) ? md5( serialize( get_site_option( "wp2ss_settings" ) ) ) : "none";' 2>/dev/null)
+[ "$OUT" = "$AFTER" ] && ok "settings form without a nonce changes nothing" || bad "settings changed without a nonce"
+OUT=$($WP --user=admin eval 'add_filter( "wp_doing_ajax", "__return_true" ); $_POST = $_REQUEST = array( "id" => "x" ); WP2SS_Admin::ajax_fix();' 2>/dev/null)
+echo "$OUT" | grep -q '"success":false' && ok "AJAX fix without a nonce is refused" || bad "AJAX fix ran without a nonce ($OUT)"
+OUT=$($WP eval 'add_filter( "wp_doing_ajax", "__return_true" ); $_POST = $_REQUEST = array( "nonce" => wp_create_nonce( "wp2ss" ) ); WP2SS_Admin::ajax_purge();' 2>/dev/null)
+echo "$OUT" | grep -q '"success":false' && ok "AJAX actions refuse users without the capability" || bad "AJAX ran for a logged-out user ($OUT)"
+
+# Fleet endpoints: the signature is checked as the route's permission.
+OUT=$($WP eval '
+	update_site_option( "wp2ss_fleet", array_merge( (array) get_site_option( "wp2ss_fleet", array() ), array( "mode" => "hub", "key" => str_repeat( "k", 40 ) ) ) );
+	do_action( "rest_api_init" );
+	$routes = rest_get_server()->get_routes();
+	$perm = "none";
+	foreach ( $routes as $route => $handlers ) { if ( false !== strpos( $route, "wp2ss" ) || false !== strpos( $route, "php2shell" ) ) { foreach ( $handlers as $h ) { $perm = is_array( $h["permission_callback"] ) ? $h["permission_callback"][1] : (string) $h["permission_callback"]; } } }
+	$req = new WP_REST_Request( "POST", array_keys( array_filter( $routes, function ( $k ) { return false !== strpos( $k, "report" ); }, ARRAY_FILTER_USE_KEY ) )[0] );
+	$req->set_body( "{}" );
+	$res = rest_do_request( $req );
+	echo $perm, " ", $res->get_status();
+' 2>/dev/null)
+case "$OUT" in authorize_*" 401") ok "unsigned fleet report refused by the permission check ($OUT)" ;; *) bad "fleet permission check ($OUT)" ;; esac
+$WP eval 'delete_site_option( "wp2ss_fleet" );' >/dev/null
+
+# Uninstall removes the plugin's uploads folder and settings.
+$WP eval 'WP2SS_Paths::storage( true );' >/dev/null
+$WP plugin deactivate "$(basename "$SELF")" --quiet >/dev/null 2>&1
+$WP plugin uninstall "$(basename "$SELF")" --quiet >/dev/null 2>&1
+[ ! -e "$UP/jat-shell-scanner" ] && ok "uninstall removes uploads/jat-shell-scanner/" || bad "uploads folder left after uninstall"
+[ "$($WP eval 'echo get_site_option( "wp2ss_settings" ) || get_site_option( "wp2ss_quarantine_folder" ) ? "left" : "gone";' 2>/dev/null)" = "gone" ] && ok "uninstall removes the settings" || bad "settings left after uninstall"
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

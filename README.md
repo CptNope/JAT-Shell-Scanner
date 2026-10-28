@@ -13,7 +13,7 @@
 
 ### [⬇️ Download wp2shell-scanner.zip](https://github.com/CptNope/PHP2Shell-WP-scanner/releases/latest/download/wp2shell-scanner.zip)
 
-**Current version: 1.5.1** (October 24, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
+**Current version: 1.6.0** (October 28, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
@@ -32,6 +32,7 @@ By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](htt
 
 | Version | Highlights |
 |---|---|
+| **1.6.0** | Renamed **JAT Shell Scanner** on WordPress.org (by Jeremy Anderson Tech). Quarantine moves into the plugin's own folder in uploads, blocked from the web; folders are found through WordPress's functions, so moved content, plugin and theme folders are scanned correctly |
 | **1.5.1** | Latest PHP2Shell intel (October 22–24): the Potassium/Mirai botnet's second stage, servers and download names, exploit-kit webshell names (`wp2s.php`, `axiom_*.php`…) and markers (`P2S_OK`, `NxSP…`), poisoned session files, Apache worker aborts, 34 more attacker addresses, and advice for the unpatched **CVE-2026-115560** |
 | **1.5.0** | Looks for backdoors in the **database** (code in settings, injected scripts and hidden links in posts, scheduled tasks that carry code), checks **plugin files against wordpress.org's checksums**, and flags unexplained **drop-ins** |
 | **1.4.0** | **WordPress.org edition**, listed as *Anderson Shell Scanner* (WordPress.org allows no "wp" in plugin names) (updates through WordPress.org, self-check against WordPress.org checksums); links to docs, support and the author; the GitHub update check no longer sends the site address |
@@ -489,7 +490,7 @@ For the most common clean-up jobs you don't need a file manager. Next to a findi
 
 | Button | When it appears | What it does | Undo |
 |---|---|---|---|
-| **Quarantine** | A flagged file (webshell, PHP in uploads, a modified file) rated Medium or worse | Moves it into a private, locked quarantine folder in `wp-content` and renames it (no `.php` left anywhere in the name) so it can never run | **Restore** puts it back exactly where it was |
+| **Quarantine** | A flagged file (webshell, PHP in uploads, a modified file) rated Medium or worse | Moves it into a private, locked quarantine folder in `uploads/jat-shell-scanner/` and renames it (no `.php` left anywhere in the name) so it can never run | **Restore** puts it back exactly where it was |
 | **Quarantine plugin** | A malicious or suspicious plugin folder | Moves the whole folder into quarantine (WordPress deactivates it) | **Restore** |
 | **Remove admin rights** | An unknown or newly promoted administrator (never you) | Makes them a Subscriber on every site, revokes Super Admin, logs them out everywhere | **Undo** gives the role back |
 | **Quarantine them all** | Several critical/high file findings | Applies every file fix in one go (asks first) | Each one can be restored |
@@ -525,7 +526,7 @@ There are two editions, built from the same code:
 
 | Edition | Install from | Updates from | Self-check against |
 |---|---|---|---|
-| **WordPress.org** — *Anderson Shell Scanner* | Plugins → Add New Plugin, search "Anderson Shell Scanner" | WordPress.org, like any directory plugin | WordPress.org's published checksums |
+| **WordPress.org** — *JAT Shell Scanner* | Plugins → Add New Plugin, search "JAT Shell Scanner" | WordPress.org, like any directory plugin | WordPress.org's published checksums |
 | **GitHub** | The zip on the [releases page](https://github.com/CptNope/PHP2Shell-WP-scanner/releases) | This repository's releases (below) | The release's `manifest.json` |
 
 The WordPress.org edition is the same plugin without `includes/class-updater.php` (WordPress.org plugins may only update through WordPress.org). To switch from GitHub to WordPress.org, delete the GitHub copy and install from the directory — deleting removes settings and quarantine, so restore anything you need first.
@@ -1001,7 +1002,8 @@ sequenceDiagram
 | `wp2ss_env` | Options | The website's PHP version, server type, relevant php.ini settings and a short version history |
 | `wp2ss_admins` | Options | Administrator user IDs at the last scan (signed) |
 | `wp2ss_fixes` | Options | One-click fixes you applied, for undo (signed) |
-| `wp2ss_quarantine_dir` | Options | Name of the random, locked quarantine folder in `wp-content` (the folder and its files are deleted too) |
+| `wp2ss_quarantine_folder` | Options | Name of the random, locked quarantine folder in `uploads/jat-shell-scanner/` (that folder and its files are deleted too) |
+| `wp2ss_quarantine_dir` | Options | Builds before 1.6 only: the old quarantine folder in `wp-content` (deleted too) |
 | `wp2ss_fleet` | Options | Fleet mode, hub address and key |
 | `wp2ss_fleet_sites` | Options (hub only) | Latest report from each member site (up to 1,000) |
 | `wp2ss_fleet_status` | Options (members) | When the last report was sent, and any error |
@@ -1120,7 +1122,7 @@ flowchart LR
     D -- any red --> H["Nothing is released"]
 ```
 
-**WordPress.org build.** `bash .github/scripts/build-wporg.sh` writes `build/anderson-shell-scanner/` and a zip of it: the same files minus the GitHub updater and the `Update URI` header. CI runs the official [Plugin Check](https://wordpress.org/plugins/plugin-check/) on that build. Once the plugin is approved on WordPress.org and the `SVN_USERNAME` / `SVN_PASSWORD` repository secrets are set, each GitHub release is also committed to WordPress.org SVN (trunk and tag), with the banner, icon and screenshots from `.wordpress-org/`.
+**WordPress.org build.** `bash .github/scripts/build-wporg.sh` writes `build/jat-shell-scanner/` and a zip of it: the same files minus the GitHub updater and the `Update URI` header. CI runs the official [Plugin Check](https://wordpress.org/plugins/plugin-check/) on that build. Once the plugin is approved on WordPress.org and the `SVN_USERNAME` / `SVN_PASSWORD` repository secrets are set, each GitHub release is also committed to WordPress.org SVN (trunk and tag), with the banner, icon and screenshots from `.wordpress-org/`.
 
 Workflow actions are pinned to exact commits. Detection rules live in [`includes/signatures.php`](includes/signatures.php) — **new indicators are very welcome**: open an issue or pull request with a link to the source.
 
@@ -1135,7 +1137,7 @@ Workflow actions are pinned to exact commits. Detection rules live in [`includes
 - **Known indicators only.** Attackers can rename files and rewrite code, so "no signs" means no *known* indicators — not a guarantee.
 - **An attacker with full control of the server** could tamper with any tool running on it, including this one. The self-check against GitHub or WordPress.org makes that harder, not impossible. For certainty, have your host check from outside.
 - It looks for these two attacks specifically. It isn't a general antivirus — keep your usual security plugin or host scanner.
-- Finding texts are in English; the interface is translation-ready (`languages/anderson-shell-scanner.pot`, text domain `anderson-shell-scanner`).
+- Finding texts are in English; the interface is translation-ready (`languages/jat-shell-scanner.pot`, text domain `jat-shell-scanner`).
 
 ## 23. Security
 

@@ -60,8 +60,8 @@ jobs:
       # The same checks the WordPress.org review team runs. Errors fail the job.
       - uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e
         with:
-          build-dir: './build/anderson-shell-scanner'
-          slug: 'anderson-shell-scanner'
+          build-dir: './build/jat-shell-scanner'
+          slug: 'jat-shell-scanner'
           ignore-warnings: 'true'
 
   false-positives:

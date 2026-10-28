@@ -119,7 +119,7 @@ jobs:
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-          SLUG: anderson-shell-scanner
+          SLUG: jat-shell-scanner
           VERSION: ${{ needs.release.outputs.version }}
-          BUILD_DIR: build/anderson-shell-scanner
+          BUILD_DIR: build/jat-shell-scanner
           ASSETS_DIR: .wordpress-org

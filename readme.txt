@@ -1,10 +1,10 @@
-=== Anderson Shell Scanner ===
+=== JAT Shell Scanner ===
 Contributors: cptnope
 Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.5.1
+Stable tag: 1.6.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -62,7 +62,7 @@ The plugin only contacts outside servers in the cases below. It sends no analyti
 
 == Installation ==
 
-1. Install from Plugins → Add New Plugin (search for "Anderson Shell Scanner"), or upload the zip, and activate.
+1. Install from Plugins → Add New Plugin (search for "JAT Shell Scanner"), or upload the zip, and activate.
 2. Go to Tools → PHP2Shell Scanner and click Scan now.
 
 On multisite, network-activate and use Network Admin → Settings → PHP2Shell Scanner.
@@ -71,7 +71,7 @@ On multisite, network-activate and use Network Admin → Settings → PHP2Shell 
 
 = Will it change or delete my files? =
 
-Scans never do. Only if you click a fix button does it move a file into quarantine (renamed so it can't run) or remove someone's admin rights — and you can undo either from the Quarantine tab.
+Scans never do. Only if you click a fix button does it move a file into quarantine or remove someone's admin rights — and you can undo either from the Quarantine tab. Quarantined files go into the plugin's own folder in uploads (uploads/jat-shell-scanner/), blocked from the web and renamed so they can't run.
 
 = It says "Vulnerable — PHP needs updating". Was I hacked? =
 
@@ -91,7 +91,7 @@ The GitHub edition updates itself from GitHub releases. To switch to this WordPr
 
 = Where do I report a bug or a new attack indicator? =
 
-Use the [support forum](https://wordpress.org/support/plugin/anderson-shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner/security/advisories/new).
+Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/). Security problems in the plugin itself: please report them privately through [GitHub](https://github.com/CptNope/PHP2Shell-WP-scanner/security/advisories/new).
 
 == Screenshots ==
 
@@ -101,6 +101,12 @@ Use the [support forum](https://wordpress.org/support/plugin/anderson-shell-scan
 4. Quarantine: every fix can be undone.
 
 == Changelog ==
+
+= 1.6.0 =
+* Renamed to JAT Shell Scanner (by Jeremy Anderson Tech).
+* Quarantine now lives in the plugin's own folder in uploads (uploads/jat-shell-scanner/) instead of wp-content. Files quarantined by earlier GitHub builds can still be restored or deleted.
+* Finds every folder through WordPress's own functions, so sites with moved content, plugin or theme folders are scanned correctly, including theme folders registered elsewhere.
+* Fleet reports are checked in the REST permission check.
 
 = 1.5.1 =
 * Latest PHP2Shell intel: the Potassium (Mirai) botnet's second stage, servers and download names; webshell names and markers from PHP2Shell exploit kits; poisoned session files; Apache worker aborts; 34 more attacker addresses.
@@ -123,6 +129,9 @@ Use the [support forum](https://wordpress.org/support/plugin/anderson-shell-scan
 The full history is in [CHANGELOG.md](https://github.com/CptNope/PHP2Shell-WP-scanner/blob/main/CHANGELOG.md).
 
 == Upgrade Notice ==
+
+= 1.6.0 =
+New name (JAT Shell Scanner); quarantine moves into the uploads folder; better support for sites with moved folders.
 
 = 1.5.1 =
 Detects the latest PHP2Shell attack tools and the botnet they install.
