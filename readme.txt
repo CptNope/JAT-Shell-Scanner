@@ -1,7 +1,7 @@
 === JAT Shell Scanner ===
 Contributors: cptnope
 Tags: security, malware, scanner, webshell, vulnerability
-Requires at least: 6.0
+Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.0
 Stable tag: 1.6.0
@@ -54,9 +54,11 @@ The plugin is made by [Jeremy Anderson](https://jeremyanderson.tech/), who build
 
 The plugin only contacts outside servers in the cases below. It sends no analytics or personal data, and never sends your site's files or scan results anywhere you didn't set up.
 
-* **WordPress.org core checksums** (api.wordpress.org) — during a scan, to compare your WordPress core files with the official ones. Sends your WordPress version and locale, the same request WordPress itself makes. [Terms](https://wordpress.org/about/privacy/)
-* **WordPress.org plugin checksums** (downloads.wordpress.org) — during a scan, to check that this plugin's files, and those of your other plugins from WordPress.org, haven't been tampered with. Sends only each plugin's folder name and version. Turned off with the "Core and plugin files" setting (except this plugin's own self-check). [Terms](https://wordpress.org/about/privacy/)
-* **Your own fleet hub** — only if you turn on the fleet dashboard and connect a site to a hub you run. After each scan the member site sends a summary to that hub, signed with a per-site key: site name and address, verdict, WordPress, PHP and plugin versions, finding counts, and the text of serious findings (email addresses removed).
+* **WordPress.org core checksums** (api.wordpress.org) — during a scan, to compare your WordPress core files with the official ones. Sends your WordPress version and locale, the same request WordPress itself makes. [WordPress.org privacy policy](https://wordpress.org/about/privacy/)
+* **WordPress.org plugin checksums** (downloads.wordpress.org) — during a scan, to check that this plugin's files, and those of your other plugins from WordPress.org, haven't been tampered with. Sends only each plugin's folder name and version. Turned off with the "Core and plugin files" setting (except this plugin's own self-check). [WordPress.org privacy policy](https://wordpress.org/about/privacy/)
+* **Your own fleet hub** — only if you turn on the fleet dashboard and connect a site to a hub you run (another WordPress site with this plugin). Requests are signed with your fleet key and a per-site key, and go only to the hub address you enter:
+  * After each scan, a summary: site name and address, the address of its scanner page, verdict, WordPress, PHP and plugin versions, PHP's server interface, scan time, finding counts, and the text of serious findings (email addresses removed). The first report also carries a random per-site key so the hub can recognise the site later.
+  * Once an hour, a check-in with only the site's address, asking whether someone on the hub requested a new scan.
 * **Slack or Discord** — only if you paste a webhook address into the fleet alert settings. The hub sends alert messages (site address and what was found) to that webhook. [Slack terms](https://slack.com/terms-of-service), [Discord terms](https://discord.com/terms)
 * **Email alerts** use your site's normal WordPress mail.
 
@@ -107,6 +109,7 @@ Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/)
 * Quarantine now lives in the plugin's own folder in uploads (uploads/jat-shell-scanner/) instead of wp-content. Files quarantined by earlier GitHub builds can still be restored or deleted.
 * Finds every folder through WordPress's own functions, so sites with moved content, plugin or theme folders are scanned correctly, including theme folders registered elsewhere.
 * Fleet reports are checked in the REST permission check.
+* Requires WordPress 6.2 or newer.
 
 = 1.5.1 =
 * Latest PHP2Shell intel: the Potassium (Mirai) botnet's second stage, servers and download names; webshell names and markers from PHP2Shell exploit kits; poisoned session files; Apache worker aborts; 34 more attacker addresses.

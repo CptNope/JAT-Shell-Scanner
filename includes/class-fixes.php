@@ -434,7 +434,7 @@ class WP2SS_Fixes {
 			return new WP_Error( 'wp2ss_unsafe', __( 'That location can’t be quarantined safely.', 'jat-shell-scanner' ) );
 		}
 		$q = self::qdir( true );
-		if ( ! $q || ! is_writable( $q ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- Checks the plugin's own quarantine folder.
+		if ( ! $q || ! wp_is_writable( $q ) ) {
 			return new WP_Error( 'wp2ss_no_qdir', __( 'Couldn’t create the quarantine folder in the uploads folder. Ask your host to make uploads writable, or remove the file by hand.', 'jat-shell-scanner' ) );
 		}
 		$real = wp_normalize_path( realpath( $target ) );
@@ -444,9 +444,13 @@ class WP2SS_Fixes {
 
 		if ( ! @rename( $real, $dest ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.rename_rename -- Same-filesystem atomic move of a file already checked not to be a link; WP_Filesystem may need FTP credentials and isn't atomic.
 			// Different filesystem, or a rename the host blocks: copy, then delete the original.
-			if ( is_dir( $real ) || ! @copy( $real, $dest ) || ! @unlink( $real ) ) { // phpcs:ignore
+			$copied = ! is_dir( $real ) && @copy( $real, $dest ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			if ( $copied ) {
+				wp_delete_file( $real );
+			}
+			if ( ! $copied || file_exists( $real ) ) {
 				if ( file_exists( $dest ) && file_exists( $real ) ) {
-					@unlink( $dest ); // phpcs:ignore
+					wp_delete_file( $dest );
 				}
 				return new WP_Error( 'wp2ss_move_failed', __( 'PHP isn’t allowed to move this file (file permissions). Remove it with your host’s file manager instead.', 'jat-shell-scanner' ) );
 			}
@@ -621,7 +625,7 @@ class WP2SS_Fixes {
 			}
 			@rmdir( $path ); // phpcs:ignore
 		} else {
-			@unlink( $path ); // phpcs:ignore
+			wp_delete_file( $path );
 		}
 	}
 }

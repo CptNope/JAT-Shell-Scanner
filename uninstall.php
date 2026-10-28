@@ -24,7 +24,11 @@ function wp2ss_uninstall_rmdir( $dir ) {
 	}
 	$it = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::CHILD_FIRST );
 	foreach ( $it as $f ) {
-		$f->isDir() && ! $f->isLink() ? @rmdir( $f->getPathname() ) : @unlink( $f->getPathname() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir, WordPress.WP.AlternativeFunctions.unlink_unlink -- The plugin's own quarantine folder.
+		if ( $f->isDir() && ! $f->isLink() ) {
+			@rmdir( $f->getPathname() ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- Empty folder inside the plugin's own quarantine.
+		} else {
+			wp_delete_file( $f->getPathname() );
+		}
 	}
 	@rmdir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
 }
@@ -50,7 +54,9 @@ if ( $wp2ss_qname && preg_match( '/^wp2ss-quarantine-[a-z0-9]{16}$/', $wp2ss_qna
 foreach ( array( 'wp2ss_job', 'wp2ss_report', 'wp2ss_ignored', 'wp2ss_settings', 'wp2ss_env', 'wp2ss_admins', 'wp2ss_fixes', 'wp2ss_quarantine_folder', 'wp2ss_quarantine_dir', 'wp2ss_fleet', 'wp2ss_fleet_sites', 'wp2ss_fleet_status', 'wp2ss_fleet_queue', 'wp2ss_fleet_pins' ) as $wp2ss_opt ) {
 	delete_site_option( $wp2ss_opt );
 }
-delete_site_transient( 'wp2ss_release' );
+// <github-only>
+delete_site_transient( 'wp2ss_release' ); // The GitHub build's update check.
+// </github-only>
 delete_metadata( 'user', 0, 'wp2ss_dismissed', '', true );
 
 // Scheduled events (on multisite they live on the main site).
@@ -68,11 +74,11 @@ if ( is_multisite() ) {
 
 // The step lock, cached core checksums and release manifests.
 $wp2ss_table = is_multisite() ? $wpdb->get_blog_prefix( get_main_site_id() ) . 'options' : $wpdb->options;
-$wpdb->query( $wpdb->prepare( "DELETE FROM `$wp2ss_table` WHERE option_name = %s", 'wp2ss_lock' ) ); // phpcs:ignore
-foreach ( array( 'wp2ss_core_', 'wp2ss_manifest_' ) as $wp2ss_prefix ) {
+$wpdb->query( $wpdb->prepare( "DELETE FROM %i WHERE option_name = %s", $wp2ss_table, 'wp2ss_lock' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Removes the scan lock row on uninstall.
+foreach ( array( 'wp2ss_core_', 'wp2ss_manifest_', 'wp2ss_err_' ) as $wp2ss_prefix ) {
 	$wp2ss_like = '%' . $wpdb->esc_like( $wp2ss_prefix ) . '%';
-	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wp2ss_like ) ); // phpcs:ignore
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wp2ss_like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Removes the plugin's cached checksums and messages on uninstall.
 	if ( is_multisite() ) {
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE %s", $wp2ss_like ) ); // phpcs:ignore
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE %s", $wp2ss_like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Same, network-wide.
 	}
 }
