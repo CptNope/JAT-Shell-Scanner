@@ -48,7 +48,7 @@ Everything in the plugin is free. There is no paid version, no sign-up and no tr
 
 = Need hands-on help? =
 
-The plugin is made by [Jeremy Anderson](https://jeremyanderson.tech/), who builds and looks after WordPress sites. If you'd rather have someone deal with a vulnerable or hacked site for you, [book a call](https://jeremyanderson.tech/book-a-call/) or see the [services](https://jeremyanderson.tech/services/). Full documentation is on the [plugin's page](https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/).
+The plugin is made by [Jeremy Anderson](https://jeremyanderson.tech/), who builds and looks after WordPress sites. If you'd rather have someone deal with a vulnerable or hacked site for you, [book a call](https://jeremyanderson.tech/book-a-call/) or see the [services](https://jeremyanderson.tech/services/). Full documentation is on the [plugin's page](https://jeremyanderson.tech/project/jat-shell-scanner/).
 
 == External services ==
 

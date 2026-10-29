@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       JAT Shell Scanner
- * Plugin URI:        https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/
+ * Plugin URI:        https://jeremyanderson.tech/project/jat-shell-scanner/
  * Description:       Checks whether your site is exposed to — or was broken into through — PHP2Shell (CVE-2026-109618 / CVE-2026-109619, critical bugs in PHP itself) and wp2shell (CVE-2026-63030 / CVE-2026-60137, a WordPress core bug). Looks at your PHP and WordPress versions, webshells, rogue admins, changed files and server logs. Scans only read; one-click fixes (quarantine, removing admin rights) are optional and can be undone. Includes a self-hosted fleet dashboard for many sites, with alerts.
  * Version:           1.6.0
  * Requires at least: 6.2
