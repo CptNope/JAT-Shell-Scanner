@@ -1,0 +1,39 @@
+name: Update WordPress.org readme
+
+# Run by hand (Actions → Update WordPress.org readme → Run workflow) to
+# publish readme.txt and the .wordpress-org/ images (icon, banner,
+# screenshots) to WordPress.org without releasing a new version. The readme
+# goes to trunk and to the current Stable tag, so the plugin page updates.
+# Code changes still need a new version (release.yml deploys those).
+#
+# Needs the SVN_USERNAME and SVN_PASSWORD repository secrets.
+#
+# 10up/action-wordpress-plugin-asset-update 2.2.0 = 2480306…
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wporg-deploy
+  cancel-in-progress: false
+
+jobs:
+  readme:
+    name: Update readme and images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09   # v5
+
+      - name: Install Subversion
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq subversion
+
+      - uses: 10up/action-wordpress-plugin-asset-update@2480306f6f693672726d08b5917ea114cb2825f7
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: jat-shell-scanner
+          ASSETS_DIR: .wordpress-org
+          README_NAME: readme.txt
+          IGNORE_OTHER_FILES: true
