@@ -24,7 +24,7 @@ msgstr ""
 
 #. Plugin URI of the plugin
 #: jat-shell-scanner.php
-msgid "https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/"
+msgid "https://jeremyanderson.tech/project/jat-shell-scanner/"
 msgstr ""
 
 #. Description of the plugin

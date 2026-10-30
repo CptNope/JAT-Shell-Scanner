@@ -18,7 +18,7 @@
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
-By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/) · [Need hands-on help? Book a call](https://jeremyanderson.tech/book-a-call/)
+By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](https://jeremyanderson.tech/project/jat-shell-scanner/) · [Need hands-on help? Book a call](https://jeremyanderson.tech/book-a-call/)
 
 <img src="docs/images/demo.gif" alt="A scan of a demo site finding a webshell, then quarantining it with one click" width="800">
 

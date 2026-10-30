@@ -50,7 +50,7 @@ Everything in the plugin is free. There is no paid version, no sign-up and no tr
 
 = Made by Jeremy Anderson Tech =
 
-[Jeremy Anderson Tech](https://jeremyanderson.tech/) builds, secures and looks after WordPress sites. If you'd rather have someone deal with a vulnerable or hacked site for you, [book a call](https://jeremyanderson.tech/book-a-call/) or see the [services](https://jeremyanderson.tech/services/). Full documentation is on the [plugin's page](https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/).
+[Jeremy Anderson Tech](https://jeremyanderson.tech/) builds, secures and looks after WordPress sites. If you'd rather have someone deal with a vulnerable or hacked site for you, [book a call](https://jeremyanderson.tech/book-a-call/) or see the [services](https://jeremyanderson.tech/services/). Full documentation is on the [plugin's page](https://jeremyanderson.tech/project/jat-shell-scanner/).
 
 == External services ==
 
