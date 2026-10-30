@@ -18,6 +18,8 @@ Checks if your site is exposed to, or was hacked through, PHP2Shell (critical PH
 
 This plugin tells you whether your site is exposed to either, and looks for signs that an attacker already got in. Scans only read. If something is found, optional one-click fixes can quarantine files or remove admin rights — and every fix can be undone.
 
+JAT Shell Scanner is made by [Jeremy Anderson Tech](https://jeremyanderson.tech/) — the "JAT" in the name.
+
 = What it checks =
 
 * The PHP your website runs, including Debian/Ubuntu package versions and build dates (patched without a version change), and the temporary php.ini protections
@@ -46,9 +48,9 @@ This plugin tells you whether your site is exposed to either, and looks for sign
 
 Everything in the plugin is free. There is no paid version, no sign-up and no tracking. Development happens in the open on [GitHub](https://github.com/CptNope/JAT-Shell-Scanner).
 
-= Need hands-on help? =
+= Made by Jeremy Anderson Tech =
 
-The plugin is made by [Jeremy Anderson](https://jeremyanderson.tech/), who builds and looks after WordPress sites. If you'd rather have someone deal with a vulnerable or hacked site for you, [book a call](https://jeremyanderson.tech/book-a-call/) or see the [services](https://jeremyanderson.tech/services/). Full documentation is on the [plugin's page](https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/).
+[Jeremy Anderson Tech](https://jeremyanderson.tech/) builds, secures and looks after WordPress sites. If you'd rather have someone deal with a vulnerable or hacked site for you, [book a call](https://jeremyanderson.tech/book-a-call/) or see the [services](https://jeremyanderson.tech/services/). Full documentation is on the [plugin's page](https://jeremyanderson.tech/project/php2shell-wp2shell-scanner/).
 
 == External services ==
 
