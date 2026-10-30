@@ -5,13 +5,14 @@
 **Find out in two minutes whether your WordPress site is exposed to — or has already been broken into through — the October 2026 PHP2Shell attack on PHP, and the July 2026 wp2shell attack on WordPress.**
 
 [![CI](https://github.com/CptNope/JAT-Shell-Scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/CptNope/JAT-Shell-Scanner/actions/workflows/ci.yml)
+[![WordPress.org](https://img.shields.io/wordpress/plugin/v/jat-shell-scanner?label=WordPress.org&cacheSeconds=3600)](https://wordpress.org/plugins/jat-shell-scanner/)
 [![Latest release](https://img.shields.io/github/v/release/CptNope/JAT-Shell-Scanner?cacheSeconds=300)](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/CptNope/JAT-Shell-Scanner/total?cacheSeconds=3600)](https://github.com/CptNope/JAT-Shell-Scanner/releases)
 ![PHP 7.0–8.5](https://img.shields.io/badge/PHP-7.0%E2%80%938.5-777bb4)
 ![WordPress 6.2+](https://img.shields.io/badge/WordPress-6.2%2B-21759b)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-### [⬇️ Download jat-shell-scanner.zip](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip)
+### [Install from WordPress.org](https://wordpress.org/plugins/jat-shell-scanner/) · [⬇️ Download the zip](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip)
 
 **Current version: 1.6.0** (October 28, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
 
@@ -215,20 +216,23 @@ No technical skills needed. It takes about two minutes.
 
 ```mermaid
 flowchart LR
-    A["⬇️ Download<br/>the zip"] --> B["Plugins → Add New Plugin<br/>→ Upload Plugin"]
+    A["Plugins →<br/>Add New Plugin"] --> B["Search<br/>JAT Shell Scanner"]
     B --> C["Install Now<br/>→ Activate"]
     C --> D["Tools →<br/>JAT Shell Scanner"]
     D --> E["Click<br/>Scan now"]
     E --> F["Read your result"]
 ```
 
-1. **Download** [**jat-shell-scanner.zip**](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip). Don't unzip it.
-2. Log in to WordPress as an administrator and go to **Plugins → Add New Plugin**.
-3. Click **Upload Plugin** (top of the page), then **Choose File**, pick the zip, and click **Install Now**.
-4. When it says *"Plugin installed successfully"*, click **Activate Plugin**.
-5. Go to **Tools → JAT Shell Scanner** (or click **Scan** under the plugin on the Plugins screen).
-6. Click **Scan now**. A progress bar shows how it's going. Most sites finish in under a minute; very large ones take a few minutes.
-7. Read your result — see [Understanding your results](#4-understanding-your-results).
+1. Log in to WordPress as an administrator and go to **Plugins → Add New Plugin**.
+2. Search for **JAT Shell Scanner**. It's listed on [WordPress.org](https://wordpress.org/plugins/jat-shell-scanner/), so WordPress finds it directly.
+3. Click **Install Now**, then **Activate**.
+4. Go to **Tools → JAT Shell Scanner** (or click **Scan** under the plugin on the Plugins screen).
+5. Click **Scan now**. A progress bar shows how it's going. Most sites finish in under a minute; very large ones take a few minutes.
+6. Read your result — see [Understanding your results](#4-understanding-your-results).
+
+**Can't reach WordPress.org from your site?** Download [**jat-shell-scanner.zip**](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip) (don't unzip it), go to **Plugins → Add New Plugin → Upload Plugin**, choose the zip and click **Install Now**, then carry on from step 4.
+
+Installed from WordPress.org, the plugin updates from your **Dashboard → Updates** screen like any other plugin.
 
 **What the scanner page looks like**
 
