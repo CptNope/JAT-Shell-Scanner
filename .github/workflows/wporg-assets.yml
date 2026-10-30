@@ -1,0 +1,58 @@
+name: Update WordPress.org assets
+
+# Uploads the listing artwork in .wordpress-org/ (icon, banner, screenshots)
+# and readme.txt to WordPress.org SVN without releasing a new version.
+# Runs when either changes on main, or by hand from the Actions tab.
+#
+# Deploy to WordPress.org skips a version that is already published, so use
+# this one for artwork and readme changes between releases.
+#
+# Needs the SVN_USERNAME and SVN_PASSWORD repository secrets.
+#
+# 10up/action-wordpress-plugin-asset-update 2.2.0 = 2480306…
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.wordpress-org/**'
+      - 'readme.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wporg-deploy
+  cancel-in-progress: false
+
+jobs:
+  assets:
+    name: Update WordPress.org assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Are WordPress.org SVN credentials set?
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+        run: |
+          if [ -z "$SVN_USERNAME" ] || [ -z "$SVN_PASSWORD" ]; then
+            echo "::error::Add the SVN_USERNAME and SVN_PASSWORD repository secrets first (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09   # v5
+
+      - name: Install Subversion
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq subversion
+
+      # IGNORE_OTHER_FILES: the WordPress.org copy is built by
+      # .github/scripts/build-wporg.sh, so trunk never matches the repo
+      # file for file. Only readme.txt and the assets are sent.
+      - uses: 10up/action-wordpress-plugin-asset-update@2480306f6f693672726d08b5917ea114cb2825f7
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: jat-shell-scanner
+          ASSETS_DIR: .wordpress-org
+          README_NAME: readme.txt
+          IGNORE_OTHER_FILES: true
