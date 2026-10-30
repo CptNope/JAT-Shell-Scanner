@@ -34,7 +34,7 @@ define( 'WP2SS_BASENAME', plugin_basename( __FILE__ ) );
 define( 'WP2SS_REPO', 'CptNope/JAT-Shell-Scanner' );
 define( 'WP2SS_WPORG_SLUG', 'jat-shell-scanner' );
 define( 'WP2SS_AUTHOR_URL', 'https://jeremyanderson.tech/' );
-define( 'WP2SS_DOCS_URL', WP2SS_AUTHOR_URL . 'project/php2shell-wp2shell-scanner/' );
+define( 'WP2SS_DOCS_URL', WP2SS_AUTHOR_URL . 'project/jat-shell-scanner/' );
 
 // <github-only> Removed from the WordPress.org build by .github/scripts/build-wporg.sh.
 /*
