@@ -1,0 +1,43 @@
+name: Wiki
+
+# Rebuilds the GitHub wiki from README.md whenever the README (or the
+# build script) changes on main, or when run by hand from the Actions tab.
+# README.md is the source: edits made on the wiki itself are replaced.
+on:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - .github/scripts/build-wiki.py
+      - .github/workflows/wiki.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write   # the wiki is a git repository next to this one
+
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+
+jobs:
+  wiki:
+    name: Rebuild the wiki
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09   # v5
+
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git clone -q "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.wiki.git" "$RUNNER_TEMP/wiki"
+          # Start from empty so pages dropped from the build disappear too.
+          find "$RUNNER_TEMP/wiki" -maxdepth 1 -name '*.md' -delete
+          python3 .github/scripts/build-wiki.py "$RUNNER_TEMP/wiki"
+          cd "$RUNNER_TEMP/wiki"
+          git add -A
+          if git diff --cached --quiet; then echo "Wiki already up to date."; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Rebuild from README.md at ${GITHUB_SHA::7}"
+          git push -q origin HEAD
+          echo "Wiki updated: https://github.com/${{ github.repository }}/wiki"

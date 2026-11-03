@@ -13,7 +13,7 @@
 
 ### [⬇️ Download jat-shell-scanner.zip](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip)
 
-**Current version: 1.6.0** (October 28, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md)
+**Current version: 1.6.0** (October 28, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md) · [Wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
@@ -1123,6 +1123,10 @@ flowchart LR
 ```
 
 **WordPress.org build.** `bash .github/scripts/build-wporg.sh` writes `build/jat-shell-scanner/` and a zip of it: the same files minus the GitHub updater and the `Update URI` header. CI runs the official [Plugin Check](https://wordpress.org/plugins/plugin-check/) on that build. Once the plugin is approved on WordPress.org and the `SVN_USERNAME` / `SVN_PASSWORD` repository secrets are set, each GitHub release is also committed to WordPress.org SVN (trunk and tag), with the banner, icon and screenshots from `.wordpress-org/`.
+
+**Manual WordPress.org workflows** (Actions tab → Run workflow): **Deploy to WordPress.org** publishes the current version again, and **Update WordPress.org readme** publishes only `readme.txt` and the `.wordpress-org/` images, without a new version.
+
+**Wiki.** The [wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki) is built from this README by `.github/scripts/build-wiki.py`, which splits the numbered sections into pages. The **Wiki** workflow rebuilds it whenever README.md changes on main, so edit the README, not the wiki.
 
 Workflow actions are pinned to exact commits. Detection rules live in [`includes/signatures.php`](includes/signatures.php) — **new indicators are very welcome**: open an issue or pull request with a link to the source.
 
