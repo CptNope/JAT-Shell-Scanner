@@ -80,6 +80,26 @@ jobs:
           for r in WordPress/WordPress Yoast/wordpress-seo elementor/elementor takayukister/contact-form-7 woocommerce/woocommerce Automattic/wp-super-cache Automattic/jetpack; do
             git clone --quiet --depth 1 "https://github.com/$r" "$(basename "$r")"
           done
+
+      - name: Fetch the wordpress.org zips sites actually install
+        # What a freshly installed plugin or theme puts on a site: security, backup, cache,
+        # snippet, SEO, form, management and migration tools write the files most often mistaken for malware.
+        run: |
+          mkdir -p corpus/wporg && cd corpus/wporg
+          plugins="akismet wordfence all-in-one-wp-security-and-firewall better-wp-security sucuri-scanner malcare-security really-simple-ssl
+            updraftplus all-in-one-wp-migration duplicator wpvivid-backuprestore backwpup wp-staging
+            litespeed-cache w3-total-cache wp-fastest-cache wp-optimize autoptimize hummingbird-performance jetpack-boost wp-cloudflare-page-cache
+            code-snippets insert-headers-and-footers wp-file-manager wp-all-import redirection
+            seo-by-rank-math all-in-one-seo-pack google-site-kit google-analytics-for-wordpress
+            wpforms-lite ninja-forms formidable essential-addons-for-elementor-lite wp-mail-smtp
+            worker mainwp-child health-check query-monitor classic-editor advanced-custom-fields loco-translate
+            wp-smushit ewww-image-optimizer regenerate-thumbnails duplicate-post wp-crontrol user-role-editor
+            limit-login-attempts-reloaded two-factor mailpoet the-events-calendar bbpress buddypress"
+          themes="astra kadence generatepress oceanwp hello-elementor blocksy neve"
+          { for p in $plugins; do echo "plugin/$p.latest-stable.zip"; done; for t in $themes; do echo "theme/$t.zip"; done; } |
+            xargs -P 8 -I{} sh -c 'f=$(echo "{}" | tr / _); curl -fsSL --retry 3 -o "$f" "https://downloads.wordpress.org/{}" || echo "::warning::Couldn'"'"'t download {}"'
+          for z in *.zip; do unzip -q -o "$z" -d "${z%.zip}" && rm "$z"; done
+          echo "Plugins and themes: $(ls | wc -l), PHP files: $(find . -name '*.php' | wc -l)"
       - name: Run the code signatures over them
         run: php tests/false-positives.php corpus
 

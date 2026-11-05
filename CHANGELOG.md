@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.7.0] — 2026-11-05
+
+### Fewer false alarms
+Newly installed plugins and some hosts put files where the scanner looked for backdoors, and a few code signatures matched ordinary plugin code. A false "Suspicious" or "Compromised" verdict on a clean site was the result. Now:
+
+- **Plugin data folders.** PHP in a folder under uploads or cache named exactly after an installed plugin or theme (`uploads/wpallimport/` for WP All Import, for example) says which plugin it probably belongs to. Older files there are low. Files changed since July 17, 2026, or that handle web requests, are medium ("needs review") instead of high, because an attacker could name a folder after a plugin too. Code signatures still apply to every file. Generic names (cache, files, backups…) never count as a plugin's folder.
+- **Interrupted updates.** Plugin, theme and core packages left half-unpacked in `wp-content/upgrade/` are reported once per folder (medium, "delete it if no update is running") instead of once per PHP file as high. This applies only to the layout WordPress actually uses: `upgrade/wordpress-<version>/wordpress/…`, or `upgrade/<slug>[.<version>]/<slug>/…` for an installed plugin or theme.
+- **Must-use files and drop-ins** that load an installed plugin are recognised (low). A must-use file counts only if it does nothing but `require` that plugin's files; one that also logs people in or handles requests is still medium. More known names: ManageWP (`0-worker.php`), Health Check, WP Migrate, WP Staging, WP Cerber, SpinupWP; Jetpack Boost, Super Page Cache, Endurance, APCu, Hyper Cache, Simple Cache, FlyingPress, Cachify and NitroPack drop-ins.
+- **Code loaded before every page.** The firewalls of Wordfence, All In One WP Security (`aios-bootstrap.php`) and MalCare are trusted only at the site root and while that plugin is installed. The same file name anywhere else stays high, and is low at the root if the plugin is gone. `auto_prepend_file` into a vendor folder under `/usr/local`, `/opt`, `/usr/share` or `/var/imunify360` (host security agents) or into an installed plugin's folder is low. Session files, temp folders, paths with `..` and the site's own data folders stay high. (Before this release, any path merely containing `imunify`, `malcare` or `wordfence-waf.php` was trusted.)
+- **Site root:** `wordfence-waf.php`, `aios-bootstrap.php` and `malcare-waf.php` are known files while their plugin is installed, and GoDaddy's `gd-config.php` when GoDaddy's must-use plugin is present.
+- **Code signatures:** a method *named* `exec()` or `system()` is no longer read as running shell commands. `file_put_contents()` with form input (saving custom CSS, imports) is medium. It stays high when the file name comes from the request, a PHP file is written, or decoded (base64, gzip, URL-encoded…) request input is written. Trade-off: a dropper that writes request input to a PHP file named through a variable is now medium.
+- CI's false-alarm test now also runs over the zips of about 55 of the most-installed wordpress.org plugins and 7 themes. Across 42,658 PHP files it found one more false alarm (WPForms Lite), from a code comment.
+- **Comments are ignored.** A signature that matches only inside a comment ("fields that require $_POST data") no longer counts, since comments never run. The re-check only happens when something matched, so scans aren't slower. Markers attackers deliberately put in comments, like `WP_Core_Integrity`, still count.
+- An independent adversarial review of these changes found ways an attacker could have hidden a webshell behind them (folder names chosen to look like a plugin, fake update folders, session files as "system" files, a firewall file name anywhere). All are closed and covered by integration tests.
+
+### New indicators
+- **PHP2Shell** (honeypot captures October 22–24, [0x4D31](https://gist.github.com/0x4D31/6b1e7b5fb7a10219af187be91335c96f); Defused/Prophet Security): probe and exploit markers in logs (`PHP2SHELL_CORE_…`, `PHP2SHELL_CHAIN_OK`, `PHP2SHELL_CHECK`, the p2s_v2 "alive" probe, `shellflow_canary`, `recon0xdeadbeef`, `p2s-rider`, fixed session IDs and multipart boundaries, `/pwn-<ip>`), webshell names `shell_<8 hex>.php`, response markers in code, session files, and 26 more addresses.
+- **wp2shell persistence** ([Dosdediez incident report](https://github.com/Dosdediez/wordpress-db-backdoor-iocs)): fake plugin folders `advanced-cache-handler-<hex>`, `database-repair-assistant-<hex>`, `wp2shell-<hex>` (critical); `w2s_` / `wpsvc_` admin accounts; the `_site_transient_health_<hex>` option; `WP_Core_Integrity` markers in code; `wp_compat_<hex>` blocks in `.htaccess`; `class-wp-cache-<hex>.php` restore copies. On multisite, the network table is checked for the option too.
+- **WordPress's October 28, 2026 security release** ([7.1.4](https://wordpress.org/support/wordpress-version/version-7-1-4/) and backports 7.0.8, 6.9.11, 6.8.12…): sites below it get a medium reminder. It fixes 22 issues, including a race condition during core updates that could allow remote code execution.
+
 ## [1.6.0] — 2026-10-28
 
 ### JAT Shell Scanner

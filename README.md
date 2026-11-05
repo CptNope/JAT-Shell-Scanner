@@ -14,7 +14,7 @@
 
 ### [Install from WordPress.org](https://wordpress.org/plugins/jat-shell-scanner/) · [⬇️ Download the zip](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip)
 
-**Current version: 1.6.0** (October 28, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md) · [Wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki)
+**Current version: 1.7.0** (November 5, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md) · [Wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
@@ -33,6 +33,7 @@ By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](htt
 
 | Version | Highlights |
 |---|---|
+| **1.7.0** | **Far fewer false alarms**: files newly installed plugins keep in uploads or cache, half-unpacked updates in `wp-content/upgrade`, plugin-made must-use files and drop-ins, and security firewalls or host tools loaded before every page are recognised. Ordinary code (a method named `exec()`, saving custom CSS) no longer matches webshell signatures. New PHP2Shell honeypot indicators and wp2shell persistence indicators; a reminder for WordPress's October 28 security release |
 | **1.6.0** | Renamed **JAT Shell Scanner** on WordPress.org (by Jeremy Anderson Tech). Quarantine moves into the plugin's own folder in uploads, blocked from the web; folders are found through WordPress's functions, so moved content, plugin and theme folders are scanned correctly |
 | **1.5.1** | Latest PHP2Shell intel (October 22–24): the Potassium/Mirai botnet's second stage, servers and download names, exploit-kit webshell names (`wp2s.php`, `axiom_*.php`…) and markers (`P2S_OK`, `NxSP…`), poisoned session files, Apache worker aborts, 34 more attacker addresses, and advice for the unpatched **CVE-2026-115560** |
 | **1.5.0** | Looks for backdoors in the **database** (code in settings, injected scripts and hidden links in posts, scheduled tasks that carry code), checks **plugin files against wordpress.org's checksums**, and flags unexplained **drop-ins** |

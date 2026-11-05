@@ -259,9 +259,9 @@ class WP2SS_Admin {
 			'cleared'    => array( 'success', __( 'The list is empty. Sites reappear (and register again) with their next report.', 'jat-shell-scanner' ) ),
 			'rescan'     => array( 'success', __( 'Scan requested. Sites pick this up within an hour (sites on version 1.2 or older can’t; scan those yourself).', 'jat-shell-scanner' ) ),
 		);
-		$done = isset( $_GET['done'] ) ? sanitize_key( wp_unslash( $_GET['done'] ) ) : '';
+		$done = isset( $_GET['done'] ) ? sanitize_key( wp_unslash( $_GET['done'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Which notice to show after a redirect; changes nothing.
 		$err = '';
-		if ( ! empty( $_GET['err'] ) ) {
+		if ( ! empty( $_GET['err'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Shows this user's own stored error after a redirect; changes nothing.
 			$err = (string) get_transient( 'wp2ss_err_' . get_current_user_id() );
 			delete_transient( 'wp2ss_err_' . get_current_user_id() );
 		}
