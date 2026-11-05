@@ -4,7 +4,7 @@ Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.6.0
+Stable tag: 1.7.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -106,6 +106,13 @@ Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/)
 
 == Changelog ==
 
+= 1.7.0 =
+* Far fewer false alarms from newly installed plugins and hosts. These are now recognised instead of reported as a break-in: PHP a plugin keeps in its own uploads or cache folder, updates left half-unpacked in wp-content/upgrade, must-use files and drop-ins that only load an installed plugin, security firewalls (Wordfence, All In One WP Security, MalCare) at the site root, and host security tools that load before every page. Anything still worth a look is "needs review", not "suspicious".
+* Ordinary plugin code no longer matches webshell signatures: a method named exec() or system(), or saving custom CSS from a form.
+* New PHP2Shell indicators from honeypot captures (October 22–24): probe markers, webshell names (shell_<8 letters>.php), session IDs and attacker addresses.
+* New wp2shell persistence indicators from an incident report: fake plugin folders, w2s_/wpsvc_ admin accounts, a hidden option, and marked wp-config.php and .htaccess blocks.
+* Reminds sites to install WordPress's October 28, 2026 security release (7.1.4, 7.0.8, 6.9.11…), which fixes a race condition during core updates that could allow remote code execution.
+
 = 1.6.0 =
 * Renamed to JAT Shell Scanner (by Jeremy Anderson Tech).
 * Quarantine now lives in the plugin's own folder in uploads (uploads/jat-shell-scanner/) instead of wp-content. Files quarantined by earlier GitHub builds can still be restored or deleted.
@@ -134,6 +141,9 @@ Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/)
 The full history is in [CHANGELOG.md](https://github.com/CptNope/JAT-Shell-Scanner/blob/main/CHANGELOG.md).
 
 == Upgrade Notice ==
+
+= 1.7.0 =
+Fewer false alarms from newly installed plugins and host files; new PHP2Shell and wp2shell indicators.
 
 = 1.6.0 =
 New name (JAT Shell Scanner); quarantine moves into the uploads folder; better support for sites with moved folders.

@@ -72,12 +72,14 @@ return array(
 		array( 'segfault', 'high', '/exited on signal (11|6)\b|\bSIGSEGV\b|\bSIGABRT\b|segfault at [0-9a-f]+ .*php|zend_mm_heap corrupted|exit signal (Segmentation fault|Abort(ed)?) \((11|6)\)/i', 'PHP worker crashes (segmentation faults, aborts, heap corruption)' ),
 	),
 
+	// Probe and exploit markers from honeypot captures of October 22–24 (0x4D31): PHP2SHELL_CORE_/CHAIN_OK/CHECK,
+	// the p2s_v2 "alive" probe, shellflow_canary, recon0xdeadbeef, fixed session IDs and boundaries; p2s-rider and /pwn-<ip> (Defused, Prophet).
 	// Exploit tools and payloads reported for PHP2Shell, matched in any log line: scanner user agents
 	// (ELLIO, Hunt.io), test canaries and payload markers (Wordfence, 2026-10-22), second-stage downloads
 	// and the Potassium (Mirai) botnet's hosts (Arctic Wolf, Hunt.io, 2026-10-22), the session file the
 	// published session-poisoning chain includes, and a PHPSESSID cookie carrying percent-encoded bytes
 	// (leaked memory, Wiz) where cookies are logged.
-	'php2shell_log'     => '/php2shell-(scan|verify|109618)|JACKALPOC|\bP2S_OK\b|\bSHL_OK\b|\bNxSP\d+|ADV618BOUNDARY|p2s0adf525faa|sess_p2sopchain|92\.118\.112\.100|45\.115\.26\.26|\/tmp\/nfs\b|\/nfs-setup\b|\/mountpoint\b|\/cCmono\b|botlesscucks\.st|godofthunder\.st|gettingheadfromduckysmom\.st|maste\.mangsud\.org|PHPSESSID=[^;"\s]*%[0-9A-Fa-f]{2}[^;"\s]*%[0-9A-Fa-f]{2}/i',
+	'php2shell_log'     => '/php2shell-(scan|verify|109618)|JACKALPOC|\bP2S_OK\b|\bSHL_OK\b|\bNxSP\d+|ADV618BOUNDARY|p2s0adf525faa|sess_p2sopchain|92\.118\.112\.100|45\.115\.26\.26|\/tmp\/nfs\b|\/nfs-setup\b|\/mountpoint\b|\/cCmono\b|botlesscucks\.st|godofthunder\.st|gettingheadfromduckysmom\.st|maste\.mangsud\.org|PHPSESSID=[^;"\s]*%[0-9A-Fa-f]{2}[^;"\s]*%[0-9A-Fa-f]{2}|p2s-rider|PHP2SHELL_(CORE_|CHAIN_OK|CHECK)|p2s_v2_(?:alive)|shellflow_canary|recon0xdeadbeef|attacksessionid0001|p2sca35689de5a64ce4|Php2Shell22fe580e9|\/pwn-\d{1,3}(\.\d{1,3}){3}\b/i',
 
 	// Addresses seen attempting PHP2Shell. Many are anonymisation services or rented servers: investigate, don't just block.
 	'php2shell_ips'     => array(
@@ -85,6 +87,10 @@ return array(
 		'103.216.220.92', '31.223.184.166', '37.19.200.5', '134.209.159.64', '103.114.163.188', '95.217.98.37',
 		// Hunt.io (2026-10-21/22): scanners, the mass-exploitation server, operators with custom tooling, public-PoC reuse.
 		'45.198.224.169', '85.11.167.243', '206.188.197.105', '102.210.149.166', '122.10.110.72', '122.10.17.49', '58.221.60.160', '41.223.30.7', '157.230.117.70', '104.219.251.31', '107.150.31.151', '217.160.132.82',
+		// Honeypot captures, October 22–24 (0x4D31): crash/OOM sources, the core/serializer wave and a canary. A hunting list, not proof.
+		'178.249.214.6', '89.167.27.27', '103.151.173.212', '45.14.71.20', '91.107.150.150', '192.42.116.21', '172.86.85.171', '138.199.22.106', '106.192.102.115', '190.47.59.9',
+		'27.100.38.10', '46.144.20.186', '152.59.222.169', '185.177.72.45', '84.32.50.51', '144.31.90.233', '46.166.168.18', '31.185.105.123', '185.252.177.175', '193.178.226.197',
+		'130.78.219.18', '144.31.90.126', '88.216.36.31', '146.255.189.4', '80.47.18.86', '46.250.228.73',
 		// Arctic Wolf (2026-10-22): Potassium botnet hosts.
 		'45.115.26.26', '5.175.189.76',
 		// Wordfence (2026-10-22): the 20 busiest sources of blocked PHP2Shell attempts.
@@ -101,14 +107,16 @@ return array(
 	'php2shell_tmp_names' => '/^(nfs(\..*)?|nfs-setup|mountpoint|ccmono)$/i',
 
 	// Session files: the session-poisoning chain's fixed IDs and markers (Arctic Wolf, Wordfence, SOCRadar).
-	'php2shell_sess_names' => '/^sess_(p2sopchain|fprint)/i',
-	'php2shell_sess_data'  => '/\bNxSP\d+|\bP2S_OK\b|\bSHL_OK\b|MARKER_[0-9a-f]{8}\.txt/i',
+	'php2shell_sess_names' => '/^sess_(p2sopchain|fprint|p2sca35689de5a64ce4|attacksessionid0001)/i',
+	'php2shell_sess_data'  => '/\bNxSP\d+|\bP2S_OK\b|\bSHL_OK\b|MARKER_[0-9a-f]{8}\.txt|PHP2SHELL_CORE_/i',
 
 	// PHP file names reported as PHP2Shell drops: [ severity, regex on the file name, description ].
 	'php2shell_names'   => array(
 		array( 'high', '/^(wp2s|php2shell|php-to-shell[\w-]*|autologin_fd)\.php$/i', 'Named like a webshell PHP2Shell attackers drop (Wordfence, Hunt.io)' ),
 		array( 'high', '/^axiom_\w*\.php$/i', 'Named like a webshell PHP2Shell attackers drop (axiom_*.php, Wordfence)' ),
 		array( 'medium', '/^tebaran_\w*\.php$/i', 'Named like the mass-deployment scripts on a PHP2Shell attacker server (Hunt.io)' ),
+		array( 'high', '/^shell_[0-9a-f]{8}\.(php\d?|phtml|phar)$/i', 'Named like the webshells PHP2Shell exploit attempts tried to write (shell_<8 hex>, honeypot captures)' ),
+		array( 'high', '/^class-wp-cache-(?=[0-9a-f]*\d)[0-9a-f]{6,}\.php$/i', 'Named like the hidden copy a wp2shell backdoor restores itself from (class-wp-cache-<hex>.php, Dosdediez incident report)' ),
 	),
 
 	// Thresholds (count since php2shell_ts) at which an error-log pattern escalates to high.
@@ -147,6 +155,13 @@ return array(
 		array( '6.8', '6.8.6', 'high', 'the wp2shell SQL injection (CVE-2026-60137)', '6.8.6' ),
 	),
 
+	// WordPress's October 28, 2026 security release (7.1.4 and backports): 22 fixes, including a race condition
+	// during core updates that could lead to remote code execution. Branch => first fixed version.
+	'wp_security'       => array(
+		'7.1' => '7.1.4', '7.0' => '7.0.8', '6.9' => '6.9.11', '6.8' => '6.8.12', '6.7' => '6.7.11',
+		'6.6' => '6.6.11', '6.5' => '6.5.14', '6.4' => '6.4.14', '6.3' => '6.3.14', '6.2' => '6.2.15',
+	),
+
 	// Published webshell SHA1 hashes.
 	'sha1'              => array(
 		'2a1410d8e2a8337ac2171cedea8c0fdc47c647a0' => 'wp2shell webshell (Wiz)',
@@ -166,6 +181,13 @@ return array(
 		'172.235.128.52',
 	),
 
+	// Persistence left after wp2shell break-ins (Dosdediez incident report, June–August 2026): fake plugin folders,
+	// admin accounts, an option, and marked .htaccess blocks.
+	'wp2shell_plugin_slugs' => '/^(advanced-cache-handler|database-repair-assistant|wp2shell)-[0-9a-f]{4,}$/i',
+	'admin_login_iocs'      => '/^(w2s|wpsvc)_/i',
+	'option_iocs'           => '/^_site_transient_health_[0-9a-f]{6,}$/i',
+	'htaccess_iocs'         => '/\bwp_compat_[0-9a-f]{6,}\b/i',
+
 	// wp2shell exploit-tool user agents.
 	'user_agents'       => '/\b(rez)?wp2shell\b|cve-2026-63030/i',
 
@@ -176,13 +198,16 @@ return array(
 	/* Webshells in general (what either attack leaves behind)             */
 	/* ------------------------------------------------------------------ */
 
-	// Code signatures: [ severity, regex, description ]. The most severe match per file is reported.
+	// Code signatures: [ severity, regex, description, optional 'comments' ]. The most severe match per file is reported.
+	// Matches only inside comments don't count (comments never run), unless the signature is flagged 'comments'.
 	'code'              => array(
 		array( 'critical', '/\b(botlesscucks|godofthunder|gettingheadfromduckysmom)\.st\b|maste\.mangsud\.org|92\.118\.112\.100\/(nfs|mountpoint)|45\.115\.26\.26:8000/i', 'Contacts infrastructure of the botnet behind PHP2Shell attacks (Potassium / Mirai)' ),
 		array( 'high', '/\becho\s*\(?\s*[\'"](P2S_OK|SHL_OK)[\'"]/', 'Prints the success marker PHP2Shell exploit kits check for' ),
+		array( 'high', '/==SHELL(?:USER)==|==PASS(?:WD)==|PHP2SHELL_(?:CHAIN)_OK|p2s_v2_(?:alive)/', 'Prints the markers PHP2Shell exploit kits look for in the response' ),
+		array( 'high', '/\/\*\s*WP_Core_Integ(?:rity)\s+[0-9a-f]{4,}\s*\*\//', 'Code wrapped in the WP_Core_Integrity markers a wp2shell backdoor adds to wp-config.php (Dosdediez incident report)', 'comments' ),
 		array( 'critical', '/eval\s*\(\s*\$_(POST|GET|REQUEST|COOKIE|SERVER)\s*\[[^\]]+\]\s*\?\?\s*[\'"]http_response_code\(\s*404\s*\)/i', 'Webshell one-liner that hides behind a 404 (seen with wp2shell)' ),
 		array( 'critical', '/\b(eval|assert)\s*\(\s*(stripslashes\s*\(\s*)?\$_(POST|GET|REQUEST|COOKIE)\b/i', 'Executes code straight from a web request' ),
-		array( 'critical', '/(?<![\w>:$])(system|passthru|shell_exec|exec|popen|proc_open|pcntl_exec)\s*\(\s*(base64_decode\s*\(\s*)?\$(_GET|_POST|_REQUEST|_COOKIE|_SERVER|request|req|r)\b/i', 'Runs shell commands taken from a web request' ),
+		array( 'critical', '/(?<![\w>:$])(?<!function )(?<!function\t)(system|passthru|shell_exec|exec|popen|proc_open|pcntl_exec)\s*\(\s*(base64_decode\s*\(\s*)?\$(_GET|_POST|_REQUEST|_COOKIE|_SERVER|request|req|r)\b/i', 'Runs shell commands taken from a web request' ),
 		array( 'high', '/\$_(GET|POST|REQUEST|COOKIE)\s*\[[^\]]{1,40}\]\s*\(/', 'Calls a function whose name comes from a web request' ),
 		array( 'high', '/\beval\s*\(\s*(gzuncompress|gzinflate|gzdecode|str_rot13)\s*\(\s*base64_decode\s*\(/i', 'Packed/obfuscated eval payload (CMSmap-style webshell)' ),
 		array( 'high', '/\b(eval|assert)\s*\([^;]{0,80}base64_decode\s*\(\s*[\'"][A-Za-z0-9+\/=\s]{400,}/i', 'Evaluates a large hidden (base64) payload' ),
@@ -190,7 +215,10 @@ return array(
 		array( 'high', '/\$\{\s*[\'"]_(P|G|R|C)[\'"]\s*\.\s*[\'"]/', 'Hides a $_POST/$_GET reference by splitting its name' ),
 		array( 'high', '/\b(include|require)(_once)?\s*\(?\s*\$_(GET|POST|REQUEST|COOKIE)\b/i', 'Includes a file named by a web request' ),
 		array( 'high', '/\b(include|require)(_once)?\s*\(?\s*[\'"][^\'"]+\.(ico|png|jpe?g|gif|webp|bmp)[\'"]/i', 'Includes an image file as PHP code' ),
-		array( 'high', '/\bfile_put_contents\s*\([^;]{0,200}\$_(POST|GET|REQUEST)\b/i', 'Writes attacker-supplied content to disk' ),
+		array( 'high', '/\bfile_put_contents\s*\(\s*[^,;]{0,120}?\$_(POST|GET|REQUEST|COOKIE)\b[^,;]{0,120},/i', 'Writes a file whose name comes from a web request' ),
+		array( 'high', '/\bfile_put_contents\s*\(\s*[^,;]{0,120}\.(php\d?|phtml|pht|phar|inc)[\'"][^,;]{0,40},[^;]{0,200}\$_(POST|GET|REQUEST|COOKIE)\b/i', 'Writes web-request input into a PHP file' ),
+		array( 'high', '/\bfile_put_contents\s*\([^;]{0,200}\b(base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin|urldecode|rawurldecode)\s*\(\s*\$_(POST|GET|REQUEST|COOKIE)\b/i', 'Writes decoded web-request input to disk' ),
+		array( 'medium', '/\bfile_put_contents\s*\([^;]{0,200}\$_(POST|GET|REQUEST)\b/i', 'Writes web-request input to a file (plugins that save custom CSS or imports do this too)' ),
 		array( 'medium', '/\$[a-z_]\w*\s*\(\s*\$_(POST|GET|REQUEST|COOKIE)\s*\[\s*[\'"][^\'"]+[\'"]\s*\]\s*\)\s*;/i', 'Calls a function named by a variable with web-request input' ),
 	),
 
@@ -214,13 +242,23 @@ return array(
 
 	// PHP settings that load a file into every request.
 	'auto_prepend'      => '/^\s*(?:php_value\s+)?(auto_prepend_file|auto_append_file)\s*[= ]\s*["\']?([^"\'\s]+)/im',
-	'auto_prepend_allow' => '#(wordfence-waf\.php|/wp-content/plugins/[^/]+/|/wflogs/|ninjafirewall|malcare|bitninja|imunify|/usr/share/)#i',
+	// Security plugins whose firewall loads a file from the site root before every page: file => plugin folder.
+	// Trusted only at the site root and only while that plugin is installed.
+	'prepend_firewalls' => array(
+		'wordfence-waf.php'  => 'wordfence',
+		'aios-bootstrap.php' => 'all-in-one-wp-security-and-firewall',
+		'malcare-waf.php'    => 'malcare-security',
+	),
 
-	// Must-use plugins that hosts install and update themselves.
-	'host_mu_plugins'   => '/^(mu-plugin|wpengine-common|wpe-|slt-force-strong|force-strong-passwords|kinsta-mu-plugins|gd-system-plugin|sso|endurance-|bluehost|wpcomsh|wpcom|pantheon|object-cache|redis-cache|batcache|wp-cache-memcached|siteground|sg-|hostinger|flywheel|wpaas|pressable|nexcess|cloudways|breeze|godaddy|onecom|dreamhost|ionos|liquidweb)[\w.-]*\.php$/i',
+	// auto_prepend_file pointing into a vendor's folder under system directories a site can't write to: set by the host
+	// (BitNinja, Imunify360, monitoring agents). Session and temp folders never count, even under these.
+	'auto_prepend_system' => '#^/(usr/local|opt|usr/share|var/imunify360)/[\w.-]+/#',
+
+	// Must-use plugins that hosts (and a few well-known plugins: ManageWP, Health Check, WP Migrate, WP Staging, WP Cerber) install and update themselves.
+	'host_mu_plugins'   => '/^(mu-plugin|wpengine-common|wpe-|slt-force-strong|force-strong-passwords|kinsta-mu-plugins|gd-system-plugin|sso|endurance-|bluehost|wpcomsh|wpcom|pantheon|object-cache|redis-cache|batcache|wp-cache-memcached|siteground|sg-|hostinger|flywheel|wpaas|pressable|nexcess|cloudways|breeze|godaddy|onecom|dreamhost|ionos|liquidweb|spinupwp|0-worker|health-check-troubleshooting-mode|wp-migrate-db(-pro)?-compatibility|wp-staging-optimizer|wpstg-optimizer|aaa-wp-cerber)[\w.-]*\.php$/i',
 
 	// Non-core PHP commonly found in the site root.
-	'root_allow'        => array( 'wordfence-waf.php', 'wp-config.php', 'wp-cli.php', 'local-config.php', 'wp-config-local.php' ),
+	'root_allow'        => array( 'wp-config.php', 'wp-cli.php', 'local-config.php', 'wp-config-local.php' ),
 
 	/* ------------------------------------------------------------------ */
 	/* The database (where backdoors hide once files are cleaned)          */
@@ -252,7 +290,7 @@ return array(
 	'cron_random_hook'  => '/^(?=[a-z0-9]*\d)(?=[a-z0-9]*[a-z])[a-z0-9]{16,}$/i',
 
 	// Drop-ins (advanced-cache.php, object-cache.php, db.php…) written by well-known plugins and hosts.
-	'dropin_known'      => '/\b(WP Rocket|W3 Total Cache|W3TC|LiteSpeed|WP Super Cache|WP-Cache|Redis Object Cache|Object Cache Pro|Memcached|Docket Cache|Query Monitor|HyperDB|LudicrousDB|SQLite (?:Database )?Integration|WP Fastest Cache|Breeze|SiteGround|Cache Enabler|Comet Cache|Swift Performance|WP-Optimize|Powered Cache|Hummingbird|WP Engine|Kinsta|Pantheon|Pressable|Batcache|Atomic)\b/i',
+	'dropin_known'      => '/\b(WP Rocket|W3 Total Cache|W3TC|LiteSpeed|WP Super Cache|WP-Cache|Redis Object Cache|Object Cache Pro|Memcached|Docket Cache|Query Monitor|HyperDB|LudicrousDB|SQLite (?:Database )?Integration|WP Fastest Cache|Breeze|SiteGround|Cache Enabler|Comet Cache|Swift Performance|WP-Optimize|Powered Cache|Hummingbird|WP Engine|Kinsta|Pantheon|Pressable|Batcache|Atomic|Jetpack Boost|Super Page Cache|Endurance|APCu|Hyper Cache|Simple Cache|FlyingPress|Cachify|NitroPack)\b/i',
 
 	// Capabilities that only administrators should have.
 	'admin_caps'        => array( 'install_plugins', 'edit_plugins', 'activate_plugins', 'edit_users', 'promote_users', 'create_users', 'unfiltered_upload', 'edit_files', 'update_core' ),

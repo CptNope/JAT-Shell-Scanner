@@ -126,6 +126,7 @@ class WP2SS_Scanner {
 			'frames'    => array(),
 			'followed'  => array(),
 			'themes'    => array(),
+			'staging'   => array(),
 			'core'      => null,
 			'plug'      => null,
 			'logs'      => null,
@@ -403,18 +404,32 @@ class WP2SS_Scanner {
 	 * @return array|null [ severity, description, advice ] for the most severe match, or null.
 	 */
 	public static function match_code( $code ) {
+		$hit = self::match_code_raw( $code, $code );
+		// Comments never run: a match only inside one ("fields that require $_POST data") doesn't count,
+		// except for signatures that look for markers attackers put in comments. Checked only when
+		// something matched, so ordinary files cost nothing extra.
+		return $hit ? self::match_code_raw( self::strip_comments( $code ), $code ) : null;
+	}
+
+	/**
+	 * match_code() on the given source; signatures flagged 'comments' are matched against $original.
+	 *
+	 * @param string $code     Source to check.
+	 * @param string $original The untouched source.
+	 */
+	private static function match_code_raw( $code, $original ) {
 		$sig    = self::signatures();
 		$advice = 'Open the file to confirm. If it’s malicious: keep a copy as evidence, remove it, then change passwords, keys and salts.';
 		$best   = null;
 		foreach ( $sig['code'] as $s ) {
-			if ( ( ! $best || self::sev_rank( $s[0] ) > self::sev_rank( $best[0] ) ) && preg_match( $s[1], $code ) ) {
+			if ( ( ! $best || self::sev_rank( $s[0] ) > self::sev_rank( $best[0] ) ) && preg_match( $s[1], isset( $s[3] ) && 'comments' === $s[3] ? $original : $code ) ) {
 				$best = array( $s[0], $s[2], $advice );
 			}
 		}
 		if ( ( ! $best || 'critical' !== $best[0] )
 			&& false !== stripos( $code, 'register_rest_route' )
 			&& false !== stripos( $code, 'permission_callback' )
-			&& preg_match( '/(?<![\w>:$])(passthru|shell_exec|system|exec|proc_open|popen)\s*\([^;]{0,160}(get_param|base64_decode|\$_(POST|GET|REQUEST)|\$request\s*\[)/i', $code ) ) {
+			&& preg_match( '/(?<![\w>:$])(?<!function )(?<!function\t)(passthru|shell_exec|system|exec|proc_open|popen)\s*\([^;]{0,160}(get_param|base64_decode|\$_(POST|GET|REQUEST)|\$request\s*\[)/i', $code ) ) {
 			$best = array( 'critical', 'REST endpoint that runs shell commands sent to it', 'Matches the REST-API webshell seen after wp2shell exploitation.' );
 		}
 		if ( ! $best
@@ -578,6 +593,7 @@ class WP2SS_Scanner {
 				case 'files':
 					if ( $this->guarded( array( $this, 'walk_files' ), 'file scan', true ) ) {
 						$this->flush_theme_changes();
+						$this->flush_staging();
 						$this->next_phase();
 					}
 					break;
@@ -952,6 +968,7 @@ class WP2SS_Scanner {
 
 	/** 2. WordPress version against the wp2shell ranges. */
 	private function check_version() {
+		$this->check_wp_security();
 		$v = get_bloginfo( 'version' );
 		foreach ( $this->sig['vulnerable'] as $r ) {
 			if ( version_compare( $v, $r[0], '>=' ) && version_compare( $v, $r[1], '<' ) ) {
@@ -960,6 +977,16 @@ class WP2SS_Scanner {
 			}
 		}
 		$this->add( 'info', 'version', "WordPress $v is not affected by wp2shell.", 'If the site ran WordPress 6.8–7.0.1 before updating, check the other findings for signs of a break-in.', '', 'wp-status' );
+	}
+
+	/** 2b. WordPress's October 28, 2026 security release (7.1.4 and backports). */
+	private function check_wp_security() {
+		$v      = get_bloginfo( 'version' );
+		$branch = implode( '.', array_slice( explode( '.', preg_replace( '/-.*$/', '', $v ) ), 0, 2 ) );
+		$fixed  = isset( $this->sig['wp_security'][ $branch ] ) ? $this->sig['wp_security'][ $branch ] : '';
+		if ( '' !== $fixed && version_compare( $v, $fixed, '<' ) ) {
+			$this->add( 'medium', 'version', "WordPress $v is missing the October 28, 2026 security release ($fixed).", "Update WordPress to $fixed or later. It fixes 22 security issues, including a race condition during core updates that could allow remote code execution. Sites with automatic minor updates get it by themselves.", '', 'wp-security' );
+		}
 	}
 
 	/** 3. Installed plugins. */
@@ -981,6 +1008,9 @@ class WP2SS_Scanner {
 			}
 			$name = isset( $data['Name'] ) ? trim( $data['Name'] ) : '';
 
+			if ( preg_match( $this->sig['wp2shell_plugin_slugs'], $slug ) ) {
+				$this->add( 'critical', 'plugin', "Plugin folder named like a wp2shell backdoor: $slug", 'Fake plugins with these names (advanced-cache-handler-, database-repair-assistant-, wp2shell- plus random letters) were left behind after wp2shell break-ins. Keep a copy as evidence, then delete it and check for new admins.', "$dir/$slug" );
+			}
 			if ( preg_match( '/^wp2shell_[0-9a-f]{4,}$/i', $slug ) || preg_match( '/(^|\/)wp2shell_[0-9a-f]{4,}\.php$/i', $file ) ) {
 				$this->add( 'critical', 'plugin', "Plugin matches the wp2shell exploit's naming: $file", 'This is the webshell the public exploit uploads. Keep a copy as evidence, then delete it.', "$dir/$file" );
 			}
@@ -1018,7 +1048,9 @@ class WP2SS_Scanner {
 			if ( '.' === $entry[0] || isset( $listed[ $entry ] ) || ! is_dir( "$dir/$entry" ) || wp_normalize_path( "$dir/$entry" ) === $self ) {
 				continue;
 			}
-			if ( glob( "$dir/$entry/*.php" ) ) {
+			if ( preg_match( $this->sig['wp2shell_plugin_slugs'], $entry ) ) {
+				$this->add( 'critical', 'plugin', "Plugin folder named like a wp2shell backdoor: $entry", 'Fake plugins with these names were left behind after wp2shell break-ins. Keep a copy as evidence, then delete it and check for new admins.', "$dir/$entry" );
+			} elseif ( glob( "$dir/$entry/*.php" ) ) {
 				$this->add( 'medium', 'plugin', "Folder in /plugins with PHP but no plugin header: $entry", 'It doesn’t appear on the Plugins screen. Inspect it.', "$dir/$entry" );
 			}
 		}
@@ -1035,13 +1067,15 @@ class WP2SS_Scanner {
 			if ( ! $m || $m < $this->sig['disclosure_ts'] ) {
 				continue;
 			}
-			$b    = basename( $f );
-			$host = (bool) preg_match( $this->sig['host_mu_plugins'], $b );
+			$b     = basename( $f );
+			$host  = (bool) preg_match( $this->sig['host_mu_plugins'], $b );
+			$code  = (string) @file_get_contents( $f, false, null, 0, 65536 ); // phpcs:ignore
+			$owner = $host || ! self::is_loader( $code ) ? '' : self::code_owner( $code ); // Only files that do nothing but load an installed plugin.
 			$this->add(
-				$host ? 'low' : 'medium',
+				$host || '' !== $owner ? 'low' : 'medium',
 				'mu-plugin',
-				'Must-use plugin added or changed ' . gmdate( 'Y-m-d', $m ) . ': ' . $b . ( $host ? ' (looks like your host’s)' : '' ),
-				$host ? 'Hosts update their own must-use plugins regularly. Ignore this if the name matches your host.' : 'Must-use plugins run on every page and don’t appear in the normal plugin list. Confirm it’s yours or your host’s.',
+				'Must-use plugin added or changed ' . gmdate( 'Y-m-d', $m ) . ': ' . $b . ( $host ? ' (looks like your host’s or a well-known tool’s)' : ( '' !== $owner ? " (loads $owner)" : '' ) ),
+				$host ? 'Hosts and some management and migration tools update their own must-use plugins regularly. Ignore this if you use them.' : ( '' !== $owner ? "It loads files from $owner, which you have installed — some plugins add a small must-use file like this. Ignore this if you use $owner." : 'Must-use plugins run on every page and don’t appear in the normal plugin list. Confirm it’s yours or your host’s.' ),
 				wp_normalize_path( $f )
 			);
 		}
@@ -1080,6 +1114,9 @@ class WP2SS_Scanner {
 
 		foreach ( $this->admin_ids() as $id ) {
 			$u = get_userdata( $id );
+			if ( $u && preg_match( $this->sig['admin_login_iocs'], $u->user_login ) ) {
+				$this->add( 'high', 'user', sprintf( 'Administrator "%s" (%s) is named like the accounts wp2shell attackers create (w2s_, wpsvc_).', $u->user_login, $u->user_email ), 'If you didn’t create it, remove it, reset every admin password and look for the other findings.', 'user-ioc:' . $u->ID );
+			}
 			if ( ! $u || $u->user_registered < $since ) {
 				continue;
 			}
@@ -1197,6 +1234,11 @@ class WP2SS_Scanner {
 			if ( preg_match( $this->sig['dropin_known'], $code ) ) {
 				continue; // Cache and database plugins rewrite their drop-ins all the time.
 			}
+			$owner = self::match_code( $code ) || self::is_risky_php( $code ) ? '' : self::code_owner( $code );
+			if ( '' !== $owner ) {
+				$this->add( 'low', 'file', sprintf( 'Drop-in %s was added or changed on %s; it loads %s’s files.', $name, gmdate( 'Y-m-d', $m ), $owner ), "Probably written by $owner (cache and database plugins rewrite their drop-ins). Ignore this if you use it.", $f, '', sha1( $code ) );
+				continue;
+			}
 			$this->add(
 				'medium',
 				'file',
@@ -1269,6 +1311,15 @@ class WP2SS_Scanner {
 	 */
 	private function check_options() {
 		global $wpdb;
+		if ( is_multisite() ) {
+			// On a network, site transients live in the network table.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- One indexed lookup by meta key prefix; scans must see the live table.
+			foreach ( (array) $wpdb->get_col( $wpdb->prepare( 'SELECT meta_key FROM %i WHERE meta_key LIKE %s LIMIT 20', $wpdb->sitemeta, $wpdb->esc_like( '_site_transient_health_' ) . '%' ) ) as $name ) {
+				if ( preg_match( $this->sig['option_iocs'], (string) $name ) ) {
+					$this->add( 'high', 'database', sprintf( 'Network setting "%s" is named like the one a wp2shell backdoor stores (_site_transient_health_ plus random letters).', self::clean_text( $name ) ), 'WordPress’s own Site Health doesn’t use this name. Keep a copy of the value as evidence, then delete it and look for the file that reads it.', 'sitemeta:' . self::clean_text( $name ) );
+				}
+			}
+		}
 		foreach ( $this->site_tables() as $t ) {
 			$table = $t[0] . 'options';
 			list( $match, $values ) = $this->like_any( 'option_value', $this->sig['db_needles'] );
@@ -1277,6 +1328,12 @@ class WP2SS_Scanner {
 			// $match is only "option_value LIKE %s OR …" placeholders, built by like_any(); the table and $values fill them all.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber,PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT option_name, option_value FROM %i WHERE $match AND option_name <> 'cron' AND option_name NOT LIKE %s AND option_name NOT LIKE %s AND option_name NOT LIKE %s LIMIT 200", array_merge( array( $table ), $values ) ), ARRAY_N );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- One indexed lookup by option name prefix; scans must see the live table.
+			foreach ( (array) $wpdb->get_col( $wpdb->prepare( 'SELECT option_name FROM %i WHERE option_name LIKE %s LIMIT 20', $table, $wpdb->esc_like( '_site_transient_health_' ) . '%' ) ) as $name ) {
+				if ( preg_match( $this->sig['option_iocs'], (string) $name ) ) {
+					$this->add( 'high', 'database', sprintf( 'Setting "%s"%s is named like the one a wp2shell backdoor stores (_site_transient_health_ plus random letters).', self::clean_text( $name ), $t[1] ), 'WordPress’s own Site Health doesn’t use this name. Keep a copy of the value as evidence, then delete it and look for the file that reads it.', "option:{$t[0]}" . self::clean_text( $name ) );
+				}
+			}
 			foreach ( (array) $rows as $row ) {
 				$value = substr( (string) $row[1], 0, self::MAX_READ );
 				$hit   = $this->match_stored( $value );
@@ -1402,11 +1459,17 @@ class WP2SS_Scanner {
 		$cfg = array( "$abs/.user.ini", "$abs/.htaccess", "$abs/php.ini", "$content/.user.ini", "$content/.htaccess", "$content/uploads/.user.ini", "$content/uploads/.htaccess" );
 		foreach ( array_unique( $cfg ) as $f ) {
 			$txt = @is_file( $f ) ? @file_get_contents( $f, false, null, 0, 262144 ) : false; // phpcs:ignore
+			if ( $txt && preg_match( $this->sig['htaccess_iocs'], $txt, $ioc ) ) {
+				$this->add( 'high', 'file', sprintf( '%s has a block marked "%s", like the ones a wp2shell backdoor adds.', basename( $f ), self::clean_text( $ioc[0] ) ), 'Keep a copy as evidence, remove that block, and look for the file it points to.', wp_normalize_path( $f ) );
+			}
 			if ( ! $txt || ! preg_match_all( $this->sig['auto_prepend'], $txt, $m, PREG_SET_ORDER ) ) {
 				continue;
 			}
 			foreach ( $m as $hit ) {
-				if ( ! preg_match( $this->sig['auto_prepend_allow'], $hit[2] ) ) {
+				$level = $this->prepend_level( $hit[2] );
+				if ( 'low' === $level ) {
+					$this->add( 'low', 'file', sprintf( '%s makes PHP run "%s" before every page (%s).', basename( $f ), self::clean_text( $hit[2] ), $hit[1] ), 'It points into a system folder only your host can write to, so it’s probably your host’s security or monitoring tool. Ask them if you’re unsure.', wp_normalize_path( $f ) );
+				} elseif ( 'high' === $level ) {
 					$this->add( 'high', 'file', sprintf( '%s makes PHP run "%s" before every page (%s).', basename( $f ), self::clean_text( $hit[2] ), $hit[1] ), 'A favourite way to hide a backdoor. Unless a security plugin you use set this up, remove the line and inspect the file it points to.', wp_normalize_path( $f ) );
 				}
 			}
@@ -1701,8 +1764,12 @@ class WP2SS_Scanner {
 			if ( $ht && '.htaccess' === $name && preg_match( $this->sig['htaccess_php'], $ht ) ) {
 				$this->add( 'high', 'file', "Upload-folder .htaccess makes PHP executable: $show", 'Attackers add this so uploaded PHP will run. Remove those lines.', $path );
 			}
-			if ( $ht && preg_match( $this->sig['auto_prepend'], $ht, $m ) && ! preg_match( $this->sig['auto_prepend_allow'], $m[2] ) ) {
-				$this->add( 'high', 'file', sprintf( '%s makes PHP run "%s" before every page: %s', $name, self::clean_text( $m[2] ), $show ), 'A favourite way to hide a backdoor. Remove the line and inspect the file it points to.', $path );
+			if ( $ht && preg_match( $this->sig['auto_prepend'], $ht, $m ) && '' !== $this->prepend_level( $m[2] ) ) {
+				if ( 'low' === $this->prepend_level( $m[2] ) ) {
+					$this->add( 'low', 'file', sprintf( '%s makes PHP run "%s" before every page: %s', $name, self::clean_text( $m[2] ), $show ), 'It points into a system folder only your host can write to, so it’s probably your host’s security or monitoring tool. Ask them if you’re unsure.', $path );
+				} else {
+					$this->add( 'high', 'file', sprintf( '%s makes PHP run "%s" before every page: %s', $name, self::clean_text( $m[2] ), $show ), 'A favourite way to hide a backdoor. Remove the line and inspect the file it points to.', $path );
+				}
 			}
 		}
 
@@ -1753,17 +1820,42 @@ class WP2SS_Scanner {
 		if ( ( $data || $in_cr ) && ! ( $whole && self::is_empty_php( $code ) ) && ! preg_match( $this->sig['data_allow'], $sub ) && ! ( $in_cr && in_array( $name, $this->sig['content_root_allow'], true ) ) ) {
 			$guarded = $whole && ( self::is_guarded_php( $code ) || self::is_inert_data( $code ) );
 			$recent  = $mtime >= $this->sig['disclosure_ts'];
-			$sev     = $guarded ? 'low' : ( $recent ? 'high' : 'medium' );
-			$where   = $in_cr ? 'directly in wp-content' : 'in a data folder';
-			$this->add(
-				$sev,
-				'file',
-				"PHP file $where" . ( $recent ? ' (changed ' . gmdate( 'Y-m-d', $mtime ) . ')' : '' ) . ": $show",
-				'cache' === $top ? 'Attackers have written webshells into wp-content/cache/. Open it and confirm what it is.' : 'PHP doesn’t normally live here. Open it and confirm what it is.',
-				$path,
-				'',
-				$sha1
-			);
+			$owner   = $data && count( $parts ) > 3 ? self::folder_owner( $parts[2] ) : '';
+			$staging = 'upgrade' === $top && count( $parts ) > 3 ? $this->staging_owner( $parts ) : '';
+			if ( '' !== $staging ) {
+				// An update or install WordPress was unpacking (wp-content/upgrade/<package>/…): counted, reported once per folder.
+				if ( ! isset( $this->s['staging'][ $parts[2] ] ) ) {
+					$this->s['staging'][ $parts[2] ] = array( 'n' => 0, 'owner' => $staging );
+				}
+				$this->s['staging'][ $parts[2] ]['n']++;
+			} elseif ( '' !== $owner ) {
+				// A folder named after an installed plugin or theme (wp-content/uploads/wpallimport/…): its own files.
+				// Code signatures below still apply to it; only plain, request-handling code stays worth a look.
+				$risky = ! $guarded && ( $recent || self::is_risky_php( $code ) );
+				$this->add(
+					$risky ? 'medium' : 'low',
+					'file',
+					sprintf( 'PHP file in %s’s folder in %s: %s', $owner, $top, $show ),
+					$risky
+						? sprintf( 'Probably made by %s, which keeps files here. But it changed recently or handles web requests, and attackers can name a folder after a plugin too: open it and confirm it’s %s’s.', $owner, $owner )
+						: sprintf( 'Probably made by %s, which keeps files here. If you no longer use it, you can delete the folder.', $owner ),
+					$path,
+					'',
+					$sha1
+				);
+			} else {
+				$sev   = $guarded ? 'low' : ( $recent ? 'high' : 'medium' );
+				$where = $in_cr ? 'directly in wp-content' : 'in a data folder';
+				$this->add(
+					$sev,
+					'file',
+					"PHP file $where" . ( $recent ? ' (changed ' . gmdate( 'Y-m-d', $mtime ) . ')' : '' ) . ": $show",
+					'cache' === $top ? 'Attackers have written webshells into wp-content/cache/. Open it and confirm what it is.' : 'PHP doesn’t normally live here. Open it and confirm what it is.',
+					$path,
+					'',
+					$sha1
+				);
+			}
 		}
 
 		if ( '.' === $name[0] ) {
@@ -1789,6 +1881,181 @@ class WP2SS_Scanner {
 		}
 	}
 
+	/**
+	 * Installed plugins and themes, by a normalised key (folder name and text
+	 * domain, letters and digits only): key => name. Used to recognise the data
+	 * folders and loader files they create.
+	 *
+	 * @return array[] [ 'keys' => [ key => name ], 'slugs' => [ folder => name ] ].
+	 */
+	private static function installed() {
+		static $cache = null;
+		if ( null !== $cache ) {
+			return $cache;
+		}
+		$cache = array( 'keys' => array(), 'slugs' => array() );
+		if ( ! function_exists( 'get_plugins' ) ) {
+			WP2SS_Paths::admin_include( 'plugin.php' );
+		}
+		$add = function ( $folder, $domain, $name ) use ( &$cache ) {
+			$name = '' !== trim( (string) $name ) ? trim( (string) $name ) : $folder;
+			if ( '' !== $folder && '.' !== $folder ) {
+				$cache['slugs'][ strtolower( $folder ) ] = $name;
+			}
+			foreach ( array( $folder, $domain ) as $k ) {
+				$k = preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $k ) );
+				if ( strlen( $k ) >= 3 ) {
+					$cache['keys'][ $k ] = $name;
+				}
+			}
+		};
+		$self = basename( WP2SS_DIR );
+		foreach ( function_exists( 'get_plugins' ) ? get_plugins() : array() as $file => $d ) {
+			if ( dirname( $file ) !== $self ) {
+				$add( dirname( $file ), isset( $d['TextDomain'] ) ? $d['TextDomain'] : '', isset( $d['Name'] ) ? $d['Name'] : '' );
+			}
+		}
+		foreach ( function_exists( 'wp_get_themes' ) ? wp_get_themes() : array() as $slug => $t ) {
+			$add( (string) $slug, (string) $t->get( 'TextDomain' ), (string) $t->get( 'Name' ) );
+		}
+		return $cache;
+	}
+
+	/**
+	 * The installed plugin or theme a data folder is named after ("wpallimport"
+	 * for WP All Import, "elementor" for Elementor Pro…), or ''.
+	 */
+	private static function folder_owner( $folder ) {
+		$k = preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $folder ) );
+		// Generic names never identify a plugin, however a plugin's name begins.
+		$generic = array( 'cache', 'caches', 'files', 'file', 'backup', 'backups', 'temp', 'tmp', 'images', 'image', 'assets', 'media', 'uploads', 'upload', 'data', 'logs', 'log', 'fonts', 'plugins', 'plugin', 'themes', 'theme', 'scripts', 'styles', 'wordpress', 'upgrade', 'export', 'exports', 'import', 'imports', 'private', 'public', 'custom' );
+		if ( strlen( $k ) < 3 || preg_match( '/^\d+$/', $k ) || in_array( $k, $generic, true ) ) {
+			return '';
+		}
+		$inst = self::installed();
+		if ( isset( $inst['keys'][ $k ] ) ) {
+			return $inst['keys'][ $k ];
+		}
+		// "elementor-pro-data" for an "elementor-pro" plugin: only for long, specific slugs.
+		$folder = strtolower( (string) $folder );
+		foreach ( $inst['slugs'] as $slug => $name ) {
+			if ( strlen( $slug ) >= 8 && preg_match( '/^' . preg_quote( $slug, '/' ) . '[-_]/', $folder ) ) {
+				return $name;
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * What WordPress was unpacking into wp-content/upgrade/<folder>/: "WordPress"
+	 * for a core update, or the installed plugin or theme the package is named
+	 * after ("akismet.5.3/akismet/…"). '' when it doesn't look like an update.
+	 */
+	private function staging_owner( $parts ) {
+		if ( ! isset( $parts[4] ) ) {
+			return '';
+		}
+		// Core: upgrade/wordpress-<version>[-…]/wordpress/…
+		if ( 'wordpress' === $parts[3] && preg_match( '/^wordpress-\d+\.\d+(\.\d+)*(-[\w-]+)?$/i', $parts[2] ) ) {
+			return 'WordPress';
+		}
+		// A plugin or theme: upgrade/<slug>[.<version>…]/<slug>/…, for one that's installed.
+		$slug  = strtolower( $parts[3] );
+		$slugs = self::installed()['slugs'];
+		if ( isset( $slugs[ $slug ] ) && preg_match( '/^' . preg_quote( $slug, '/' ) . '([.-]\d[\w.-]*)?$/i', $parts[2] ) ) {
+			return $slugs[ $slug ];
+		}
+		return '';
+	}
+
+	/** The installed plugin whose files this code loads (a must-use loader or a cache drop-in), or ''. */
+	private static function code_owner( $code ) {
+		if ( ! preg_match_all( '#\b(?:require|include)(?:_once)?\b[^;]*?(?:plugins/|WP_PLUGIN_DIR\s*\.\s*[\'"]/)([a-z0-9][a-z0-9_.-]*)/#i', self::strip_comments( $code ), $m ) ) {
+			return '';
+		}
+		$slugs = self::installed()['slugs'];
+		foreach ( $m[1] as $slug ) {
+			if ( isset( $slugs[ strtolower( $slug ) ] ) ) {
+				return $slugs[ strtolower( $slug ) ];
+			}
+		}
+		return '';
+	}
+
+	/** Code that takes web-request input and runs, writes or decodes something. */
+	private static function is_risky_php( $code ) {
+		if ( ! is_string( $code ) ) {
+			return false;
+		}
+		$code = self::strip_comments( $code );
+		// Logging someone in or creating accounts is never a data file's business.
+		if ( preg_match( '/\b(wp_set_auth_cookie|wp_set_current_user|wp_create_user|wp_insert_user|set_role|add_cap)\s*\(/i', $code ) ) {
+			return true;
+		}
+		$input = preg_match( '/\$_(GET|POST|REQUEST|COOKIE|FILES|SERVER)\b|\bgetallheaders\s*\(|php:\/\/input/i', $code );
+		$acts  = preg_match( '/\b(eval|assert|system|exec|passthru|shell_exec|proc_open|popen|create_function|call_user_func(_array)?|array_map|usort|move_uploaded_file|file_put_contents|fwrite|copy|base64_decode|gzinflate|str_rot13|strrev|hex2bin)\s*\(|\$\w+\s*\(|\b(include|require)(_once)?\s*\(?\s*\$/i', $code );
+		return $input && $acts;
+	}
+
+	/** A file a security plugin or host keeps in the site root: only while that plugin (or host) is there. */
+	private function known_root_file( $name ) {
+		if ( isset( $this->sig['prepend_firewalls'][ $name ] ) ) {
+			return isset( self::installed()['slugs'][ $this->sig['prepend_firewalls'][ $name ] ] );
+		}
+		return 'gd-config.php' === $name && '' !== WP2SS_Paths::mu_plugins() && is_file( WP2SS_Paths::mu_plugins() . '/gd-system-plugin.php' );
+	}
+
+	/** PHP source without comments (for checks that comments could fool). */
+	private static function strip_comments( $code ) {
+		$code = (string) $code;
+		if ( ! function_exists( 'token_get_all' ) ) {
+			return (string) preg_replace( '#/\*.*?\*/|//[^\n]*|\#[^\n]*#s', '', $code );
+		}
+		$out = '';
+		foreach ( @token_get_all( $code ) as $t ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			$out .= is_array( $t ) ? ( in_array( $t[0], array( T_COMMENT, T_DOC_COMMENT ), true ) ? ' ' : $t[1] ) : $t;
+		}
+		return $out;
+	}
+
+	/**
+	 * A must-use file that only loads files: after its comments, nothing but
+	 * require/include lines and "stop unless WordPress loaded me" guards.
+	 */
+	private static function is_loader( $code ) {
+		$c    = trim( (string) preg_replace( '/^\s*<\?php|\?>\s*$/', '', self::strip_comments( $code ) ) );
+		$stmt = '(?:(?:require|include)(?:_once)?\b[^;]{1,300};|if\s*\(\s*!\s*defined\s*\([^)]*\)\s*\)\s*\{?\s*(?:exit|die|return)\b[^;]*;\s*\}?|defined\s*\([^)]*\)\s*(?:\|\||or)\s*(?:exit|die)\b[^;]*;)';
+		return '' !== $c && strlen( $c ) < 2000 && (bool) preg_match( '/^(?:\s*' . $stmt . ')+\s*$/i', $c );
+	}
+
+	/**
+	 * How serious an auto_prepend_file / auto_append_file target is: '' for a
+	 * known firewall, 'low' for a system folder only the host can write to,
+	 * 'high' for anything else (the site's own folders, temp folders).
+	 */
+	private function prepend_level( $target ) {
+		$t       = wp_normalize_path( trim( (string) $target ) );
+		$in_site = '' !== $t && ( 0 === strpos( $t, dirname( WP2SS_Paths::core() ) . '/' ) || 0 === strpos( $t, WP2SS_Paths::content() . '/' ) );
+		if ( '' === $t || '/' !== $t[0] || false !== strpos( $t, '..' ) || preg_match( '#/sess(ions?)?(/|_)#i', $t ) || ( ! $in_site && preg_match( '#^/(tmp|var/tmp|dev/shm|run)/#', $t ) ) ) {
+			return 'high'; // Relative, climbing out, a session file or a temp folder.
+		}
+		$name = basename( $t );
+		$fw   = isset( $this->sig['prepend_firewalls'][ $name ] ) ? $this->sig['prepend_firewalls'][ $name ] : '';
+		if ( '' !== $fw ) {
+			$slugs   = self::installed()['slugs'];
+			$at_root = in_array( dirname( $t ), array( WP2SS_Paths::core(), dirname( WP2SS_Paths::core() ) ), true );
+			if ( $at_root ) {
+				return isset( $slugs[ $fw ] ) ? '' : 'low'; // That security plugin's firewall, where it puts it (low if the plugin is gone).
+			}
+		}
+		// Inside an installed plugin (NinjaFirewall and others load their firewall from their own folder).
+		$pl = WP2SS_Paths::plugins() . '/';
+		if ( 0 === strpos( $t, $pl ) && isset( self::installed()['slugs'][ strtolower( (string) strtok( substr( $t, strlen( $pl ) ), '/' ) ) ] ) ) {
+			return 'low';
+		}
+		return preg_match( $this->sig['auto_prepend_system'], $t ) ? 'low' : 'high';
+	}
+
 	private function read_edges( $path, $size ) {
 		$fh = @fopen( $path, 'rb' ); // phpcs:ignore
 		if ( ! $fh ) {
@@ -1799,6 +2066,21 @@ class WP2SS_Scanner {
 		$tail = (string) fread( $fh, self::EDGE_READ ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions -- Read-only streaming of a file being scanned; WP_Filesystem has no partial reads.
 		return $head . "\n" . $tail;
+	}
+
+	/** One finding per update left half-unpacked in wp-content/upgrade/, instead of one per file. */
+	private function flush_staging() {
+		foreach ( isset( $this->s['staging'] ) ? $this->s['staging'] : array() as $folder => $st ) {
+			$this->add(
+				'medium',
+				'file',
+				sprintf( '%d PHP file(s) left over from an unfinished %s update or install: wp-content/upgrade/%s', $st['n'], $st['owner'], self::clean_text( $folder ) ),
+				'WordPress unpacks updates here and deletes them when it’s done; an interrupted update leaves them behind. If no update is running right now, delete this folder. (Any of its files that look like a webshell are reported separately.)',
+				WP2SS_Paths::content() . '/upgrade/' . $folder,
+				'staging:' . md5( $folder )
+			);
+		}
+		$this->s['staging'] = array();
 	}
 
 	private function flush_theme_changes() {
@@ -1892,7 +2174,7 @@ class WP2SS_Scanner {
 
 			$entries = @scandir( $abs ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 			foreach ( $entries ? $entries : array() as $b ) {
-				if ( '.' !== $b[0] && is_file( $abs . $b ) && preg_match( $this->sig['php_ext'], $b ) && ! isset( $sums[ $b ] ) && ! in_array( $b, $this->sig['root_allow'], true ) ) {
+				if ( '.' !== $b[0] && is_file( $abs . $b ) && preg_match( $this->sig['php_ext'], $b ) && ! isset( $sums[ $b ] ) && ! in_array( $b, $this->sig['root_allow'], true ) && ! $this->known_root_file( $b ) ) {
 					$head = (string) @file_get_contents( $abs . $b, false, null, 0, self::MAX_READ ); // phpcs:ignore
 					if ( self::is_inert_data( $head ) || self::is_installatron_worker( $head, $this->sig['installatron_keys'] ) ) {
 						continue; // Reported (or explained) by the site-root check.

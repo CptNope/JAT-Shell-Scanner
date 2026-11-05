@@ -31,6 +31,17 @@ foreach ( array_slice( $argv, 1 ) as $root ) {
 		$serious = WP2SS_Scanner::sev_rank( $hit[0] ) >= 4;
 		$serious ? $fail++ : $medium++;
 		printf( "%s %-8s %s :: %s\n", $serious ? 'FAIL' : 'note', $hit[0], $hit[1], $f->getPathname() );
+		if ( $serious ) {
+			// Show the line(s) that matched, so a false positive can be fixed without the file at hand.
+			foreach ( preg_split( '/\R/', (string) file_get_contents( $f->getPathname() ) ) as $n => $line ) {
+				foreach ( $sig['code'] as $s ) {
+					if ( preg_match( $s[1], $line ) ) {
+						printf( "       line %d: %s\n", $n + 1, substr( trim( $line ), 0, 200 ) );
+						break;
+					}
+				}
+			}
+		}
 	}
 }
 printf( "\n%d PHP files checked: %d high/critical false positives, %d medium notes.\n", $files, $fail, $medium );
