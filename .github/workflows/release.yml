@@ -28,7 +28,12 @@ concurrency:
 
 jobs:
   release:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    # Only CI runs for pushes to main in this repository: never a pull request's code (a fork's or not).
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
@@ -94,7 +99,11 @@ jobs:
   wporg:
     name: Deploy to WordPress.org
     needs: release
-    if: needs.release.outputs.skip != '1'
+    if: >-
+      needs.release.outputs.skip != '1' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Are WordPress.org SVN credentials set?
