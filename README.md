@@ -1133,7 +1133,7 @@ flowchart LR
 
 **Wiki.** The [wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki) is built from this README by `.github/scripts/build-wiki.py`, which splits the numbered sections into pages. The **Wiki** workflow rebuilds it whenever README.md changes on main, so edit the README, not the wiki.
 
-Workflow actions are pinned to exact commits. Detection rules live in [`includes/signatures.php`](includes/signatures.php) — **new indicators are very welcome**: open an issue or pull request with a link to the source.
+Workflow actions are pinned to exact commits, with the version in a comment. **Dependabot** proposes one grouped update a week, only for releases at least a week old, and **CodeQL** scans the workflows themselves for injection and over-broad permissions. Detection rules live in [`includes/signatures.php`](includes/signatures.php) — **new indicators are very welcome**: open an issue or pull request with a link to the source.
 
 ## 22. Limits
 

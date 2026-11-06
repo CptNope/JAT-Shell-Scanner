@@ -1,0 +1,30 @@
+# Dependabot keeps the GitHub Actions used by the workflows up to date. This
+# repository has no Composer or npm dependencies: the plugin ships no
+# third-party code, so the actions are its whole supply chain.
+#
+# Actions are pinned to exact commits with the version in a comment;
+# Dependabot updates both. Updates come as one grouped PR a week, and only
+# for releases at least a week old, so a hijacked release has time to be
+# caught before it reaches CI or the release pipeline. Security updates
+# (when turned on in Settings → Advanced Security) are not delayed.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/New_York
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies
+      - github-actions
+    open-pull-requests-limit: 5

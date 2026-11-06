@@ -9,7 +9,7 @@ name: Update WordPress.org assets
 #
 # Needs the SVN_USERNAME and SVN_PASSWORD repository secrets.
 #
-# 10up/action-wordpress-plugin-asset-update 2.2.0 = 2480306…
+# Actions are pinned to exact commits; Dependabot proposes updates weekly.
 on:
   workflow_dispatch:
   push:
@@ -40,7 +40,9 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09   # v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
 
       - name: Install Subversion
         run: sudo apt-get update -qq && sudo apt-get install -y -qq subversion
@@ -48,7 +50,7 @@ jobs:
       # IGNORE_OTHER_FILES: the WordPress.org copy is built by
       # .github/scripts/build-wporg.sh, so trunk never matches the repo
       # file for file. Only readme.txt and the assets are sent.
-      - uses: 10up/action-wordpress-plugin-asset-update@2480306f6f693672726d08b5917ea114cb2825f7
+      - uses: 10up/action-wordpress-plugin-asset-update@2480306f6f693672726d08b5917ea114cb2825f7 # 2.2.0
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
