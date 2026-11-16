@@ -1,9 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [1.7.1] — 2026-11-16
 
 ### Added
-- Spanish (es_ES) translation, bundled in `languages/`. WordPress loads it through the plugin's `Domain Path` header. Scan findings stay in English, as before.
+- Spanish (es_ES) translation of the whole interface (296 strings), by **Jean Berrios** ([@jeanberrios](https://profiles.wordpress.org/jeanberrios/) on WordPress.org, [@CyberJean98](https://github.com/CyberJean98) on GitHub). It's bundled in `languages/`, and WordPress 6.8 or newer loads it through the plugin's `Domain Path` header when the site is set to Spanish. Scan findings stay in English, as before.
+- Jean is listed as a contributor on the WordPress.org plugin page.
 
 ## [1.7.0] — 2026-11-05
 

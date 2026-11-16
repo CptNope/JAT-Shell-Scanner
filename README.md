@@ -14,7 +14,7 @@
 
 ### [Install from WordPress.org](https://wordpress.org/plugins/jat-shell-scanner/) · [⬇️ Download the zip](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip)
 
-**Current version: 1.7.0** (November 5, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md) · [Wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki)
+**Current version: 1.7.1** (November 16, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md) · [Wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
@@ -33,6 +33,7 @@ By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](htt
 
 | Version | Highlights |
 |---|---|
+| **1.7.1** | **Spanish translation** of the whole interface, by Jean Berrios ([@jeanberrios](https://profiles.wordpress.org/jeanberrios/)) |
 | **1.7.0** | **Far fewer false alarms**: files newly installed plugins keep in uploads or cache, half-unpacked updates in `wp-content/upgrade`, plugin-made must-use files and drop-ins, and security firewalls or host tools loaded before every page are recognised. Ordinary code (a method named `exec()`, saving custom CSS) no longer matches webshell signatures. New PHP2Shell honeypot indicators and wp2shell persistence indicators; a reminder for WordPress's October 28 security release |
 | **1.6.0** | Renamed **JAT Shell Scanner** on WordPress.org (by Jeremy Anderson Tech). Quarantine moves into the plugin's own folder in uploads, blocked from the web; folders are found through WordPress's functions, so moved content, plugin and theme folders are scanned correctly |
 | **1.5.1** | Latest PHP2Shell intel (October 22–24): the Potassium/Mirai botnet's second stage, servers and download names, exploit-kit webshell names (`wp2s.php`, `axiom_*.php`…) and markers (`P2S_OK`, `NxSP…`), poisoned session files, Apache worker aborts, 34 more attacker addresses, and advice for the unpatched **CVE-2026-115560** |
@@ -1146,7 +1147,7 @@ Workflow actions are pinned to exact commits, with the version in a comment. **D
 - **Known indicators only.** Attackers can rename files and rewrite code, so "no signs" means no *known* indicators — not a guarantee.
 - **An attacker with full control of the server** could tamper with any tool running on it, including this one. The self-check against GitHub or WordPress.org makes that harder, not impossible. For certainty, have your host check from outside.
 - It looks for these two attacks specifically. It isn't a general antivirus — keep your usual security plugin or host scanner.
-- Finding texts are in English; the interface is translation-ready (`languages/jat-shell-scanner.pot`, text domain `jat-shell-scanner`).
+- Finding texts are in English. The interface is translation-ready (`languages/jat-shell-scanner.pot`, text domain `jat-shell-scanner`) and available in **Spanish**, translated by Jean Berrios ([@jeanberrios](https://profiles.wordpress.org/jeanberrios/)). The bundled translation loads on WordPress 6.8 or newer; to translate into another language, use [translate.wordpress.org](https://translate.wordpress.org/projects/wp-plugins/jat-shell-scanner/).
 
 ## 23. Security
 
