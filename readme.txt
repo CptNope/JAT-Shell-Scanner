@@ -1,10 +1,10 @@
 === JAT Shell Scanner ===
-Contributors: cptnope
+Contributors: cptnope, jeanberrios
 Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.7.0
+Stable tag: 1.7.1
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -106,6 +106,9 @@ Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/)
 
 == Changelog ==
 
+= 1.7.1 =
+* Spanish (es_ES) translation of the whole interface, by Jean Berrios (@jeanberrios). It's included with the plugin and used on WordPress 6.8 or newer when the site is set to Spanish. Scan findings stay in English.
+
 = 1.7.0 =
 * Far fewer false alarms from newly installed plugins and hosts. These are now recognised instead of reported as a break-in: PHP a plugin keeps in its own uploads or cache folder, updates left half-unpacked in wp-content/upgrade, must-use files and drop-ins that only load an installed plugin, security firewalls (Wordfence, All In One WP Security, MalCare) at the site root, and host security tools that load before every page. Anything still worth a look is "needs review", not "suspicious".
 * Ordinary plugin code no longer matches webshell signatures: a method named exec() or system(), or saving custom CSS from a form.
@@ -141,6 +144,9 @@ Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/)
 The full history is in [CHANGELOG.md](https://github.com/CptNope/JAT-Shell-Scanner/blob/main/CHANGELOG.md).
 
 == Upgrade Notice ==
+
+= 1.7.1 =
+Adds a Spanish translation.
 
 = 1.7.0 =
 Fewer false alarms from newly installed plugins and host files; new PHP2Shell and wp2shell indicators.
