@@ -1,0 +1,1562 @@
+# Copyright (C) 2026 Jeremy Anderson Tech
+# This file is distributed under the MIT.
+msgid ""
+msgstr ""
+"Project-Id-Version: JAT Shell Scanner 1.7.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/jat-shell-scanner\n"
+"POT-Creation-Date: 2026-11-05T04:33:32+00:00\n"
+"PO-Revision-Date: 2026-11-10 12:00+0000\n"
+"Last-Translator: Jean Berrios <jeanberrios53@gmail.com>\n"
+"Language-Team: Spanish (Spain)\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: jat-shell-scanner\n"
+"X-Generator: WP-CLI 2.12.0\n"
+
+#. Plugin Name of the plugin
+#: jat-shell-scanner.php includes/class-admin.php:92
+#: includes/class-admin.php:93 includes/class-admin.php:204
+msgid "JAT Shell Scanner"
+msgstr "JAT Shell Scanner"
+
+#. Plugin URI of the plugin
+#: jat-shell-scanner.php
+msgid "https://jeremyanderson.tech/project/jat-shell-scanner/"
+msgstr "https://jeremyanderson.tech/project/jat-shell-scanner/"
+
+#. Description of the plugin
+#: jat-shell-scanner.php
+msgid ""
+"Checks whether your site is exposed to — or was broken into through — "
+"PHP2Shell (CVE-2026-109618 / CVE-2026-109619, critical bugs in PHP itself) "
+"and wp2shell (CVE-2026-63030 / CVE-2026-60137, a WordPress core bug). Looks "
+"at your PHP and WordPress versions, webshells, rogue admins, changed files "
+"and server logs. Scans only read; one-click fixes (quarantine, removing "
+"admin rights) are optional and can be undone. Includes a self-hosted fleet "
+"dashboard for many sites, with alerts."
+msgstr ""
+"Comprueba si tu sitio está expuesto a PHP2Shell (CVE-2026-109618 / "
+"CVE-2026-109619, errores críticos en el propio PHP) y wp2shell "
+"(CVE-2026-63030 / CVE-2026-60137, un error del núcleo de WordPress), o si "
+"fue vulnerado a través de ellos. Revisa tus versiones de PHP y WordPress, "
+"webshells, administradores falsos, archivos modificados y registros del "
+"servidor. Los análisis solo leen; las correcciones con un clic (cuarentena, "
+"retirar derechos de administrador) son opcionales y se pueden deshacer. "
+"Incluye un panel de flota autoalojado para muchos sitios, con alertas."
+
+#. Author of the plugin
+#: jat-shell-scanner.php
+msgid "Jeremy Anderson Tech"
+msgstr "Jeremy Anderson Tech"
+
+#. Author URI of the plugin
+#: jat-shell-scanner.php
+msgid "https://jeremyanderson.tech"
+msgstr "https://jeremyanderson.tech"
+
+#: includes/class-admin.php:45 includes/class-admin.php:53
+msgid "You are not allowed to do that."
+msgstr "No tienes permiso para hacer eso."
+
+#: includes/class-admin.php:59
+msgid "Your session expired. Reload the page and try again."
+msgstr "Tu sesión ha caducado. Recarga la página e inténtalo de nuevo."
+
+#: includes/class-admin.php:101
+msgid "Scan"
+msgstr "Análisis"
+
+#: includes/class-admin.php:118 includes/class-admin.php:139
+msgid "Documentation"
+msgstr "Documentación"
+
+#: includes/class-admin.php:119
+msgid "Support"
+msgstr "Soporte"
+
+#: includes/class-admin.php:120
+msgid "Hire the author"
+msgstr "Contrata al autor"
+
+#: includes/class-admin.php:131
+msgid "About this plugin"
+msgstr "Acerca de este plugin"
+
+#: includes/class-admin.php:133
+msgid "Free and open source, by Jeremy Anderson."
+msgstr "Gratuito y de código abierto, por Jeremy Anderson."
+
+#: includes/class-admin.php:134
+msgid ""
+"Need hands-on help with a vulnerable or hacked WordPress site, or a site "
+"built to stay secure? I build and look after WordPress sites."
+msgstr ""
+"¿Necesitas ayuda práctica con un sitio WordPress vulnerable o hackeado, o "
+"con un sitio creado para mantenerse seguro? Creo y mantengo sitios "
+"WordPress."
+
+#: includes/class-admin.php:137
+msgid "Book a call"
+msgstr "Reservar una llamada"
+
+#: includes/class-admin.php:138
+msgid "Services"
+msgstr "Servicios"
+
+#: includes/class-admin.php:140
+msgid "Report a problem"
+msgstr "Informar de un problema"
+
+#: includes/class-admin.php:160
+msgid "Starting scan…"
+msgstr "Iniciando análisis…"
+
+#: includes/class-admin.php:161
+msgid "Checking PHP, WordPress, plugins, users and the database…"
+msgstr "Comprobando PHP, WordPress, plugins, usuarios y la base de datos…"
+
+#: includes/class-admin.php:162
+msgid "Scanning files…"
+msgstr "Analizando archivos…"
+
+#: includes/class-admin.php:163
+msgid "Verifying WordPress core files…"
+msgstr "Verificando los archivos del núcleo de WordPress…"
+
+#: includes/class-admin.php:164
+msgid "Verifying plugin files…"
+msgstr "Verificando los archivos de los plugins…"
+
+#: includes/class-admin.php:165
+msgid "Reading the server logs…"
+msgstr "Leyendo los registros del servidor…"
+
+#: includes/class-admin.php:166
+msgid "Done. Loading results…"
+msgstr "Listo. Cargando resultados…"
+
+#: includes/class-admin.php:167
+msgid "The scan stopped:"
+msgstr "El análisis se detuvo:"
+
+#: includes/class-admin.php:168
+msgid "Retrying…"
+msgstr "Reintentando…"
+
+#: includes/class-admin.php:169
+msgid "Waiting for another scan in progress…"
+msgstr "Esperando a que termine otro análisis en curso…"
+
+#: includes/class-admin.php:170
+msgid "Copied"
+msgstr "Copiado"
+
+#: includes/class-admin.php:171
+msgid "Working…"
+msgstr "Trabajando…"
+
+#: includes/class-admin.php:172
+msgid "Delete this for good? This can’t be undone."
+msgstr "¿Eliminar esto definitivamente? No se puede deshacer."
+
+#: includes/class-admin.php:190
+msgid "Findings"
+msgstr "Hallazgos"
+
+#: includes/class-admin.php:191 includes/class-fixes.php:99
+msgid "Quarantine"
+msgstr "Cuarentena"
+
+#: includes/class-admin.php:192
+msgid "Fleet"
+msgstr "Flota"
+
+#: includes/class-admin.php:193
+msgid "Settings"
+msgstr "Ajustes"
+
+#. translators: %d: number of quarantined items or undoable fixes
+#: includes/class-admin.php:200
+#, php-format
+msgid "Quarantine (%d)"
+msgstr "Cuarentena (%d)"
+
+#: includes/class-admin.php:213
+msgid "Scanner sections"
+msgstr "Secciones del escáner"
+
+#: includes/class-admin.php:236
+msgid "Run your first scan to see findings here."
+msgstr "Haz tu primer análisis para ver aquí los hallazgos."
+
+#: includes/class-admin.php:251
+msgid "Settings saved."
+msgstr "Ajustes guardados."
+
+#: includes/class-admin.php:252
+msgid ""
+"Done. Everything that was moved is in the Quarantine tab, where you can undo"
+" it."
+msgstr ""
+"Listo. Todo lo que se movió está en la pestaña Cuarentena, donde puedes "
+"deshacerlo."
+
+#: includes/class-admin.php:253
+msgid "Fleet settings saved."
+msgstr "Ajustes de la flota guardados."
+
+#: includes/class-admin.php:254
+msgid "Report sent to the hub."
+msgstr "Informe enviado al hub."
+
+#: includes/class-admin.php:255
+msgid ""
+"New fleet key created. Member sites must be given the new key before they "
+"can report again."
+msgstr ""
+"Se creó una nueva clave de flota. Los sitios miembros deben recibir la nueva"
+" clave antes de poder informar de nuevo."
+
+#: includes/class-admin.php:256
+msgid "Site removed from the fleet list."
+msgstr "Sitio eliminado de la lista de la flota."
+
+#: includes/class-admin.php:257
+msgid "Alert settings saved."
+msgstr "Ajustes de alertas guardados."
+
+#: includes/class-admin.php:258
+msgid "Test alert sent. Check your inbox or chat channel."
+msgstr ""
+"Alerta de prueba enviada. Revisa tu bandeja de entrada o tu canal de chat."
+
+#: includes/class-admin.php:259
+msgid ""
+"The list is empty. Sites reappear (and register again) with their next "
+"report."
+msgstr ""
+"La lista está vacía. Los sitios reaparecen (y se registran de nuevo) con su "
+"próximo informe."
+
+#: includes/class-admin.php:260
+msgid ""
+"Scan requested. Sites pick this up within an hour (sites on version 1.2 or "
+"older can’t; scan those yourself)."
+msgstr ""
+"Análisis solicitado. Los sitios lo recogen en menos de una hora (los sitios "
+"con la versión 1.2 o anterior no pueden; analízalos tú mismo)."
+
+#: includes/class-admin.php:317
+msgid "Someone has very likely broken in."
+msgstr "Es muy probable que alguien haya entrado."
+
+#: includes/class-admin.php:320
+msgid "Something here looks like a break-in. Check it today."
+msgstr "Algo aquí parece una intrusión. Revísalo hoy."
+
+#: includes/class-admin.php:323
+msgid "Both PHP and WordPress are open to attack. No signs anyone got in."
+msgstr ""
+"PHP y WordPress están expuestos a ataques. No hay señales de que alguien "
+"haya entrado."
+
+#: includes/class-admin.php:326
+msgid "PHP is open to attack. No signs anyone got in."
+msgstr ""
+"PHP está expuesto a ataques. No hay señales de que alguien haya entrado."
+
+#: includes/class-admin.php:329
+msgid "WordPress is open to attack. No signs anyone got in."
+msgstr ""
+"WordPress está expuesto a ataques. No hay señales de que alguien haya "
+"entrado."
+
+#: includes/class-admin.php:332
+msgid "Probably safe — your host needs to confirm PHP is patched."
+msgstr ""
+"Probablemente seguro: tu hosting debe confirmar que PHP está parcheado."
+
+#: includes/class-admin.php:335
+msgid "No break-in found. A few things are worth a look."
+msgstr ""
+"No se encontró ninguna intrusión. Hay algunas cosas que conviene revisar."
+
+#: includes/class-admin.php:337
+msgid "Both doors are shut and nobody got in."
+msgstr "Ambas puertas están cerradas y nadie ha entrado."
+
+#. translators: 1: time ago, 2: number of PHP files, 3: duration in seconds
+#: includes/class-admin.php:358
+#, php-format
+msgid "Scanned %1$s ago — %2$s PHP files in %3$ss."
+msgstr "Analizado hace %1$s: %2$s archivos PHP en %3$s s."
+
+#: includes/class-admin.php:364
+msgid "That’s over a month ago — scan again."
+msgstr "Fue hace más de un mes: vuelve a analizar."
+
+#: includes/class-admin.php:369
+msgid "Is the door open, and did anyone come in?"
+msgstr "¿Está la puerta abierta y ha entrado alguien?"
+
+#: includes/class-admin.php:370
+msgid ""
+"This checks whether PHP2Shell (a bug in PHP) or wp2shell (a bug in "
+"WordPress) can be used against this site, and looks for signs someone "
+"already did. It only reads — it changes nothing unless you click a fix."
+msgstr ""
+"Esto comprueba si PHP2Shell (un error de PHP) o wp2shell (un error de "
+"WordPress) pueden usarse contra este sitio, y busca señales de que alguien "
+"ya lo hizo. Solo lee: no cambia nada a menos que hagas clic en una "
+"corrección."
+
+#: includes/class-admin.php:377 includes/class-admin.php:515
+#: includes/class-admin.php:884
+msgid "Scan again"
+msgstr "Analizar de nuevo"
+
+#: includes/class-admin.php:377
+msgid "Scan now"
+msgstr "Analizar ahora"
+
+#: includes/class-admin.php:380
+msgid "Download report"
+msgstr "Descargar informe"
+
+#: includes/class-admin.php:388
+msgid "Cancel scan"
+msgstr "Cancelar análisis"
+
+#: includes/class-admin.php:398
+msgid "PHP2Shell"
+msgstr "PHP2Shell"
+
+#: includes/class-admin.php:401 includes/class-admin.php:419
+msgid "Patched"
+msgstr "Parcheado"
+
+#: includes/class-admin.php:402 includes/class-admin.php:420
+msgid "Open to attack"
+msgstr "Expuesto a ataques"
+
+#: includes/class-admin.php:403
+msgid "Ask your host"
+msgstr "Pregunta a tu hosting"
+
+#: includes/class-admin.php:404
+msgid "Not checked"
+msgstr "Sin comprobar"
+
+#: includes/class-admin.php:407
+msgid "This PHP has the fix."
+msgstr "Este PHP incluye la corrección."
+
+#. translators: %s: fixed PHP version
+#: includes/class-admin.php:409
+#, php-format
+msgid "Needs updating to %s or later. Only your host can usually do this."
+msgstr ""
+"Necesita actualizarse a %s o posterior. Normalmente solo tu hosting puede "
+"hacerlo."
+
+#: includes/class-admin.php:410
+msgid ""
+"An operating-system build: it may already carry the fix without a new "
+"version number."
+msgstr ""
+"Es una compilación del sistema operativo: puede que ya incluya la corrección"
+" sin un nuevo número de versión."
+
+#: includes/class-admin.php:416
+msgid "wp2shell"
+msgstr "wp2shell"
+
+#: includes/class-admin.php:423
+msgid "This version isn’t affected."
+msgstr "Esta versión no está afectada."
+
+#: includes/class-admin.php:424
+msgid "Update to 6.8.6, 6.9.5, 7.0.2 or newer."
+msgstr "Actualiza a 6.8.6, 6.9.5, 7.0.2 o posterior."
+
+#: includes/class-admin.php:434
+msgid "Signs of a break-in"
+msgstr "Señales de intrusión"
+
+#: includes/class-admin.php:435
+msgid "Files, accounts and logs"
+msgstr "Archivos, cuentas y registros"
+
+#: includes/class-admin.php:438
+msgid "None found"
+msgstr "No se encontró nada"
+
+#: includes/class-admin.php:439
+msgid "Worth a look"
+msgstr "Conviene revisar"
+
+#: includes/class-admin.php:440 includes/class-admin.php:1123
+msgid "Suspicious"
+msgstr "Sospechoso"
+
+#: includes/class-admin.php:441
+msgid "Break-in found"
+msgstr "Intrusión detectada"
+
+#: includes/class-admin.php:444
+msgid "No webshells, rogue admins or attack traces."
+msgstr "Sin webshells, administradores falsos ni rastros de ataque."
+
+#: includes/class-admin.php:495
+msgid "Back up the whole site first"
+msgstr "Haz primero una copia de seguridad de todo el sitio"
+
+#: includes/class-admin.php:495
+msgid ""
+"Files and database, with your host’s backup tool or a backup plugin. It’s "
+"your evidence and your undo button."
+msgstr ""
+"Archivos y base de datos, con la herramienta de copias de tu hosting o un "
+"plugin de copias de seguridad. Es tu evidencia y tu botón de deshacer."
+
+#: includes/class-admin.php:498
+msgid "Ask your host to update PHP"
+msgstr "Pide a tu hosting que actualice PHP"
+
+#: includes/class-admin.php:498
+msgid "Ask your host to confirm PHP is patched"
+msgstr "Pide a tu hosting que confirme que PHP está parcheado"
+
+#: includes/class-admin.php:498
+msgid "On most hosting plans only they can. Here’s a message to send them:"
+msgstr ""
+"En la mayoría de los planes solo ellos pueden. Este es un mensaje que puedes"
+" enviarles:"
+
+#: includes/class-admin.php:501
+msgid "Update WordPress"
+msgstr "Actualiza WordPress"
+
+#: includes/class-admin.php:501
+msgid "Dashboard → Updates. It takes a minute."
+msgstr "Escritorio → Actualizaciones. Lleva un minuto."
+
+#. translators: %d: number of items
+#: includes/class-admin.php:505
+#, php-format
+msgid "Quarantine %d flagged item"
+msgid_plural "Quarantine %d flagged items"
+msgstr[0] "Poner en cuarentena %d elemento marcado"
+msgstr[1] "Poner en cuarentena %d elementos marcados"
+
+#. translators: %d: number of items
+#: includes/class-admin.php:505
+msgid ""
+"They’re moved somewhere they can’t run. Nothing is deleted, and each one can"
+" be restored from the Quarantine tab."
+msgstr ""
+"Se mueven a un lugar donde no pueden ejecutarse. No se elimina nada y cada "
+"uno puede restaurarse desde la pestaña Cuarentena."
+
+#. translators: %d: number of accounts
+#: includes/class-admin.php:509
+#, php-format
+msgid "Check %d unexpected administrator"
+msgid_plural "Check %d unexpected administrators"
+msgstr[0] "Revisa %d administrador inesperado"
+msgstr[1] "Revisa %d administradores inesperados"
+
+#. translators: %d: number of accounts
+#: includes/class-admin.php:509
+msgid ""
+"If you don’t know an account, use “Remove admin rights” next to it in the "
+"findings below."
+msgstr ""
+"Si no reconoces una cuenta, usa “Quitar derechos de administrador” junto a "
+"ella en los hallazgos de abajo."
+
+#: includes/class-admin.php:512
+msgid "Change every password and secret key"
+msgstr "Cambia todas las contraseñas y claves secretas"
+
+#: includes/class-admin.php:512
+msgid ""
+"Admin passwords, the database password, API keys in plugins, and the salts "
+"in wp-config.php. PHP2Shell can leak these from memory."
+msgstr ""
+"Contraseñas de administrador, contraseña de la base de datos, claves de API "
+"en plugins y las sales de wp-config.php. PHP2Shell puede filtrarlas desde la"
+" memoria."
+
+#: includes/class-admin.php:515
+msgid "Repeat until both doors are shut and no signs are left."
+msgstr "Repite hasta que ambas puertas estén cerradas y no queden señales."
+
+#: includes/class-admin.php:519
+msgid "What to do next"
+msgstr "Qué hacer a continuación"
+
+#: includes/class-admin.php:519
+msgid "Nothing to do"
+msgstr "Nada que hacer"
+
+#: includes/class-admin.php:521
+msgid "Automatic scans are on, and you’ll get an email if that changes."
+msgstr ""
+"Los análisis automáticos están activados y recibirás un correo si eso "
+"cambia."
+
+#: includes/class-admin.php:521
+msgid ""
+"Automatic scans are off — turn them on in Settings so you hear about "
+"problems."
+msgstr ""
+"Los análisis automáticos están desactivados: actívalos en Ajustes para "
+"enterarte de los problemas."
+
+#: includes/class-admin.php:535
+msgid "Open WordPress updates"
+msgstr "Abrir actualizaciones de WordPress"
+
+#. translators: %d: count
+#: includes/class-admin.php:540
+#, php-format
+msgid "Quarantine %d item now? You can restore it from the Quarantine tab."
+msgid_plural ""
+"Quarantine %d items now? You can restore them from the Quarantine tab."
+msgstr[0] ""
+"¿Poner en cuarentena %d elemento ahora? Puedes restaurarlo desde la pestaña "
+"Cuarentena."
+msgstr[1] ""
+"¿Poner en cuarentena %d elementos ahora? Puedes restaurarlos desde la "
+"pestaña Cuarentena."
+
+#: includes/class-admin.php:543
+msgid "Quarantine them"
+msgstr "Ponerlos en cuarentena"
+
+#: includes/class-admin.php:548
+msgid "Get new salts"
+msgstr "Obtener nuevas sales"
+
+#. translators: 1: site URL, 2: PHP version, 3: server API, 4: fixed version
+#: includes/class-admin.php:583
+#, php-format
+msgid ""
+"Hello,\n"
+"\n"
+"My website %1$s runs PHP %2$s (%3$s). A security scan says this version may be affected by PHP2Shell (CVE-2026-109618 and CVE-2026-109619), the critical PHP vulnerabilities announced on October 21, 2026.\n"
+"\n"
+"Could you please:\n"
+"1. Update PHP for my site to %4$s (or your patched package), or confirm that the fix for both CVEs has already been applied to this server, and\n"
+"2. Restart PHP afterwards, and\n"
+"3. Until then, consider the temporary protections from PHP's advisory (memory_limit = -1 enforced with php_admin_value, session.upload_progress.enabled = 0, a low post_max_size and max_input_nesting_level, pm.max_requests = 1) in php.ini or the PHP-FPM pool. These only partly protect.\n"
+"\n"
+"Could you also let me know whether you've seen any signs of these attacks against my site since October 17, 2026?\n"
+"\n"
+"Thank you!"
+msgstr ""
+"Hola:\n"
+"\n"
+"Mi sitio web %1$s funciona con PHP %2$s (%3$s). Un análisis de seguridad indica que esta versión puede verse afectada por PHP2Shell (CVE-2026-109618 y CVE-2026-109619), las vulnerabilidades críticas de PHP anunciadas el 21 de octubre de 2026.\n"
+"\n"
+"¿Podrían hacer lo siguiente?\n"
+"1. Actualizar PHP en mi sitio a %4$s (o a su paquete parcheado), o confirmar que la corrección de ambos CVE ya se aplicó a este servidor, y\n"
+"2. Reiniciar PHP después, y\n"
+"3. Mientras tanto, considerar las protecciones temporales del aviso de PHP (memory_limit = -1 impuesto con php_admin_value, session.upload_progress.enabled = 0, un post_max_size y un max_input_nesting_level bajos, pm.max_requests = 1) en php.ini o en el pool de PHP-FPM. Estas solo protegen en parte.\n"
+"\n"
+"¿Podrían indicarme también si han visto señales de estos ataques contra mi sitio desde el 17 de octubre de 2026?\n"
+"\n"
+"¡Gracias!"
+
+#: includes/class-admin.php:591
+msgid "Message for your host"
+msgstr "Mensaje para tu hosting"
+
+#: includes/class-admin.php:593
+msgid "Copy message"
+msgstr "Copiar mensaje"
+
+#: includes/class-admin.php:594
+msgid ""
+"Some hosts let you pick a newer PHP yourself: look for “PHP version” or "
+"“MultiPHP” in your hosting control panel and choose 8.2 or newer."
+msgstr ""
+"Algunos hostings te dejan elegir tú mismo una versión más reciente de PHP: "
+"busca “Versión de PHP” o “MultiPHP” en el panel de control de tu hosting y "
+"elige 8.2 o posterior."
+
+#: includes/class-admin.php:606
+msgid "PHP (PHP2Shell)"
+msgstr "PHP (PHP2Shell)"
+
+#: includes/class-admin.php:607
+msgid "WordPress (wp2shell)"
+msgstr "WordPress (wp2shell)"
+
+#: includes/class-admin.php:608
+msgid "Accounts"
+msgstr "Cuentas"
+
+#: includes/class-admin.php:609 includes/class-admin.php:610
+#: includes/class-admin.php:611
+msgid "Files and code"
+msgstr "Archivos y código"
+
+#: includes/class-admin.php:612 includes/class-admin.php:613
+#: includes/class-admin.php:614
+msgid "Plugins"
+msgstr "Plugins"
+
+#: includes/class-admin.php:615
+msgid "WordPress core files"
+msgstr "Archivos del núcleo de WordPress"
+
+#: includes/class-admin.php:616
+msgid "Database"
+msgstr "Base de datos"
+
+#: includes/class-admin.php:617
+msgid "Server logs"
+msgstr "Registros del servidor"
+
+#: includes/class-admin.php:618
+msgid "About this scan"
+msgstr "Acerca de este análisis"
+
+#: includes/class-admin.php:646
+msgid "Show"
+msgstr "Mostrar"
+
+#. translators: %d: count
+#: includes/class-admin.php:648
+#, php-format
+msgid "Needs action (%d)"
+msgstr "Requiere acción (%d)"
+
+#. translators: %d: count
+#: includes/class-admin.php:651
+#, php-format
+msgid "Everything (%d)"
+msgstr "Todo (%d)"
+
+#. translators: %d: count
+#: includes/class-admin.php:655
+#, php-format
+msgid "Ignored (%d)"
+msgstr "Ignorados (%d)"
+
+#: includes/class-admin.php:659
+msgid ""
+"Nothing needs your attention. “Everything” lists what the scan looked at."
+msgstr "Nada requiere tu atención. “Todo” muestra lo que revisó el análisis."
+
+#: includes/class-admin.php:693
+msgid "Open this account"
+msgstr "Abrir esta cuenta"
+
+#: includes/class-admin.php:702
+msgid "Admin rights removed."
+msgstr "Derechos de administrador retirados."
+
+#: includes/class-admin.php:702
+msgid "Quarantined."
+msgstr "En cuarentena."
+
+#: includes/class-admin.php:703
+msgid "Undo"
+msgstr "Deshacer"
+
+#: includes/class-admin.php:713
+msgid "Stop ignoring"
+msgstr "Dejar de ignorar"
+
+#: includes/class-admin.php:713
+msgid "Ignore — it’s mine"
+msgstr "Ignorar: es mío"
+
+#: includes/class-admin.php:728
+msgid ""
+"Everything a fix changed is listed here and can be undone. Quarantined files"
+" sit in a private folder, renamed so they can’t run."
+msgstr ""
+"Todo lo que cambió una corrección aparece aquí y se puede deshacer. Los "
+"archivos en cuarentena están en una carpeta privada, renombrados para que no"
+" puedan ejecutarse."
+
+#: includes/class-admin.php:730
+msgid ""
+"This site doesn’t allow plugins to change files (DISALLOW_FILE_MODS), so "
+"only account fixes are available. Remove flagged files with your host’s file"
+" manager."
+msgstr ""
+"Este sitio no permite que los plugins cambien archivos (DISALLOW_FILE_MODS),"
+" así que solo están disponibles las correcciones de cuentas. Elimina los "
+"archivos marcados con el gestor de archivos de tu hosting."
+
+#: includes/class-admin.php:733
+msgid ""
+"Nothing has been quarantined or changed. Fixes appear next to findings that "
+"have one."
+msgstr ""
+"No se ha puesto nada en cuarentena ni se ha cambiado. Las correcciones "
+"aparecen junto a los hallazgos que tienen una."
+
+#: includes/class-admin.php:740
+msgid "What"
+msgstr "Qué"
+
+#: includes/class-admin.php:741
+msgid "When"
+msgstr "Cuándo"
+
+#: includes/class-admin.php:742 includes/class-admin.php:845
+msgid "Actions"
+msgstr "Acciones"
+
+#. translators: %s: login
+#: includes/class-admin.php:748
+#, php-format
+msgid "Removed admin rights from “%s”"
+msgstr "Se quitaron los derechos de administrador a “%s”"
+
+#. translators: %s: login
+#: includes/class-admin.php:748
+msgid "Quarantined"
+msgstr "En cuarentena"
+
+#. translators: %s: time ago
+#: includes/class-admin.php:754 includes/class-admin.php:871
+#, php-format
+msgid "%s ago"
+msgstr "hace %s"
+
+#: includes/class-admin.php:756
+msgid "Give admin rights back"
+msgstr "Devolver derechos de administrador"
+
+#: includes/class-admin.php:756
+msgid "Restore"
+msgstr "Restaurar"
+
+#: includes/class-admin.php:758
+msgid "Delete for good"
+msgstr "Eliminar definitivamente"
+
+#: includes/class-admin.php:775
+msgid ""
+"Look after several sites? Make one of them the hub, and the others send it "
+"their result after every scan — one list of every site, on your own server."
+msgstr ""
+"¿Cuidas de varios sitios? Convierte uno de ellos en el hub y los demás le "
+"envían su resultado después de cada análisis: una sola lista de todos tus "
+"sitios, en tu propio servidor."
+
+#: includes/class-admin.php:784
+msgid "Set up a fleet"
+msgstr "Configurar una flota"
+
+#: includes/class-admin.php:784
+msgid "Change fleet settings"
+msgstr "Cambiar los ajustes de la flota"
+
+#: includes/class-admin.php:789
+msgid "Role of this site"
+msgstr "Función de este sitio"
+
+#: includes/class-admin.php:790
+msgid "Not part of a fleet"
+msgstr "No forma parte de una flota"
+
+#: includes/class-admin.php:791
+msgid "This site is the hub"
+msgstr "Este sitio es el hub"
+
+#: includes/class-admin.php:791
+msgid "It collects results from your other sites and shows them here."
+msgstr "Recoge los resultados de tus otros sitios y los muestra aquí."
+
+#: includes/class-admin.php:792
+msgid "Report to a hub"
+msgstr "Informar a un hub"
+
+#: includes/class-admin.php:792
+msgid "Send this site’s results to the hub after every scan."
+msgstr "Envía los resultados de este sitio al hub después de cada análisis."
+
+#: includes/class-admin.php:796
+msgid "Hub site address"
+msgstr "Dirección del sitio hub"
+
+#: includes/class-admin.php:800 includes/class-admin.php:906
+msgid "Fleet key"
+msgstr "Clave de flota"
+
+#: includes/class-admin.php:801
+msgid "Saved — leave blank to keep it"
+msgstr "Guardada: déjalo en blanco para conservarla"
+
+#: includes/class-admin.php:802
+msgid "Shown on the hub’s Fleet tab."
+msgstr "Se muestra en la pestaña Flota del hub."
+
+#: includes/class-admin.php:805
+msgid "Save fleet settings"
+msgstr "Guardar ajustes de la flota"
+
+#: includes/class-admin.php:825
+msgid "Ask every site to scan again? Each one starts within an hour."
+msgstr ""
+"¿Pedir a todos los sitios que analicen de nuevo? Cada uno empieza en menos "
+"de una hora."
+
+#: includes/class-admin.php:828
+msgid "Ask all sites to scan"
+msgstr "Pedir a todos los sitios que analicen"
+
+#: includes/class-admin.php:830
+msgid "Download as CSV"
+msgstr "Descargar como CSV"
+
+#: includes/class-admin.php:836
+msgid ""
+"No sites have reported yet. Connect your other sites with the key below, "
+"then scan them."
+msgstr ""
+"Ningún sitio ha informado todavía. Conecta tus otros sitios con la clave de "
+"abajo y luego analízalos."
+
+#: includes/class-admin.php:840
+msgid "Site"
+msgstr "Sitio"
+
+#: includes/class-admin.php:841
+msgid "Result"
+msgstr "Resultado"
+
+#: includes/class-admin.php:842
+msgid "PHP"
+msgstr "PHP"
+
+#: includes/class-admin.php:843
+msgid "WordPress"
+msgstr "WordPress"
+
+#: includes/class-admin.php:844
+msgid "Last report"
+msgstr "Último informe"
+
+#: includes/class-admin.php:854
+msgid ""
+"Older scanner version: update it so only this site can report for this "
+"address."
+msgstr ""
+"Versión antigua del escáner: actualízala para que solo este sitio pueda "
+"informar por esta dirección."
+
+#. translators: %d: count
+#: includes/class-admin.php:858
+#, php-format
+msgid "%d serious finding"
+msgid_plural "%d serious findings"
+msgstr[0] "%d hallazgo grave"
+msgstr[1] "%d hallazgos graves"
+
+#: includes/class-admin.php:873
+msgid "Overdue"
+msgstr "Atrasado"
+
+#: includes/class-admin.php:876
+msgid "Scan requested"
+msgstr "Análisis solicitado"
+
+#: includes/class-admin.php:886
+msgid "Remove this site from the list? It reappears if it reports again."
+msgstr "¿Quitar este sitio de la lista? Reaparece si vuelve a informar."
+
+#: includes/class-admin.php:890
+msgid "Remove"
+msgstr "Quitar"
+
+#: includes/class-admin.php:902
+msgid "Connect your other sites"
+msgstr "Conecta tus otros sitios"
+
+#: includes/class-admin.php:903
+msgid ""
+"On each site: install this plugin, open its Fleet tab, choose “Report to a "
+"hub”, and paste this address and key."
+msgstr ""
+"En cada sitio: instala este plugin, abre su pestaña Flota, elige “Informar a"
+" un hub” y pega esta dirección y esta clave."
+
+#: includes/class-admin.php:904
+msgid "Hub address"
+msgstr "Dirección del hub"
+
+#: includes/class-admin.php:905 includes/class-admin.php:907
+msgid "Copy"
+msgstr "Copiar"
+
+#: includes/class-admin.php:908
+msgid "With WP-CLI, one command per site does it:"
+msgstr "Con WP-CLI, basta un comando por sitio:"
+
+#: includes/class-admin.php:910
+msgid "Copy command"
+msgstr "Copiar comando"
+
+#: includes/class-admin.php:911
+msgid ""
+"Keep the key private: anyone with it can add a site to this list (they can’t"
+" read anything, or report for a site that has already registered). If it "
+"leaks, make a new one — then give the new key to every site."
+msgstr ""
+"Mantén la clave en privado: cualquiera que la tenga puede añadir un sitio a "
+"esta lista (no puede leer nada ni informar por un sitio que ya se haya "
+"registrado). Si se filtra, crea una nueva y luego entrégala a todos los "
+"sitios."
+
+#: includes/class-admin.php:912
+msgid ""
+"Make a new fleet key? Every member site will need the new key before it can "
+"report again."
+msgstr ""
+"¿Crear una nueva clave de flota? Cada sitio miembro necesitará la nueva "
+"clave antes de poder informar de nuevo."
+
+#: includes/class-admin.php:915
+msgid "Make a new key"
+msgstr "Crear una nueva clave"
+
+#: includes/class-admin.php:917
+msgid "Empty the whole list? Sites reappear with their next report."
+msgstr "¿Vaciar toda la lista? Los sitios reaparecen con su próximo informe."
+
+#: includes/class-admin.php:920
+msgid "Empty the list"
+msgstr "Vaciar la lista"
+
+#: includes/class-admin.php:923
+msgid ""
+"This hub isn’t on HTTPS. Reports are signed, so they can’t be forged, but "
+"anyone on the network path could read them. Use HTTPS if you can."
+msgstr ""
+"Este hub no usa HTTPS. Los informes van firmados, así que no se pueden "
+"falsificar, pero cualquiera en la ruta de red podría leerlos. Usa HTTPS si "
+"puedes."
+
+#: includes/class-admin.php:933
+msgid "Alerts"
+msgstr "Alertas"
+
+#: includes/class-admin.php:934
+msgid ""
+"Get one message when sites need a look: a site gets worse, a new site joins "
+"in trouble, or a site stops reporting. Several sites at once arrive as a "
+"single digest."
+msgstr ""
+"Recibe un mensaje cuando los sitios requieran atención: un sitio empeora, un"
+" sitio nuevo se une con problemas o un sitio deja de informar. Varios sitios"
+" a la vez llegan en un solo resumen."
+
+#: includes/class-admin.php:939
+msgid "Email me"
+msgstr "Enviarme un correo"
+
+#: includes/class-admin.php:940 includes/class-admin.php:1025
+msgid "Alert email address"
+msgstr "Dirección de correo para alertas"
+
+#: includes/class-admin.php:943
+msgid "Slack or Discord webhook"
+msgstr "Webhook de Slack o Discord"
+
+#: includes/class-admin.php:943
+msgid "(optional)"
+msgstr "(opcional)"
+
+#: includes/class-admin.php:945
+msgid ""
+"In Slack: Apps → Incoming Webhooks. In Discord: channel settings → "
+"Integrations → Webhooks."
+msgstr ""
+"En Slack: Apps → Incoming Webhooks. En Discord: ajustes del canal → "
+"Integraciones → Webhooks."
+
+#: includes/class-admin.php:948
+msgid "Also tell me when a site hasn’t reported for"
+msgstr "Avisarme también cuando un sitio no haya informado durante"
+
+#: includes/class-admin.php:949
+msgid "Days"
+msgstr "Días"
+
+#: includes/class-admin.php:949
+msgid "days"
+msgstr "días"
+
+#: includes/class-admin.php:952
+msgid "Save alerts"
+msgstr "Guardar alertas"
+
+#: includes/class-admin.php:953
+msgid "Save and send a test"
+msgstr "Guardar y enviar una prueba"
+
+#. translators: %s: hub URL
+#: includes/class-admin.php:967
+#, php-format
+msgid "This site reports to %s after every scan."
+msgstr "Este sitio informa a %s después de cada análisis."
+
+#. translators: %s: time ago
+#: includes/class-admin.php:975
+#, php-format
+msgid "Last report delivered %s ago."
+msgstr "Último informe entregado hace %s."
+
+#. translators: 1: time ago, 2: error
+#: includes/class-admin.php:976
+#, php-format
+msgid "The last report %1$s ago didn’t arrive: %2$s"
+msgstr "El último informe, de hace %1$s, no llegó: %2$s"
+
+#: includes/class-admin.php:984
+msgid "Send the latest result now"
+msgstr "Enviar ahora el último resultado"
+
+#: includes/class-admin.php:999
+msgid "Off"
+msgstr "Desactivado"
+
+#: includes/class-admin.php:1000
+msgid "Daily"
+msgstr "Diario"
+
+#: includes/class-admin.php:1001
+msgid "Weekly"
+msgstr "Semanal"
+
+#: includes/class-admin.php:1009
+msgid "Automatic scans"
+msgstr "Análisis automáticos"
+
+#. translators: %s: time
+#: includes/class-admin.php:1017
+#, php-format
+msgid "Next scan in %s."
+msgstr "Próximo análisis en %s."
+
+#: includes/class-admin.php:1022
+msgid "Email alerts"
+msgstr "Alertas por correo"
+
+#: includes/class-admin.php:1024
+msgid "Email me when an automatic scan finds something new and serious"
+msgstr ""
+"Enviarme un correo cuando un análisis automático encuentre algo nuevo y "
+"grave"
+
+#: includes/class-admin.php:1029
+msgid "Core and plugin files"
+msgstr "Archivos del núcleo y de plugins"
+
+#: includes/class-admin.php:1030
+msgid ""
+"Compare WordPress’s own files, and plugins from wordpress.org, with the "
+"official copies"
+msgstr ""
+"Comparar los archivos propios de WordPress y los plugins de wordpress.org "
+"con las copias oficiales"
+
+#: includes/class-admin.php:1033
+msgid "PHP error log"
+msgstr "Registro de errores de PHP"
+
+#: includes/class-admin.php:1035
+msgid "found automatically"
+msgstr "encontrado automáticamente"
+
+#: includes/class-admin.php:1036
+msgid ""
+"Where PHP2Shell attempts show up. Leave empty to use the log PHP reports, "
+"plus WordPress’s debug.log."
+msgstr ""
+"Donde aparecen los intentos de PHP2Shell. Déjalo vacío para usar el registro"
+" que informa PHP, más el debug.log de WordPress."
+
+#: includes/class-admin.php:1040
+msgid "Web server access log"
+msgstr "Registro de acceso del servidor web"
+
+#: includes/class-admin.php:1043
+msgid ""
+"Optional. If PHP can read it, scans also look for attack traffic. .gz files "
+"work."
+msgstr ""
+"Opcional. Si PHP puede leerlo, los análisis también buscan tráfico de "
+"ataque. Los archivos .gz funcionan."
+
+#: includes/class-admin.php:1047
+msgid "This website’s PHP"
+msgstr "El PHP de este sitio web"
+
+#. translators: 1: PHP version, 2: server type, 3: operating system
+#: includes/class-admin.php:1053
+#, php-format
+msgid "PHP %1$s on %2$s (%3$s)"
+msgstr "PHP %1$s en %2$s (%3$s)"
+
+#: includes/class-admin.php:1063
+msgid "Save settings"
+msgstr "Guardar ajustes"
+
+#: includes/class-admin.php:1087
+msgid "Critical"
+msgstr "Crítico"
+
+#: includes/class-admin.php:1088
+msgid "High"
+msgstr "Alto"
+
+#: includes/class-admin.php:1089
+msgid "Medium"
+msgstr "Medio"
+
+#: includes/class-admin.php:1090
+msgid "Low"
+msgstr "Bajo"
+
+#: includes/class-admin.php:1091
+msgid "Info"
+msgstr "Info"
+
+#: includes/class-admin.php:1111
+msgid "Vulnerable — update PHP and WordPress"
+msgstr "Vulnerable: actualiza PHP y WordPress"
+
+#: includes/class-admin.php:1114
+msgid "Vulnerable — PHP needs updating"
+msgstr "Vulnerable: hay que actualizar PHP"
+
+#: includes/class-admin.php:1117
+msgid "Vulnerable — update WordPress"
+msgstr "Vulnerable: actualiza WordPress"
+
+#: includes/class-admin.php:1119
+msgid "Vulnerable"
+msgstr "Vulnerable"
+
+#: includes/class-admin.php:1122
+msgid "Compromised"
+msgstr "Comprometido"
+
+#: includes/class-admin.php:1124
+msgid "Needs review"
+msgstr "Requiere revisión"
+
+#: includes/class-admin.php:1125 includes/class-site-health.php:30
+msgid "No signs of PHP2Shell or wp2shell"
+msgstr "Sin señales de PHP2Shell ni wp2shell"
+
+#: includes/class-admin.php:1133
+msgid ""
+"No signs of a break-in, but this server’s PHP can be attacked through "
+"PHP2Shell. Ask your host to update it — there’s a message ready to send on "
+"the scanner page."
+msgstr ""
+"No hay señales de intrusión, pero el PHP de este servidor puede ser atacado "
+"mediante PHP2Shell. Pide a tu hosting que lo actualice: hay un mensaje listo"
+" para enviar en la página del escáner."
+
+#: includes/class-admin.php:1134
+msgid ""
+"No signs of a break-in, but this WordPress version can be attacked through "
+"wp2shell. Update it now."
+msgstr ""
+"No hay señales de intrusión, pero esta versión de WordPress puede ser "
+"atacada mediante wp2shell. Actualízala ya."
+
+#: includes/class-admin.php:1137
+msgid "Strong evidence of an attack. Open the scanner for step-by-step help."
+msgstr ""
+"Hay pruebas sólidas de un ataque. Abre el escáner para recibir ayuda paso a "
+"paso."
+
+#: includes/class-admin.php:1138
+msgid "Something here needs a closer look today."
+msgstr "Algo aquí requiere una revisión más a fondo hoy."
+
+#: includes/class-admin.php:1139
+msgid "A few things to confirm, nothing alarming on its own."
+msgstr "Hay algunas cosas que confirmar, ninguna alarmante por sí sola."
+
+#: includes/class-admin.php:1140
+msgid "No known indicators found. Keep PHP and WordPress updated."
+msgstr ""
+"No se encontraron indicadores conocidos. Mantén PHP y WordPress "
+"actualizados."
+
+#. translators: %s: verdict
+#: includes/class-admin.php:1175
+#, php-format
+msgid "JAT Shell Scanner: %s"
+msgstr "JAT Shell Scanner: %s"
+
+#: includes/class-admin.php:1177
+msgid "See what to do"
+msgstr "Ver qué hacer"
+
+#: includes/class-cron.php:42
+msgid "Once Weekly"
+msgstr "Una vez por semana"
+
+#. translators: 1: verdict, 2: site name
+#: includes/class-cron.php:149
+#, php-format
+msgid "[%2$s] JAT Shell Scanner: %1$s"
+msgstr "[%2$s] JAT Shell Scanner: %1$s"
+
+#. translators: %s: site URL
+#: includes/class-cron.php:152
+#, php-format
+msgid "A scheduled scan of %s found new problems:"
+msgstr "Un análisis programado de %s encontró problemas nuevos:"
+
+#. translators: %d: count
+#: includes/class-cron.php:161
+#, php-format
+msgid "...and %d more."
+msgstr "...y %d más."
+
+#: includes/class-cron.php:164
+msgid "See the full report:"
+msgstr "Consulta el informe completo:"
+
+#: includes/class-cron.php:166
+msgid ""
+"You get this email because automatic scans and alerts are on. Change that on"
+" the scanner page."
+msgstr ""
+"Recibes este correo porque los análisis automáticos y las alertas están "
+"activados. Cámbialo en la página del escáner."
+
+#: includes/class-fixes.php:61
+msgid "Remove admin rights"
+msgstr "Quitar derechos de administrador"
+
+#: includes/class-fixes.php:63
+msgid ""
+"Turn this account into a Subscriber? It will lose all admin powers. You can "
+"undo this."
+msgstr ""
+"¿Convertir esta cuenta en Suscriptor? Perderá todos los poderes de "
+"administrador. Puedes deshacerlo."
+
+#: includes/class-fixes.php:82
+msgid "Quarantine plugin"
+msgstr "Poner plugin en cuarentena"
+
+#: includes/class-fixes.php:84
+msgid ""
+"Deactivate this plugin and move it into quarantine, where it can’t run? You "
+"can restore it later."
+msgstr ""
+"¿Desactivar este plugin y moverlo a cuarentena, donde no puede ejecutarse? "
+"Puedes restaurarlo más tarde."
+
+#: includes/class-fixes.php:101
+msgid ""
+"Move this into quarantine, where it can’t run? You can restore it later."
+msgstr ""
+"¿Mover esto a cuarentena, donde no puede ejecutarse? Puedes restaurarlo más "
+"tarde."
+
+#: includes/class-fixes.php:334
+msgid "That finding isn’t in the latest report. Scan again and retry."
+msgstr ""
+"Ese hallazgo no está en el último informe. Analiza de nuevo y reinténtalo."
+
+#: includes/class-fixes.php:337
+msgid "This has already been fixed."
+msgstr "Esto ya se ha corregido."
+
+#: includes/class-fixes.php:341
+msgid "There’s no automatic fix for this finding."
+msgstr "No hay corrección automática para este hallazgo."
+
+#: includes/class-fixes.php:363
+msgid "This file has changed since the scan. Scan again, then retry."
+msgstr ""
+"Este archivo ha cambiado desde el análisis. Analiza de nuevo y reinténtalo."
+
+#: includes/class-fixes.php:389
+msgid "Fix not found."
+msgstr "Corrección no encontrada."
+
+#: includes/class-fixes.php:409
+msgid "Quarantined item not found."
+msgstr "Elemento en cuarentena no encontrado."
+
+#: includes/class-fixes.php:413
+msgid "Refusing to delete something outside the quarantine folder."
+msgstr "Se rechaza eliminar algo fuera de la carpeta de cuarentena."
+
+#: includes/class-fixes.php:434
+msgid "That location can’t be quarantined safely."
+msgstr "Esa ubicación no se puede poner en cuarentena de forma segura."
+
+#: includes/class-fixes.php:438
+msgid ""
+"Couldn’t create the quarantine folder in the uploads folder. Ask your host "
+"to make uploads writable, or remove the file by hand."
+msgstr ""
+"No se pudo crear la carpeta de cuarentena dentro de la carpeta uploads. Pide"
+" a tu hosting que haga escribible la carpeta uploads o elimina el archivo a "
+"mano."
+
+#: includes/class-fixes.php:455
+msgid ""
+"PHP isn’t allowed to move this file (file permissions). Remove it with your "
+"host’s file manager instead."
+msgstr ""
+"PHP no tiene permiso para mover este archivo (permisos de archivo). "
+"Elimínalo con el gestor de archivos de tu hosting."
+
+#: includes/class-fixes.php:511
+msgid "The quarantined copy is missing."
+msgstr "Falta la copia en cuarentena."
+
+#: includes/class-fixes.php:514
+msgid ""
+"Something already exists at the original location, so it wasn’t overwritten."
+msgstr "Ya existe algo en la ubicación original, así que no se sobrescribió."
+
+#: includes/class-fixes.php:524
+msgid ""
+"The original folder has been replaced by a link since this was quarantined, "
+"so it wasn’t restored. Restore it by hand if you’re sure."
+msgstr ""
+"La carpeta original se ha reemplazado por un enlace desde que se puso en "
+"cuarentena, así que no se restauró. Restáurala a mano si estás seguro."
+
+#: includes/class-fixes.php:527
+msgid "The original folder no longer exists and couldn’t be recreated."
+msgstr "La carpeta original ya no existe y no se pudo volver a crear."
+
+#: includes/class-fixes.php:533
+msgid "Couldn’t move it back (file permissions)."
+msgstr "No se pudo moverlo de vuelta (permisos de archivo)."
+
+#: includes/class-fixes.php:553 includes/class-fixes.php:597
+msgid "That account no longer exists."
+msgstr "Esa cuenta ya no existe."
+
+#: includes/class-fixes.php:556
+msgid "You can’t remove your own admin rights here."
+msgstr "Aquí no puedes quitarte tus propios derechos de administrador."
+
+#: includes/class-fixes.php:559
+msgid ""
+"This is the only administrator left, so its admin rights weren’t removed. "
+"Create your own administrator account first."
+msgstr ""
+"Este es el único administrador que queda, así que no se le quitaron los "
+"derechos. Crea primero tu propia cuenta de administrador."
+
+#: includes/class-fixes.php:562
+msgid ""
+"This is the only network administrator left, so its rights weren’t removed."
+msgstr ""
+"Este es el único administrador de red que queda, así que no se le quitaron "
+"los derechos."
+
+#: includes/class-fleet.php:106
+msgid "Unknown fleet mode."
+msgstr "Modo de flota desconocido."
+
+#: includes/class-fleet.php:120
+msgid "Enter the hub site’s address, e.g. https://hub.example.com"
+msgstr "Introduce la dirección del sitio hub, p. ej. https://hub.example.com"
+
+#: includes/class-fleet.php:123
+msgid "Paste the fleet key shown on the hub site (it’s 48 characters long)."
+msgstr ""
+"Pega la clave de flota que aparece en el sitio hub (tiene 48 caracteres)."
+
+#: includes/class-fleet.php:147
+msgid "That email address doesn’t look right."
+msgstr "Esa dirección de correo no parece correcta."
+
+#: includes/class-fleet.php:150
+msgid ""
+"The webhook address must start with https:// — copy it from Slack or "
+"Discord."
+msgstr ""
+"La dirección del webhook debe empezar por https://: cópiala de Slack o "
+"Discord."
+
+#: includes/class-fleet.php:234
+msgid "This site isn’t set up to report to a hub."
+msgstr "Este sitio no está configurado para informar a un hub."
+
+#: includes/class-fleet.php:237
+msgid "Run a scan first."
+msgstr "Haz primero un análisis."
+
+#. translators: 1: HTTP code, 2: detail
+#: includes/class-fleet.php:269
+#, php-format
+msgid "The hub didn’t accept the report (HTTP %1$s): %2$s"
+msgstr "El hub no aceptó el informe (HTTP %1$s): %2$s"
+
+#. translators: 1: site, 2: new result, 3: old result
+#: includes/class-fleet.php:656
+#, php-format
+msgid "%1$s is now “%2$s” (was “%3$s”)."
+msgstr "%1$s ahora está en “%2$s” (antes “%3$s”)."
+
+#. translators: 1: site, 2: result
+#: includes/class-fleet.php:660
+#, php-format
+msgid "%1$s joined the fleet: “%2$s”."
+msgstr "%1$s se unió a la flota: “%2$s”."
+
+#. translators: 1: site, 2: result
+#: includes/class-fleet.php:664
+#, php-format
+msgid "%1$s has new serious findings (“%2$s”)."
+msgstr "%1$s tiene nuevos hallazgos graves (“%2$s”)."
+
+#. translators: 1: site, 2: time ago
+#: includes/class-fleet.php:668
+#, php-format
+msgid ""
+"%1$s hasn’t reported for %2$s. Its scans may have stopped — or someone "
+"switched the scanner off."
+msgstr ""
+"%1$s no ha informado durante %2$s. Puede que sus análisis se hayan detenido,"
+" o que alguien haya apagado el escáner."
+
+#. translators: 1: site, 2: result
+#: includes/class-fleet.php:672
+#, php-format
+msgid "%1$s is reporting again: “%2$s”."
+msgstr "%1$s vuelve a informar: “%2$s”."
+
+#: includes/class-fleet.php:675
+msgid ""
+"This is a test alert from your JAT Shell Scanner fleet hub. Alerts work."
+msgstr ""
+"Esta es una alerta de prueba del hub de flota de JAT Shell Scanner. Las "
+"alertas funcionan."
+
+#. translators: %d: number of sites
+#: includes/class-fleet.php:710
+msgid "PHP2Shell fleet: test alert"
+msgstr "Flota PHP2Shell: alerta de prueba"
+
+#. translators: %d: number of sites
+#: includes/class-fleet.php:710
+#, php-format
+msgid "PHP2Shell fleet: %d site needs a look"
+msgid_plural "PHP2Shell fleet: %d sites need a look"
+msgstr[0] "Flota PHP2Shell: %d sitio requiere atención"
+msgstr[1] "Flota PHP2Shell: %d sitios requieren atención"
+
+#: includes/class-fleet.php:718
+msgid "Fleet dashboard:"
+msgstr "Panel de la flota:"
+
+#: includes/class-fleet.php:718
+msgid ""
+"You get this because fleet alerts are on. Change that on the hub’s Fleet "
+"tab."
+msgstr ""
+"Recibes esto porque las alertas de flota están activadas. Cámbialo en la "
+"pestaña Flota del hub."
+
+#: includes/class-fleet.php:755
+msgid "Turn on email alerts or add a webhook first."
+msgstr "Activa primero las alertas por correo o añade un webhook."
+
+#: includes/class-fleet.php:760
+msgid ""
+"The test alert couldn’t be sent. Check the email address or webhook, and "
+"that this site can send email."
+msgstr ""
+"No se pudo enviar la alerta de prueba. Revisa la dirección de correo o el "
+"webhook, y que este sitio pueda enviar correo."
+
+#: includes/class-site-health.php:20
+msgid "PHP2Shell and wp2shell scan"
+msgstr "Análisis de PHP2Shell y wp2shell"
+
+#: includes/class-site-health.php:28
+msgid "Open JAT Shell Scanner"
+msgstr "Abrir JAT Shell Scanner"
+
+#: includes/class-site-health.php:32
+msgid "Security"
+msgstr "Seguridad"
+
+#: includes/class-site-health.php:33
+msgid ""
+"The last scan found no known indicators of PHP2Shell (CVE-2026-109618 / "
+"CVE-2026-109619) or wp2shell (CVE-2026-63030 / CVE-2026-60137)."
+msgstr ""
+"El último análisis no encontró indicadores conocidos de PHP2Shell "
+"(CVE-2026-109618 / CVE-2026-109619) ni de wp2shell (CVE-2026-63030 / "
+"CVE-2026-60137)."
+
+#: includes/class-site-health.php:39
+msgid "This site hasn’t been scanned for PHP2Shell or wp2shell"
+msgstr "Este sitio no se ha analizado en busca de PHP2Shell o wp2shell"
+
+#: includes/class-site-health.php:41
+msgid ""
+"Run a scan to check whether this site is exposed to, or was broken into "
+"through, PHP2Shell or wp2shell."
+msgstr ""
+"Haz un análisis para comprobar si este sitio está expuesto a PHP2Shell o "
+"wp2shell, o si fue vulnerado a través de ellos."
+
+#: includes/class-site-health.php:48
+msgid "The PHP2Shell scan found signs of compromise"
+msgstr "El análisis de PHP2Shell encontró señales de compromiso"
+
+#: includes/class-site-health.php:49
+msgid "The PHP2Shell scan found something suspicious"
+msgstr "El análisis de PHP2Shell encontró algo sospechoso"
+
+#: includes/class-site-health.php:57
+msgid "The PHP2Shell scan has items to review"
+msgstr "El análisis de PHP2Shell tiene elementos por revisar"
+
+#: includes/class-site-health.php:66
+msgid "The last PHP2Shell scan is out of date"
+msgstr "El último análisis de PHP2Shell está desactualizado"
+
+#: includes/class-site-health.php:68
+msgid "The last scan was clean but is old. Scan again to be sure."
+msgstr ""
+"El último análisis salió limpio pero es antiguo. Analiza de nuevo para estar"
+" seguro."
+
+#: includes/class-updater.php:121
+msgid ""
+"Checks whether a site is exposed to, or was broken into through, PHP2Shell "
+"(CVE-2026-109618 / CVE-2026-109619) and wp2shell (CVE-2026-63030 / "
+"CVE-2026-60137). Read-only."
+msgstr ""
+"Comprueba si un sitio está expuesto a PHP2Shell (CVE-2026-109618 / "
+"CVE-2026-109619) y wp2shell (CVE-2026-63030 / CVE-2026-60137), o si fue "
+"vulnerado a través de ellos. Solo lectura."
+
+#: includes/class-updater.php:143
+msgid "Could not prepare the update folder."
+msgstr "No se pudo preparar la carpeta de actualización."

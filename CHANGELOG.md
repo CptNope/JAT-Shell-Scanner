@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Spanish (es_ES) translation, bundled in `languages/`. WordPress loads it through the plugin's `Domain Path` header. Scan findings stay in English, as before.
+
 ## [1.7.0] — 2026-11-05
 
 ### Fewer false alarms
