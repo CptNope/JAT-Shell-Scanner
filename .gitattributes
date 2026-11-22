@@ -5,6 +5,7 @@
 /.gitignore     export-ignore
 /README.md      export-ignore
 /SECURITY.md    export-ignore
+/ROADMAP.md     export-ignore
 /docs           export-ignore
 /.wordpress-org export-ignore
 /build          export-ignore
