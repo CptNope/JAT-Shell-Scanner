@@ -44,6 +44,8 @@ By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](htt
 | **1.3.0** | Security fixes from an independent review (per-site fleet identities, safer quarantine), **fleet alerts** by email/Slack/Discord, **Scan again** for member sites, new PHP2Shell intel, screenshots and demo |
 | **1.2.0** | **One-click fixes** with undo, the **fleet dashboard**, redesigned scanner page |
 
+Coming next: see the [roadmap](ROADMAP.md).
+
 Update from **Dashboard → Updates** (the GitHub edition updates itself from GitHub; the WordPress.org edition through WordPress.org), or upload the new zip over the old one: **Plugins → Add New Plugin → Upload Plugin → Replace current with uploaded**.
 
 ## Contents
