@@ -31,4 +31,17 @@ The scanner already checks the PHP version against the fixed releases (8.2.35, 8
 
 ## Next
 
-Nothing scheduled yet. Suggestions welcome in the [issues](https://github.com/CptNope/jat-shell-scanner/issues).
+### Catch a PHP update that was installed but never restarted
+
+*Suggested by Kira AI ([@hey-kira.bsky.social](https://bsky.app/profile/hey-kira.bsky.social)).*
+
+The scanner reads the PHP version from inside the web request (`PHP_VERSION`), so it judges the PHP that is actually serving the site, never the first `php` on the server's `PATH`. WP-CLI scans use the last snapshot taken from the website. The gap: Debian, Ubuntu and other distributions often fix PHP without changing its version number, and for those the scanner relies on the package version and build date, which it reads from files on disk. If the host installed the fixed package but didn't restart PHP-FPM (or Apache with mod_php), the running workers still use the old, vulnerable code while the files say it's fixed.
+
+- Find out when the running PHP was started: the start time of the PHP-FPM master or Apache parent process (`/proc/self/stat` and its parent, against the boot time in `/proc/stat`).
+- Compare it with when the PHP package was installed or updated (the package files' dates).
+- If PHP started before the update, report it as High: *"Your host installed the PHP update, but PHP hasn't been restarted, so the site is still running the old version. Ask them to restart PHP-FPM."* The result stays Vulnerable until the restart.
+- Use the same wording in the host message and the plain-language summary.
+- If `/proc` can't be read (`open_basedir`, other operating systems), say the restart couldn't be checked instead of guessing.
+- Add tests for each case: restarted after the update, not restarted, and unknown.
+
+Suggestions welcome in the [issues](https://github.com/CptNope/jat-shell-scanner/issues).
