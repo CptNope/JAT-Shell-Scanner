@@ -49,6 +49,9 @@ class WP2SS_Scanner {
 	/** Types of finding that describe a weakness, not evidence of an attack. */
 	const VULN_TYPES = array( 'version', 'php' );
 
+	/** Shown when a host has turned on every temporary protection but PHP is still unpatched. */
+	const PROTECTED_UNPATCHED = 'Your host has turned on the temporary protections, but PHP itself is still vulnerable. Ask them to update PHP.';
+
 	/** PHP files that ship with this plugin (used when there is no release manifest). */
 	const OWN_PHP = array(
 		'jat-shell-scanner.php',
@@ -63,6 +66,7 @@ class WP2SS_Scanner {
 		'includes/class-scanner.php',
 		'includes/class-settings.php',
 		'includes/class-site-health.php',
+		'includes/class-summary.php',
 		// <github-only>
 		'includes/class-updater.php',
 		// </github-only>
@@ -233,6 +237,27 @@ class WP2SS_Scanner {
 	 * Weaknesses (an unpatched WordPress or PHP) give "VULNERABLE"; evidence of
 	 * an attack gives "SUSPICIOUS" or "COMPROMISED", which take precedence.
 	 */
+	/**
+	 * Are the temporary protections the only thing standing between this site
+	 * and PHP2Shell? (All of them on, PHP still unpatched, and the PHP finding
+	 * not dismissed by the owner.)
+	 */
+	public static function protections_only( $findings, $ignored = null ) {
+		$flag   = false;
+		$status = null;
+		foreach ( (array) $findings as $f ) {
+			if ( 'php' !== $f['type'] ) {
+				continue;
+			}
+			if ( self::PROTECTED_UNPATCHED === $f['message'] ) {
+				$flag = true;
+			} elseif ( self::sev_rank( $f['severity'] ) >= 4 && preg_match( '/vulnerable to PHP2Shell|no official PHP2Shell fix|never get a PHP2Shell fix|older than the PHP2Shell fix/', $f['message'] ) ) {
+				$status = $f;
+			}
+		}
+		return $flag && $status && ! self::is_ignored( $status, $ignored );
+	}
+
 	public static function verdict( $findings, $ignored = null ) {
 		$ignored    = null === $ignored ? self::ignored() : $ignored;
 		$top        = 0;
@@ -827,7 +852,13 @@ class WP2SS_Scanner {
 			if ( isset( $e['max_nesting'] ) && '' !== (string) $e['max_nesting'] && (int) $e['max_nesting'] > 32 ) {
 				$off[] = 'max_input_nesting_level is ' . (int) $e['max_nesting'] . ' (PHP advises reducing it)';
 			}
-			$this->add( 'info', 'php', 'Temporary PHP2Shell protections: ' . ( $on ? 'in place — ' . implode( ', ', $on ) . '. ' : '' ) . ( $off ? 'missing — ' . implode( ', ', $off ) . '.' : '' ), 'None of these is a complete fix — only updating PHP is. Your host must set them in php.ini or the PHP-FPM pool (php_admin_value, not .user.ini or ini_set), then fully restart PHP. PHP’s advisory also suggests pm.max_requests = 1 for PHP-FPM, and no operating-system memory limits (RLIMIT_AS / RLIMIT_DATA) on PHP.', '', 'php-mitigations' );
+			// Every advised protection on, but the version is still unpatched: say plainly that's not the fix,
+			// so nobody reads a hardened server as a patched one. The PHP finding above stays as it is.
+			$certain = 'pkg-vulnerable' === $status || 'no-fix' === $status || ( in_array( $status, array( 'vulnerable', 'backport-only' ), true ) && ! $distro );
+			if ( ! $off && $certain ) {
+				$this->add( 'info', 'php', self::PROTECTED_UNPATCHED, 'The protections make attacks harder, not impossible: security researchers have shown attacks working with them in place. Only a patched PHP fixes PHP2Shell.', '', 'php-protected-unpatched' );
+			}
+			$this->add( 'info', 'php', 'Temporary PHP2Shell protections: ' . ( $off ? '' : 'all the advised ones are on, but they are not a fix — PHP itself still needs updating. ' ) . ( $on ? 'in place — ' . implode( ', ', $on ) . '. ' : '' ) . ( $off ? 'missing — ' . implode( ', ', $off ) . '.' : '' ), 'None of these is a complete fix — only updating PHP is. Your host must set them in php.ini or the PHP-FPM pool (php_admin_value, not .user.ini or ini_set), then fully restart PHP. PHP’s advisory also suggests pm.max_requests = 1 for PHP-FPM, and no operating-system memory limits (RLIMIT_AS / RLIMIT_DATA) on PHP.', '', 'php-mitigations' );
 		}
 
 		// CVE-2026-115560 (PHP advisory, 2026-10-23): no fix in any version yet, so this applies to patched PHP too.

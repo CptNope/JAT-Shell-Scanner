@@ -14,7 +14,7 @@
 
 ### [Install from WordPress.org](https://wordpress.org/plugins/jat-shell-scanner/) · [⬇️ Download the zip](https://github.com/CptNope/JAT-Shell-Scanner/releases/latest/download/jat-shell-scanner.zip)
 
-**Current version: 1.7.1** (November 16, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md) · [Wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki)
+**Current version: 1.8.0** (November 23, 2026) · [What's new](#whats-new) · [Full changelog](CHANGELOG.md) · [Wiki](https://github.com/CptNope/JAT-Shell-Scanner/wiki)
 
 Free · scans only read · optional one-click fixes you can undo · self-hosted fleet dashboard · no account · nothing sent to us
 
@@ -33,6 +33,7 @@ By [Jeremy Anderson](https://jeremyanderson.tech/) · [Plugin page and docs](htt
 
 | Version | Highlights |
 |---|---|
+| **1.8.0** | **A summary to send your host.** **Copy summary** (next to **Download report**) gives a plain-language summary of the whole scan that you can paste into a support ticket as it is: the result in one sentence, each Critical and High finding with where it is and what to do, plus your site, PHP and WordPress versions, scan date and the CVE numbers. No file contents, passwords or personal data. Also `wp jat-shell scan --format=host`. And when your host has turned on every temporary protection but PHP is still unpatched, the result now says so plainly, so nobody mistakes the protections for the fix. Both suggested on Bluesky |
 | **1.7.1** | **Spanish translation** of the whole interface, by Jean Berrios ([@jeanberrios](https://profiles.wordpress.org/jeanberrios/)) |
 | **1.7.0** | **Far fewer false alarms**: files newly installed plugins keep in uploads or cache, half-unpacked updates in `wp-content/upgrade`, plugin-made must-use files and drop-ins, and security firewalls or host tools loaded before every page are recognised. Ordinary code (a method named `exec()`, saving custom CSS) no longer matches webshell signatures. New PHP2Shell honeypot indicators and wp2shell persistence indicators; a reminder for WordPress's October 28 security release |
 | **1.6.0** | Renamed **JAT Shell Scanner** on WordPress.org (by Jeremy Anderson Tech). Quarantine moves into the plugin's own folder in uploads, blocked from the web; folders are found through WordPress's functions, so moved content, plugin and theme folders are scanned correctly |
@@ -309,6 +310,49 @@ Each finding has a **severity**:
 
 Most site owners can't update PHP themselves. When PHP needs attention, the scanner shows a box called **"Your host needs to update PHP"** with a ready-made support message that already includes your site address, PHP version and the CVE numbers. Click **Copy message** and paste it into a support ticket or live chat.
 
+If your host has already turned on **every** temporary protection below but PHP itself still isn't updated, the scanner says so at the top of the result: *"Your host has turned on the temporary protections, but PHP itself is still vulnerable. Ask them to update PHP."* The message for your host thanks them for the protections and asks for the update itself. The result stays **Vulnerable** until PHP is patched, because the protections only make attacks harder.
+
+### A summary of the whole scan for your host or developer
+
+*Suggested by [Varun Dubey](https://bsky.app/profile/vapvarun.bsky.social).*
+
+When the scan finds more than an old PHP, click **Copy summary** at the top of the scanner page, next to **Download report**. It copies a plain-language summary you can paste into a support ticket or email as it is. If the scan found signs of a break-in, the **What to do next** list also has a **Tell your host or developer** step with the same button and a **Download as text** link.
+
+| The summary includes | It leaves out |
+|---|---|
+| The result in one sentence, e.g. *"PHP is open to attack. No signs anyone got in."* | File contents |
+| Each **Critical** and **High** finding in plain words: what was found, where (a path from the site folder), what to do, and whether you've already quarantined it | Passwords and keys |
+| A count of Medium items you're reviewing | Account names, email addresses and IP addresses (replaced with *[account name]*, *[email address]*, *[IP address]*) |
+| Site address, WordPress and PHP versions, scan date, the CVE numbers and the scanner version | Low and Info findings, and anything you've ignored |
+
+From the command line: `wp jat-shell scan --format=host > summary.txt`.
+
+```text
+Security scan summary for https://example.com
+
+Result: Someone has very likely broken in.
+Your host has turned on the temporary protections, but PHP itself is still vulnerable. Ask them to update PHP.
+
+What needs attention (3 items):
+
+1. CRITICAL: Executes code straight from a web request: wp-content/uploads/2026/11/cache-img.php
+   What to do: Open the file to confirm. If it’s malicious: keep a copy as evidence, remove it, then change passwords, keys and salts.
+
+2. HIGH: PHP 8.3.10 is vulnerable to PHP2Shell (CVE-2026-109618 / CVE-2026-109619). The fix is in PHP 8.3.36.
+   What to do: Update PHP to 8.3.36 or later (or install your patched package), then fully restart PHP. Temporary php.ini protections only partly help.
+
+3. HIGH: Administrator [account name] ([email address]) was created 2026-11-24 01:26:40 UTC, after PHP2Shell attacks began.
+   What to do: Attackers create admin accounts after breaking in. If you don’t recognise this one, remove it and reset every admin password.
+
+Details
+Site: https://example.com
+WordPress: 7.1.3
+PHP: 8.3.10, PHP-FPM
+Scanned: 2026-11-24 01:26 UTC
+Checked for: PHP2Shell (CVE-2026-109618, CVE-2026-109619, CVE-2026-115560) and wp2shell (CVE-2026-63030, CVE-2026-60137)
+Scanner: JAT Shell Scanner 1.8.0 (https://wordpress.org/plugins/jat-shell-scanner/)
+```
+
 ```mermaid
 sequenceDiagram
     actor You
@@ -526,7 +570,7 @@ Safety rules:
 - Quarantined files are deleted when you uninstall the plugin, or individually from the **Quarantine** tab.
 
 > [!TIP]
-> Not comfortable doing this yourself? Your host's support team or a WordPress security service can clean the site — many for a fixed fee. Give them the **Download report (JSON)** file; it lists everything found.
+> Not comfortable doing this yourself? Your host's support team or a WordPress security service can clean the site — many for a fixed fee. Send them the summary from **Copy summary** to explain what was found, and give them the **Download report (JSON)** file; it lists everything found.
 
 ## 10. Updating the plugin
 
@@ -661,7 +705,7 @@ Everything the dashboard does is available from the command line. The command is
 | `--error-log=<path>` | The setting, then the log PHP reports | PHP error log to check for PHP2Shell traces (`.gz` works) |
 | `--skip-core` | off | Don't verify core and plugin files against wordpress.org |
 | `--min=<severity>` | `low` | Hide findings below `info`, `low`, `medium`, `high` or `critical` |
-| `--format=<format>` | `table` | `table`, `json`, `csv`, `yaml` or `summary` (one line) |
+| `--format=<format>` | `table` | `table`, `json`, `csv`, `yaml`, `summary` (one line) or `host` (the plain-language summary for your host, same as **Copy summary**) |
 | `--include-ignored` | off | Also list findings marked as ignored |
 
 > [!NOTE]
@@ -683,6 +727,7 @@ wp jat-shell scan --min=high                               # only what needs act
 wp jat-shell scan --error-log=/var/log/php-fpm/www-error.log --log=/var/log/nginx/access.log
 wp jat-shell scan --format=json > php2shell-report.json    # full report
 wp jat-shell scan --format=summary                         # VULNERABLE  https://example.com  wp 7.1.2  php 8.3.10  critical:0 high:1 medium:0
+wp jat-shell scan --format=host > summary-for-my-host.txt  # plain-language summary to send your host
 wp jat-shell scan --format=json | jq -r '.findings[] | select(.severity=="critical") | .message'
 wp jat-shell status --format=table
 wp jat-shell ignore 3f9a1c2b7d10

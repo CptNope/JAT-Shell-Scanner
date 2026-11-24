@@ -2,13 +2,16 @@
 
 What's planned for JAT Shell Scanner. Ideas come from users, so if you'd like something added, [open an issue](https://github.com/CptNope/jat-shell-scanner/issues).
 
-## Next version (1.8.0)
+## Done in 1.8.0
+
+Both items below shipped in [1.8.0](CHANGELOG.md#180--2026-11-23). Thank you to everyone who suggested them.
+
 
 ### A plain-language summary you can forward to your host
 
 *Suggested by Varun Dubey ([@vapvarun.bsky.social](https://bsky.app/profile/vapvarun.bsky.social)).*
 
-Most people who install a scanner aren't sure what to do with the findings. Today the scanner has a ready-made message for the host only when PHP needs updating (**Your host needs to update PHP → Copy message**). The next version adds a summary of the whole scan that a site owner can copy or download and send to their host or developer as it is:
+Most people who install a scanner aren’t sure what to do with the findings. Before 1.8.0 the scanner had a ready-made message for the host only when PHP needed updating (**Your host needs to update PHP → Copy message**). 1.8.0 adds a summary of the whole scan that a site owner can copy or download and send to their host or developer as it is:
 
 - The result in one sentence (for example, *"No signs of an attack, but PHP needs updating"*).
 - Each Critical and High finding in plain words: what was found, where, and what the host should do about it.
@@ -26,6 +29,6 @@ The scanner already checks the PHP version against the fixed releases (8.2.35, 8
 - Use the same wording in the host message and the new summary, so nobody reads the protections as the fix.
 - Add a test for this case (all protections on, version unpatched, result stays Vulnerable).
 
-## Later
+## Next
 
 Nothing scheduled yet. Suggestions welcome in the [issues](https://github.com/CptNope/jat-shell-scanner/issues).

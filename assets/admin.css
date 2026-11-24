@@ -245,3 +245,4 @@
 .wp2ss-about p { margin: 0 0 8px; max-width: 80ch; }
 .wp2ss-about strong { color: var(--wp2ss-ink); }
 .wp2ss-about-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-bottom: 0 !important; }
+.wp2ss-protections { margin: 4px 0 8px; color: var(--wp2ss-bad, #a4161a); }

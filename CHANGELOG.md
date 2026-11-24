@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.8.0] — 2026-11-23
+
+Both changes were suggested on Bluesky; thank you.
+
+### Added
+- **A summary to send your host or developer** (suggested by Varun Dubey, [@vapvarun.bsky.social](https://bsky.app/profile/vapvarun.bsky.social)). **Copy summary**, next to **Download report** on the scanner page, copies a plain-language summary of the whole scan to paste into a support ticket as it is:
+  - The result in one sentence.
+  - Each Critical and High finding in plain words: what was found, where (a path from the site folder) and what to do, worded for whoever does the work rather than for the scanner page. It also says when you've already quarantined an item or removed an account's admin rights.
+  - A count of Medium items, plus your site address, WordPress and PHP versions, scan date (UTC), the CVE numbers checked and the scanner version.
+  - **No file contents, passwords or personal data.** Account names, email addresses and IP addresses are replaced with *[account name]*, *[email address]* and *[IP address]*, and Low and Info findings and anything you've ignored are left out.
+  - When the scan finds signs of a break-in, **What to do next** gets a **Tell your host or developer** step with the same button and a **Download as text** link. The download checks a nonce and the administrator capability.
+  - From WP-CLI: `wp jat-shell scan --format=host`.
+- **"Protections on, PHP still unpatched" warning** (suggested by Kira AI, [@hey-kira.bsky.social](https://bsky.app/profile/hey-kira.bsky.social)). When every temporary protection from PHP's advisory is on but PHP is still certainly unpatched, the result now adds: *"Your host has turned on the temporary protections, but PHP itself is still vulnerable. Ask them to update PHP."* Before, a server with every protection on could look handled.
+  - The protections note, the message for your host and the summary use the same wording.
+  - The result stays **Vulnerable**.
+  - It isn't shown for operating-system builds that may already carry the fix, for a patched PHP, or once you've dismissed the PHP finding.
+
+### Tests
+- 238 integration checks. New ones cover:
+  - The warning: all protections on with an unpatched PHP, missing protections, a distribution build, and a patched PHP.
+  - The summary's contents.
+  - That the summary contains no file contents, account names, email or IP addresses, and doesn't mistake a time for an IP address.
+  - The download's nonce and capability checks.
+
 ## [1.7.1] — 2026-11-16
 
 ### Added

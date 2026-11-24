@@ -23,7 +23,7 @@ class WP2SS_Admin {
 		foreach ( array( 'start', 'step', 'cancel', 'ignore', 'dismiss', 'fix', 'undo', 'purge' ) as $a ) {
 			add_action( 'wp_ajax_wp2ss_' . $a, array( __CLASS__, 'ajax_' . $a ) );
 		}
-		foreach ( array( 'scan', 'export', 'settings', 'fix_all', 'fleet', 'fleet_send', 'fleet_forget', 'fleet_rotate', 'fleet_csv', 'fleet_alerts', 'fleet_test', 'fleet_rescan', 'fleet_clear' ) as $a ) {
+		foreach ( array( 'scan', 'export', 'settings', 'fix_all', 'fleet', 'fleet_send', 'fleet_forget', 'fleet_rotate', 'fleet_csv', 'fleet_alerts', 'fleet_test', 'fleet_rescan', 'fleet_clear', 'summary' ) as $a ) {
 			add_action( 'admin_post_wp2ss_' . $a, array( __CLASS__, 'post_' . $a ) );
 		}
 	}
@@ -310,8 +310,13 @@ class WP2SS_Admin {
 		return array( $php, $wp, $in );
 	}
 
+	/** The line shown when every temporary protection is on but PHP is still unpatched. */
+	public static function protections_line() {
+		return __( 'Your host has turned on the temporary protections, but PHP itself is still vulnerable. Ask them to update PHP.', 'jat-shell-scanner' );
+	}
+
 	/** The one sentence that sums the scan up. */
-	private static function sentence( $verdict, $php, $wp, $in ) {
+	public static function sentence( $verdict, $php, $wp, $in ) {
 		$doors_open = ( 'open' === $php['state'] ) + ( 'open' === $wp['state'] );
 		if ( 'breach' === $in['state'] ) {
 			return __( 'Someone has very likely broken in.', 'jat-shell-scanner' );
@@ -351,6 +356,9 @@ class WP2SS_Admin {
 				<div>
 					<?php if ( $report ) : ?>
 						<h2 id="wp2ss-verdict" class="wp2ss-sentence"><?php echo esc_html( self::sentence( $verdict, $php, $wp, $in ) ); ?></h2>
+						<?php if ( WP2SS_Scanner::protections_only( $report['findings'], $ignored ) ) : ?>
+							<p class="wp2ss-protections"><strong><?php echo esc_html( self::protections_line() ); ?></strong></p>
+						<?php endif; ?>
 						<p class="wp2ss-meta">
 							<?php
 							printf(
@@ -377,9 +385,13 @@ class WP2SS_Admin {
 						<?php $report ? esc_html_e( 'Scan again', 'jat-shell-scanner' ) : esc_html_e( 'Scan now', 'jat-shell-scanner' ); ?>
 					</button>
 					<?php if ( $report ) : ?>
+						<button type="button" class="button wp2ss-copy" data-target="wp2ss-summary-text" title="<?php esc_attr_e( 'A plain-language summary to send to your host or developer. It leaves out file contents, passwords and personal data.', 'jat-shell-scanner' ); ?>"><?php esc_html_e( 'Copy summary', 'jat-shell-scanner' ); ?></button>
 						<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=wp2ss_export' ), 'wp2ss_export' ) ); ?>"><?php esc_html_e( 'Download report', 'jat-shell-scanner' ); ?></a>
 					<?php endif; ?>
 				</form>
+				<?php if ( $report ) : ?>
+					<textarea id="wp2ss-summary-text" class="screen-reader-text" tabindex="-1" aria-hidden="true" readonly><?php echo esc_textarea( WP2SS_Summary::text( $report, $ignored ) ); ?></textarea>
+				<?php endif; ?>
 			</div>
 
 			<div class="wp2ss-progress" id="wp2ss-progress" hidden>
@@ -494,6 +506,9 @@ class WP2SS_Admin {
 		if ( $incident ) {
 			$steps[] = array( __( 'Back up the whole site first', 'jat-shell-scanner' ), __( 'Files and database, with your host’s backup tool or a backup plugin. It’s your evidence and your undo button.', 'jat-shell-scanner' ), '' );
 		}
+		if ( $incident ) {
+			$steps[] = array( __( 'Tell your host or developer', 'jat-shell-scanner' ), __( 'Send them this summary. It explains what was found and where, in plain words, and leaves out file contents, passwords and personal data.', 'jat-shell-scanner' ), 'summary' );
+		}
 		if ( in_array( $php['state'], array( 'open', 'ask' ), true ) ) {
 			$steps[] = array( 'open' === $php['state'] ? __( 'Ask your host to update PHP', 'jat-shell-scanner' ) : __( 'Ask your host to confirm PHP is patched', 'jat-shell-scanner' ), __( 'On most hosting plans only they can. Here’s a message to send them:', 'jat-shell-scanner' ), 'host' );
 		}
@@ -528,7 +543,15 @@ class WP2SS_Admin {
 							<?php
 							switch ( $s[2] ) {
 								case 'host':
-									self::render_host_message( $report );
+									self::render_host_message( $report, $ignored );
+									break;
+								case 'summary':
+									?>
+									<span class="wp2ss-inline-form">
+										<button type="button" class="button button-small wp2ss-copy" data-target="wp2ss-summary-text"><?php esc_html_e( 'Copy summary', 'jat-shell-scanner' ); ?></button>
+										<a class="button button-small" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=wp2ss_summary' ), 'wp2ss_summary' ) ); ?>"><?php esc_html_e( 'Download as text', 'jat-shell-scanner' ); ?></a>
+									</span>
+									<?php
 									break;
 								case 'wp':
 									if ( current_user_can( 'update_core' ) ) {
@@ -573,17 +596,24 @@ class WP2SS_Admin {
 	}
 
 	/** A ready-to-send support message, because most site owners can't update PHP themselves. */
-	private static function render_host_message( $report ) {
+	private static function render_host_message( $report, $ignored = null ) {
 		$env   = WP2SS_Env::get();
 		$sig   = WP2SS_Scanner::signatures();
 		$fixed = isset( $sig['php_fixed'][ $env['branch'] ] ) ? $sig['php_fixed'][ $env['branch'] ] : '8.2.35 or newer';
-		$ver   = $env['version'] . ( ! empty( $env['pkg'] ) ? ' (package ' . $env['pkg'] . ')' : '' );
+		// The PHP the scan judged, so the message matches the result above it (and the summary).
+		$scanned = isset( $report['php']['version'] ) ? (string) $report['php']['version'] : $env['version'];
+		$ver     = $scanned . ( ! empty( $env['pkg'] ) && $scanned === $env['version'] ? ' (package ' . $env['pkg'] . ')' : '' );
+		$branch  = implode( '.', array_slice( explode( '.', $scanned ), 0, 2 ) );
+		$fixed   = isset( $sig['php_fixed'][ $branch ] ) ? $sig['php_fixed'][ $branch ] : $fixed;
 		$msg   = sprintf(
-			/* translators: 1: site URL, 2: PHP version, 3: server API, 4: fixed version */
-			__( "Hello,\n\nMy website %1\$s runs PHP %2\$s (%3\$s). A security scan says this version may be affected by PHP2Shell (CVE-2026-109618 and CVE-2026-109619), the critical PHP vulnerabilities announced on October 21, 2026.\n\nCould you please:\n1. Update PHP for my site to %4\$s (or your patched package), or confirm that the fix for both CVEs has already been applied to this server, and\n2. Restart PHP afterwards, and\n3. Until then, consider the temporary protections from PHP's advisory (memory_limit = -1 enforced with php_admin_value, session.upload_progress.enabled = 0, a low post_max_size and max_input_nesting_level, pm.max_requests = 1) in php.ini or the PHP-FPM pool. These only partly protect.\n\nCould you also let me know whether you've seen any signs of these attacks against my site since October 17, 2026?\n\nThank you!", 'jat-shell-scanner' ),
+			WP2SS_Scanner::protections_only( $report['findings'], $ignored )
+				/* translators: 1: site URL, 2: PHP version, 3: server API, 4: fixed version */
+				? __( "Hello,\n\nMy website %1\$s runs PHP %2\$s (%3\$s). A security scan says this version is still affected by PHP2Shell (CVE-2026-109618 and CVE-2026-109619), the critical PHP vulnerabilities announced on October 21, 2026.\n\nThank you for turning on the temporary protections from PHP's advisory. They only partly protect, though: PHP itself is still vulnerable.\n\nCould you please:\n1. Update PHP for my site to %4\$s (or your patched package), or confirm that the fix for both CVEs has already been applied to this server, and\n2. Restart PHP afterwards.\n\nCould you also let me know whether you've seen any signs of these attacks against my site since October 17, 2026?\n\nThank you!", 'jat-shell-scanner' )
+				/* translators: 1: site URL, 2: PHP version, 3: server API, 4: fixed version */
+				: __( "Hello,\n\nMy website %1\$s runs PHP %2\$s (%3\$s). A security scan says this version may be affected by PHP2Shell (CVE-2026-109618 and CVE-2026-109619), the critical PHP vulnerabilities announced on October 21, 2026.\n\nCould you please:\n1. Update PHP for my site to %4\$s (or your patched package), or confirm that the fix for both CVEs has already been applied to this server, and\n2. Restart PHP afterwards, and\n3. Until then, consider the temporary protections from PHP's advisory (memory_limit = -1 enforced with php_admin_value, session.upload_progress.enabled = 0, a low post_max_size and max_input_nesting_level, pm.max_requests = 1) in php.ini or the PHP-FPM pool. These only partly protect.\n\nCould you also let me know whether you've seen any signs of these attacks against my site since October 17, 2026?\n\nThank you!", 'jat-shell-scanner' ),
 			$report['site'],
 			$ver,
-			self::sapi_label( $env['sapi'] ),
+			self::sapi_label( ! empty( $report['php']['sapi'] ) ? $report['php']['sapi'] : $env['sapi'] ),
 			$fixed
 		);
 		?>
@@ -1319,6 +1349,23 @@ class WP2SS_Admin {
 		header( 'Content-Type: application/json; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="php2shell-scan-' . $host . '-' . gmdate( 'Ymd-His' ) . '.json"' );
 		echo wp_json_encode( $report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR );
+		exit;
+	}
+
+	/** The plain-language summary as a text file, for owners who'd rather attach it than paste it. */
+	public static function post_summary() {
+		self::require_cap();
+		check_admin_referer( 'wp2ss_summary' );
+		$report = WP2SS_Scanner::last_report();
+		if ( ! $report ) {
+			self::back( 'findings', array( 'err' => __( 'Run a scan first.', 'jat-shell-scanner' ) ) );
+		}
+		$host = sanitize_file_name( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+		nocache_headers();
+		header( 'Content-Type: text/plain; charset=utf-8' );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'Content-Disposition: attachment; filename="security-summary-' . $host . '-' . gmdate( 'Ymd' ) . '.txt"' );
+		echo WP2SS_Summary::text( $report ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text download, not HTML.
 		exit;
 	}
 
