@@ -4,7 +4,7 @@ Tags: security, malware, scanner, webshell, vulnerability
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.0
-Stable tag: 1.7.1
+Stable tag: 1.8.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -35,7 +35,7 @@ JAT Shell Scanner is made by [Jeremy Anderson Tech](https://jeremyanderson.tech/
 = Features =
 
 * Works on shared hosting with short time limits — scans run in slices with a progress bar
-* A ready-to-send message for your host when PHP needs updating
+* A ready-to-send message for your host when PHP needs updating, and a plain-language summary of the whole scan to send your host or developer (Copy summary), without file contents, passwords or personal data
 * Weekly or daily automatic scans with email alerts for new, serious findings
 * One-click quarantine and admin removal, with undo
 * Fleet dashboard: one hub site shows the results of all your sites, with email/Slack/Discord alerts and remote rescans
@@ -106,6 +106,10 @@ Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/)
 
 == Changelog ==
 
+= 1.8.0 =
+* Copy summary: a plain-language summary of the whole scan to paste into a support ticket for your host or developer. It gives the result in one sentence, each Critical and High finding with where it is and what to do, and your site, PHP and WordPress versions, scan date and the CVE numbers. It leaves out file contents, passwords and personal data. Also available as a text download and with wp jat-shell scan --format=host. Suggested by Varun Dubey.
+* When your host has turned on every temporary protection but PHP is still unpatched, the result now says so plainly, and so do the message for your host and the summary. The result stays Vulnerable until PHP is updated. Suggested by Kira AI.
+
 = 1.7.1 =
 * Spanish (es_ES) translation of the whole interface, by Jean Berrios (@jeanberrios). It's included with the plugin and used on WordPress 6.8 or newer when the site is set to Spanish. Scan findings stay in English.
 
@@ -144,6 +148,9 @@ Use the [support forum](https://wordpress.org/support/plugin/jat-shell-scanner/)
 The full history is in [CHANGELOG.md](https://github.com/CptNope/JAT-Shell-Scanner/blob/main/CHANGELOG.md).
 
 == Upgrade Notice ==
+
+= 1.8.0 =
+Adds a plain-language summary to send your host, and says clearly when temporary protections are on but PHP is still unpatched.
 
 = 1.7.1 =
 Adds a Spanish translation.

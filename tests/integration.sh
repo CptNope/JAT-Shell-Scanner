@@ -51,6 +51,14 @@ set_php() { # set_php <version> [extra] [os] [memory_limit] [history-json] [pack
 		'history' => json_decode( '${5:-[]}', true ) ) );" >/dev/null 2>&1
 }
 
+set_php_protected() { # set_php_protected <version> [extra] [os]: every temporary protection from PHP's advisory turned on
+	$WP eval "update_site_option( 'wp2ss_env', array(
+		'version' => '$1', 'extra' => '${2:-}', 'branch' => implode( '.', array_slice( explode( '.', '$1' ), 0, 2 ) ),
+		'sapi' => 'fpm-fcgi', 'os' => '${3:-linux}', 'server' => 'nginx', 'upload_progress' => '0',
+		'memory_limit' => '-1', 'fatal_bt' => '0', 'error_log' => '', 'post_max_size' => '8M', 'max_nesting' => '32',
+		'pkg' => '', 'build' => 0, 'time' => time(), 'history' => array() ) );" >/dev/null 2>&1
+}
+
 set_php 8.3.36   # A patched PHP for the baseline tests.
 
 section "1. Clean site"
@@ -368,6 +376,30 @@ has "$R" "$(sev info 'package 7.4.3-4ubuntu2.29.esm5. includes the PHP2Shell fix
 set_php 8.1.34 "" linux 256M "[]" "" 1792627200
 R=$(scan)
 has "$R" "$(sev medium 'files date from 2026-10-22')" "a PHP built after the fix was released is 'probably patched'"
+
+# Every temporary protection on, but PHP still unpatched: say plainly that's not the fix (suggested on Bluesky).
+set_php_protected 8.3.10
+R=$(scan)
+has "$R" "$(sev info 'turned on the temporary protections, but PHP itself is still vulnerable')" "all protections on + unpatched PHP: says the protections aren't the fix"
+has "$R" "$(sev high 'PHP 8.3.10 is vulnerable to PHP2Shell')" "...the PHP finding stays High"
+OUT=$($WP eval '$f = array_values( array_filter( WP2SS_Scanner::last_report()["findings"], function ( $f ) { return "php" === $f["type"]; } ) ); echo WP2SS_Scanner::verdict( $f, array() );' 2>/dev/null)
+[ "$OUT" = "VULNERABLE" ] && ok "...and the result stays Vulnerable (the protections don't count as a fix)" || bad "PHP findings alone give $OUT, not VULNERABLE"
+has "$R" "$(msg 'all the advised ones are on, but they are not a fix')" "...and the protections note says so too"
+HOST=$($WP php2shell scan --skip-core --format=host 2>/dev/null)
+echo "$HOST" | grep -q "turned on the temporary protections, but PHP itself is still vulnerable" && ok "...the host summary says the same" || bad "host summary misses the protections line"
+OUT=$($WP --user=admin eval '$m = new ReflectionMethod( "WP2SS_Admin", "render_host_message" ); $m->setAccessible( true ); ob_start(); $m->invoke( null, WP2SS_Scanner::last_report(), WP2SS_Scanner::ignored() ); echo ob_get_clean();' 2>/dev/null)
+echo "$OUT" | grep -q "Thank you for turning on the temporary protections" && ok "...and so does the message for the host" || bad "host message misses the protections line"
+OUT=$($WP eval '$r = WP2SS_Scanner::last_report(); foreach ( $r["findings"] as $f ) { if ( "php" === $f["type"] && "high" === $f["severity"] ) { WP2SS_Scanner::set_ignored( $f["id"], true ); } } echo WP2SS_Scanner::protections_only( $r["findings"] ) ? "shown" : "hidden"; foreach ( $r["findings"] as $f ) { WP2SS_Scanner::set_ignored( $f["id"], false ); }' 2>/dev/null)
+[ "$OUT" = "hidden" ] && ok "not shown once the owner has dismissed the PHP finding (host confirmed a fix)" || bad "protections line shown despite the dismissed PHP finding ($OUT)"
+set_php 8.3.10
+R=$(scan)
+hasnt "$R" "$(msg 'turned on the temporary protections')" "not said when protections are missing"
+set_php_protected 8.3.6 "" ubuntu
+R=$(scan)
+hasnt "$R" "$(msg 'turned on the temporary protections')" "not said when an operating-system PHP may already be patched"
+set_php_protected 8.3.36
+R=$(scan)
+hasnt "$R" "$(msg 'turned on the temporary protections')" "not said when PHP is patched"
 
 section "13. PHP2Shell: log evidence"
 set_php 8.3.36
@@ -912,6 +944,39 @@ OUT=$($WP eval '
 ' 2>/dev/null)
 case "$OUT" in authorize_*" 401") ok "unsigned fleet report refused by the permission check ($OUT)" ;; *) bad "fleet permission check ($OUT)" ;; esac
 $WP eval 'delete_site_option( "wp2ss_fleet" );' >/dev/null
+
+section "20. Plain-language summary for your host"
+set_php 8.3.36
+mkdir -p "$C/uploads/2026/11"
+printf "<?php /* SUMMARYSECRET42 */ eval(\$_POST['s']);\n" > "$C/uploads/2026/11/sum.php"
+$WP user create sumrogue sumrogue@evil.example --role=administrator --quiet >/dev/null 2>&1
+$WP eval '$u = get_user_by( "login", "sumrogue" ); global $wpdb; $wpdb->update( $wpdb->users, array( "user_registered" => gmdate( "Y-m-d H:i:s", time() + 7200 ) ), array( "ID" => $u->ID ) );' >/dev/null 2>&1
+HOST=$($WP php2shell scan --skip-core --format=host 2>/dev/null)
+for want in "Security scan summary for" "Result: " "What needs attention" "wp-content/uploads/2026/11/sum.php" "What to do: " "Checked for: PHP2Shell (CVE-2026-109618" "Scanner: JAT Shell Scanner" "WordPress: " "PHP: 8.3.36"; do
+	echo "$HOST" | grep -qF "$want" && ok "summary has \"$want\"" || bad "summary lacks \"$want\""
+done
+echo "$HOST" | grep -q "SUMMARYSECRET42" && bad "summary includes file contents" || ok "no file contents in the summary"
+echo "$HOST" | grep -qi "sumrogue" && bad "summary includes an account name or email" || ok "no account names or email addresses in the summary"
+echo "$HOST" | grep -qE "Where: .*user:" && bad "summary includes user ids" || ok "no account ids in the summary"
+echo "$HOST" | grep -qF "[IP address] UTC" && bad "a time was mistaken for an IP address" || ok "times aren't mistaken for IP addresses"
+SUMLOG=$(mktemp)
+echo '103.216.220.92 - - [21/Oct/2026:11:00:00 +0000] "POST / HTTP/1.1" 200 10 "-" "php2shell-scan/109618"' > "$SUMLOG"
+HOST=$($WP php2shell scan --skip-core --format=host --log="$SUMLOG" 2>/dev/null)
+echo "$HOST" | grep -qF "103.216.220.92" && bad "summary includes an IP address" || ok "no IP addresses in the summary"
+echo "$HOST" | grep -qF "[IP address]" && ok "...it says where one was left out" || ok "...(no address in the log findings' wording)"
+rm -f "$SUMLOG"
+echo "$HOST" | grep -qiE "scanner page|click" && bad "summary has dashboard-only instructions" || ok "instructions make sense outside the dashboard"
+OUT=$($WP --user=admin eval 'ob_start(); WP2SS_Admin::page(); $h = ob_get_clean(); echo false !== strpos( $h, "id=\"wp2ss-summary-text\"" ) && false !== strpos( $h, "data-target=\"wp2ss-summary-text\"" ) ? "y" : "n";' 2>/dev/null)
+[ "$OUT" = "y" ] && ok "Copy summary button and its text are on the scanner page" || bad "Copy summary missing from the page ($OUT)"
+# The text download checks the nonce and the user's permissions.
+DIE='add_filter( "wp_die_handler", function () { return function () { echo "REFUSED"; exit; }; } );'
+OUT=$($WP --user=admin eval "$DIE"' $_REQUEST = $_GET = array(); WP2SS_Admin::post_summary();' 2>/dev/null)
+echo "$OUT" | grep -q REFUSED && ! echo "$OUT" | grep -q "Security scan summary" && ok "summary download without a nonce is refused" || bad "summary download without a nonce ($OUT)"
+OUT=$($WP eval "$DIE"' $_REQUEST = $_GET = array( "_wpnonce" => wp_create_nonce( "wp2ss_summary" ) ); WP2SS_Admin::post_summary();' 2>/dev/null)
+echo "$OUT" | grep -q REFUSED && ! echo "$OUT" | grep -q "Security scan summary" && ok "summary download refused for users without the capability" || bad "summary download for a logged-out user ($OUT)"
+OUT=$($WP --user=admin eval "$DIE"' $_REQUEST = $_GET = array( "_wpnonce" => wp_create_nonce( "wp2ss_summary" ) ); WP2SS_Admin::post_summary();' 2>/dev/null)
+echo "$OUT" | grep -q "Security scan summary for" && ok "summary download works with a nonce, for an administrator" || bad "summary download failed ($OUT)"
+rm -rf "$C/uploads/2026/11"; $WP user delete sumrogue --yes --quiet >/dev/null 2>&1
 
 # Uninstall removes the plugin's uploads folder and settings.
 $WP eval 'WP2SS_Paths::storage( true );' >/dev/null

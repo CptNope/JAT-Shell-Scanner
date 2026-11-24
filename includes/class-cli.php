@@ -51,6 +51,7 @@ class WP2SS_CLI {
 	 *   - csv
 	 *   - yaml
 	 *   - summary
+	 *   - host
 	 * ---
 	 *
 	 * [--include-ignored]
@@ -62,6 +63,7 @@ class WP2SS_CLI {
 	 *     wp jat-shell scan --log=/var/log/nginx/access.log --min=medium
 	 *     wp jat-shell scan --format=json > report.json
 	 *     wp @all jat-shell scan --format=summary
+	 *     wp jat-shell scan --format=host > summary-for-my-host.txt
 	 *
 	 * Exit code: 0 = clean or review, 1 = vulnerable or suspicious, 2 = compromised.
 	 *
@@ -78,7 +80,7 @@ class WP2SS_CLI {
 			'core'      => empty( $assoc['skip-core'] ) && $settings['core'],
 		);
 		$format   = WP_CLI\Utils\get_flag_value( $assoc, 'format', 'table' );
-		$quiet    = in_array( $format, array( 'json', 'csv', 'yaml', 'summary' ), true );
+		$quiet    = in_array( $format, array( 'json', 'csv', 'yaml', 'summary', 'host' ), true );
 
 		$progress = null;
 		if ( ! $quiet ) {
@@ -118,7 +120,10 @@ class WP2SS_CLI {
 			$rows[]       = $f;
 		}
 
-		if ( 'json' === $format ) {
+		if ( 'host' === $format ) {
+			// The plain-language summary for a host or developer (same text as "Copy summary" in the dashboard).
+			WP_CLI::out( WP2SS_Summary::text( $report, $ignored ) );
+		} elseif ( 'json' === $format ) {
 			$report['verdict']  = $verdict;
 			$report['findings'] = $rows;
 			WP_CLI::line( wp_json_encode( $report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
