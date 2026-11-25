@@ -44,4 +44,23 @@ The scanner reads the PHP version from inside the web request (`PHP_VERSION`), s
 - If `/proc` can't be read (`open_basedir`, other operating systems), say the restart couldn't be checked instead of guessing.
 - Add tests for each case: restarted after the update, not restarted, and unknown.
 
+### Report WordPress core files that are missing
+
+Found while checking a site after a host move. The core check compares each core file that exists against the WordPress.org checksums, but a core file that has been deleted is never mentioned. A missing file can break part of WordPress, and an attacker can remove a file as easily as change one.
+
+- For every file in the checksum list that isn't on disk, report it: *"WordPress core file is missing: wp-includes/…"*, with Reinstall WordPress (Dashboard → Updates → Re-install) as the fix.
+- Medium for one or a few missing files, High when many are missing or they include files WordPress loads on every page.
+- Skip files WordPress itself allows to be absent (for example `wp-config-sample.php`, `readme.html`, `license.txt`), and keep the existing "couldn't get checksums" message when the list can't be fetched.
+- Group long lists like modified files already are ("N more missing core files").
+- Add tests: nothing missing, one missing, many missing, and an allowed-absent file.
+
+### Recognise JAT Site Shield's own key file
+
+Found on a site that runs both plugins. JAT Site Shield can keep its two-factor encryption key in `wp-content/jatss-key.php` (its older key file; `anshield-key.php` before the rename), and the scanner reports it as High: *"PHP doesn't normally live here."* That alarms people over a file their own security plugin created.
+
+- Don't flag `jatss-key.php` or `anshield-key.php` when the file has Site Shield's layout: an optional `ABSPATH` guard and a single `return '<64 hex characters>';`, nothing else.
+- If a file with one of those names has any other contents, keep reporting it as High, so the name can't be used to hide a backdoor.
+- Show it under **Everything** as "JAT Site Shield's key file (expected)".
+- Add tests: genuine key file, look-alike file with code in it, and Site Shield not installed.
+
 Suggestions welcome in the [issues](https://github.com/CptNope/jat-shell-scanner/issues).
